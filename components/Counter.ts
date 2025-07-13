@@ -1,4 +1,5 @@
-import { type Component, html } from "../script.ts";
+import { type Component } from "../client/definitions.d.ts";
+import { html } from "../client/html.ts";
 import { createSignal } from "../signals.js";
 
 export const Counter: Component<number> = (initial: number = 0) => {
