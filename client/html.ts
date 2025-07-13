@@ -1,7 +1,7 @@
-import type { Tag } from "./definitions.d.ts";
+import type { TemplateTag } from "./definitions.d.ts";
 import { createEffect, isSignal } from "../client/signals.ts";
 
-export const html: Tag = (
+export const html: TemplateTag = (
   strings,
   ...values
 ) => {

@@ -1,6 +1,6 @@
 export type Effect = () => void;
 
-export type Tag = (
+export type TemplateTag = (
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => DocumentFragment;
