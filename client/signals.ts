@@ -1,12 +1,24 @@
+import type { Effect } from "./definitions.d.ts";
 
+let runningEffect: Effect | undefined;
 
-let runningEffect;
+const SIGNAL = Symbol();
 
-export const createSignal = (initialValue) => {
+export const isSignal = (
+  value: unknown,
+): value is ReturnType<typeof createSignal> => {
+  if (value !== null && typeof value === "object" && SIGNAL in value) {
+    return true;
+  }
+  return false;
+};
+
+export const createSignal = <T>(initialValue: T) => {
   let value = initialValue;
-  const subscribers = new Set();
+  const subscribers = new Set<Effect>();
 
   return {
+    [SIGNAL]: true,
     get value() {
       if (runningEffect) {
         subscribers.add(runningEffect);
@@ -22,7 +34,7 @@ export const createSignal = (initialValue) => {
   };
 };
 
-export const createEffect = (fn) => {
+export const createEffect = (fn: Effect) => {
   function compute() {
     let prev;
     try {
