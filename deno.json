@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "build": "deno run --allow-read --allow-write --allow-env ./scripts/strip.ts",
+    "build": "deno run --allow-read --allow-write --allow-env ./scripts/build.ts",
     "watch": "deno run --allow-read --allow-write --allow-env ./scripts/watch.ts"
   },
   "compilerOptions": {
