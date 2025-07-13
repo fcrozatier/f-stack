@@ -3,7 +3,7 @@ import { walkSync } from "@std/fs";
 import { extname } from "@std/path";
 
 export const buildPath = (path: string) => {
-  if (extname(path) === ".ts") {
+  if (extname(path) === ".ts" && !path.endsWith(".d.ts")) {
     console.log(path);
     const mod = Deno.readTextFileSync(path);
     const js = typeStrip(mod, { pathRewriting: true, removeComments: true });
@@ -24,7 +24,8 @@ const build = () => {
       includeFiles: true,
       includeDirs: false,
       includeSymlinks: false,
-      maxDepth: 1,
+      match: [/client|components/],
+      skip: [/\.d\.ts$/],
     })
   ) {
     buildPath(entry.path);

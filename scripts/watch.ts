@@ -1,5 +1,5 @@
 import { debounce } from "@std/async";
-import { extname, relative, SEPARATOR } from "@std/path";
+import { extname } from "@std/path";
 import { buildPath } from "./build.ts";
 
 const rebuild = debounce(buildPath, 200);
@@ -13,13 +13,11 @@ console.log("Watching files...");
 for await (const event of watcher) {
   if (event.kind === "modify") {
     for (const path of event.paths) {
-      if (extname(path) === ".ts") {
-        const isRootModule =
-          relative(Deno.cwd(), path).split(SEPARATOR).length === 1;
-
-        if (isRootModule) {
-          rebuild(path);
-        }
+      if (
+        extname(path) === ".ts" && !path.endsWith(".d.ts") &&
+        path.match(/client|components/)
+      ) {
+        rebuild(path);
       }
     }
   }
