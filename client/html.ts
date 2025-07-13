@@ -1,5 +1,5 @@
 import type { Tag } from "./definitions.d.ts";
-import { createEffect, isSignal } from "../signals.ts";
+import { createEffect, isSignal } from "../client/signals.ts";
 
 export const html: Tag = (
   strings,
