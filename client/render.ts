@@ -6,4 +6,4 @@ const render: Render = (fragment, target) => {
   target.appendChild(fragment);
 };
 
-render(Article("Hello!!"), document.body);
+render(Article({ title: "Hello!!" }), document.body);

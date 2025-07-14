@@ -2,10 +2,10 @@ import { createComponent } from "../client/component.ts";
 import { html } from "../client/html.ts";
 import { Counter } from "./Counter.ts";
 
-export const Article = createComponent((title?: string) => {
+export const Article = createComponent((props: { title: string }) => {
   return html`
-    <h1>${title}</h1>
-    <p>The description</p>
-    ${Counter.partial(10)}
+    <h1>${props.title}</h1>
+    <p>The description is here</p>
+    ${Counter.partial({ initial: 100 })}
   `;
 });
