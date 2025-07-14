@@ -5,9 +5,12 @@ export type TemplateTag = (
   ...values: unknown[]
 ) => DocumentFragment;
 
-export type Component<Context> = (context?: Context) => DocumentFragment;
+export interface Component {
+  (...props: any[]): DocumentFragment;
+  partial: (...props: any[]) => Component;
+}
 
-export type Render = <Context>(
-  component: Component<Context>,
+export type Render = (
+  component: DocumentFragment,
   target: Node,
 ) => void;

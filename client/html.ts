@@ -1,5 +1,6 @@
-import type { TemplateTag } from "./definitions.d.ts";
 import { createEffect, isSignal } from "../client/signals.ts";
+import { isComponent } from "./component.ts";
+import type { TemplateTag } from "./definitions.d.ts";
 
 export const html: TemplateTag = (
   strings,
@@ -10,8 +11,12 @@ export const html: TemplateTag = (
   for (let index = 0; index < values.length; index++) {
     const string = strings[index + 1];
     const rawValue = values[index];
-    const value = isSignal(rawValue) ? rawValue.value : rawValue;
-    innerHTML += `<!---->${value}<!--${index}-->${string}`;
+
+    if (isSignal(rawValue) || isComponent(rawValue)) {
+      innerHTML += `<!----><!--${index}-->${string}`;
+    } else {
+      innerHTML += `${rawValue}${string}`;
+    }
   }
 
   const template = document.createElement("template");
@@ -19,13 +24,13 @@ export const html: TemplateTag = (
   const content = template.content;
 
   const tw = document.createTreeWalker(content, NodeFilter.SHOW_COMMENT);
-  let node: Comment;
+  let comment: Comment;
 
   const comments: Comment[] = [];
 
-  while ((node = tw.nextNode() as Comment)) {
-    comments.push(node);
-    const data = node.data;
+  while ((comment = tw.nextNode() as Comment)) {
+    comments.push(comment);
+    const data = comment.data;
 
     if (!data) continue;
 
@@ -34,16 +39,18 @@ export const html: TemplateTag = (
     if (data && match) {
       const index = Number(match[0]);
       const rawValue = values[index];
-      const is_signal = isSignal(rawValue);
-      const value = is_signal ? rawValue.value : rawValue;
-      const text = document.createTextNode(String(value));
-      node.previousSibling?.replaceWith(text);
 
-      if (is_signal) {
+      if (isSignal(rawValue)) {
+        const text = document.createTextNode("");
+        comment.before(text);
+
         createEffect(() => {
-          const value = is_signal ? rawValue.value : rawValue;
-          text.textContent = String(value);
+          const data = String(rawValue.value);
+          text.textContent = data;
         });
+      } else if (isComponent(rawValue)) {
+        const fragments = rawValue();
+        comment.before(fragments);
       }
     }
   }
