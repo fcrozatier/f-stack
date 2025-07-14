@@ -1,26 +1,21 @@
-import type { PartialArgs } from "../partial.ts";
+import { withPartial } from "./partial.ts";
 import type { Component } from "./definitions.d.ts";
 
 const componentBrand = Symbol();
 
-export const isComponent = (value: unknown): value is Component => {
+export const isComponent = (
+  value: unknown,
+): value is Component<Record<string, unknown>> => {
   if (typeof value === "function" && componentBrand in value) return true;
   return false;
 };
 
-export const createComponent = <A extends any[]>(
-  component: (...args: A) => DocumentFragment,
-): Component => {
-  Object.defineProperty(component, componentBrand, { enumerable: true });
-  Object.defineProperty(component, "partial", {
-    enumerable: true,
-    value: (...args: PartialArgs<A>) => {
-      // @ts-ignore should be fine
-      const bound = component.bind(null, ...args);
-      Object.assign(bound, component);
-      return bound;
-    },
-  });
+export const createComponent = <
+  Props extends Record<string, unknown>,
+>(
+  component: (props: Props) => DocumentFragment,
+): Component<Props> => {
+  Object.assign(component, { [componentBrand]: true });
 
-  return component as Component;
+  return withPartial(component);
 };

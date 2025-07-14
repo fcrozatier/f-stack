@@ -5,10 +5,22 @@ export type TemplateTag = (
   ...values: unknown[]
 ) => DocumentFragment;
 
-export interface Component {
-  (...props: any[]): DocumentFragment;
-  partial: (...props: any[]) => Component;
-}
+export type PartiallyApplicableFunction<
+  Props extends Record<string, unknown>,
+  R,
+> =
+  & ((props: Props) => R)
+  & {
+    partial<P extends Partial<Props>>(
+      partialProps: P,
+    ): PartiallyApplicableFunction<P & Omit<Props, keyof P>, R>;
+  };
+
+export type Component<Props extends Record<string, unknown>> =
+  PartiallyApplicableFunction<
+    Props,
+    DocumentFragment
+  >;
 
 export type Render = (
   component: DocumentFragment,
