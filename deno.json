@@ -4,7 +4,11 @@
     "watch": "deno run --allow-read --allow-write --allow-env ./scripts/watch.ts"
   },
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"],
+    "checkJs": false,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
   },
   "imports": {
     "@fcrozatier/type-strip": "jsr:@fcrozatier/type-strip@^1.3.0",
