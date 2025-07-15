@@ -1,4 +1,4 @@
-import type { Effect } from "./definitions.d.ts";
+import type { Effect } from "../definitions.d.ts";
 
 let runningEffect: Effect | undefined;
 

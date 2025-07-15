@@ -1,5 +1,5 @@
 import { Article } from "../components/Article.ts";
-import type { Render } from "./definitions.d.ts";
+import type { Render } from "../definitions.d.ts";
 
 // Should be idempotent
 const render: Render = (fragment, target) => {

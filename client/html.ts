@@ -1,6 +1,7 @@
 import { createEffect, isSignal } from "../client/signals.ts";
 import { isComponent } from "./component.ts";
-import type { TemplateTag } from "./definitions.d.ts";
+import type { TemplateTag } from "../definitions.d.ts";
+import { assertExists } from "./assert.ts";
 
 export const html: TemplateTag = (
   strings,

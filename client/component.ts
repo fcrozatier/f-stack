@@ -1,5 +1,5 @@
 import { withPartial } from "./partial.ts";
-import type { Component } from "./definitions.d.ts";
+import type { Component } from "../definitions.d.ts";
 
 const componentBrand = Symbol();
 

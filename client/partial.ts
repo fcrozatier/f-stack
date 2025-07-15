@@ -1,4 +1,4 @@
-import type { PartiallyApplicableFunction } from "./definitions.d.ts";
+import type { PartiallyApplicableFunction } from "../definitions.d.ts";
 
 export function withPartial<
   Props extends Record<string, unknown>,
