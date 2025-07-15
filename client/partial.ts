@@ -10,7 +10,7 @@ export function withPartial<
     partial<P extends Partial<Props>>(partialProps: P) {
       const partiallyApplicable = withPartial((
         rest: P & Omit<Props, keyof P>,
-        // @ts-ignore trust me
+        // @ts-ignore just spreading
       ) => fn({ ...partialProps, ...rest }));
 
       Object.assign(partiallyApplicable, fn);
