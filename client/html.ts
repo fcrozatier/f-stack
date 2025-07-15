@@ -7,7 +7,8 @@ export const html: TemplateTag = (
   strings,
   ...values
 ) => {
-  let innerHTML = strings[0];
+  assertExists(strings[0]);
+  let innerHTML: string = strings[0];
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index + 1];
