@@ -6,6 +6,6 @@ export const Article = createComponent((props: { title: string }) => {
   return html`
     <h1>${props.title}</h1>
     <p>The description is here</p>
-    ${Counter.partial({ initial: 100 })}
+    ${Counter.bindFully({ initial: 100 })}
   `;
 });

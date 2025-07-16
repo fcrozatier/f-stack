@@ -51,7 +51,7 @@ export const html: TemplateTag = (
           text.textContent = data;
         });
       } else if (isComponent(rawValue)) {
-        const fragments = rawValue({});
+        const fragments = rawValue();
         comment.before(fragments);
       }
     }
