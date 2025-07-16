@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "build": "deno run --allow-read --allow-write --allow-env ./scripts/build.ts",
-    "watch": "deno run --allow-read --allow-write --allow-env ./scripts/watch.ts"
+    "build": "deno run -A ./scripts/build.ts",
+    "watch": "deno run -A ./scripts/watch.ts"
   },
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"],
