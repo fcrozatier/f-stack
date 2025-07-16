@@ -17,6 +17,21 @@ const build = () => {
 
   for (
     /**
+     * Remove all .js modules prior to doing a full build
+     */
+    const entry of walkSync(".", {
+      exts: [".js"],
+      includeFiles: true,
+      includeDirs: false,
+      includeSymlinks: false,
+      match: [/client|components/],
+    })
+  ) {
+    Deno.removeSync(entry.path);
+  }
+
+  for (
+    /**
      * Only build the .ts modules in the root folder
      */
     const entry of walkSync(".", {
