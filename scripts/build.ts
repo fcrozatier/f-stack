@@ -32,7 +32,7 @@ const build = () => {
 
   for (
     /**
-     * Only build the .ts modules in the root folder
+     * Only build the .ts modules in the specified folders
      */
     const entry of walkSync(".", {
       exts: [".ts"],
