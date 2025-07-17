@@ -1,4 +1,4 @@
-let runningComputation: Computed<any> | undefined;
+let currentlyComputing: Computed<any> | undefined;
 
 const addWatcher = Symbol();
 const removeWatcher = Symbol();
@@ -31,9 +31,9 @@ class State<T> extends Signal<T> {
   }
 
   get value() {
-    if (runningComputation) {
-      this.dependents.add(runningComputation);
-      runningComputation[addSource](this);
+    if (currentlyComputing) {
+      this.dependents.add(currentlyComputing);
+      currentlyComputing[addSource](this);
     }
 
     return this.#value;
@@ -77,9 +77,9 @@ class Computed<T> extends Signal<T> {
       this.#recompute();
     }
 
-    if (runningComputation) {
-      this.dependents.add(runningComputation);
-      runningComputation[addSource](this);
+    if (currentlyComputing) {
+      this.dependents.add(currentlyComputing);
+      currentlyComputing[addSource](this);
     }
 
     return this.#value!;
@@ -91,14 +91,14 @@ class Computed<T> extends Signal<T> {
     }
     this.#sources.clear();
 
-    const prevComputation = runningComputation;
-    runningComputation = this;
+    const prevComputation = currentlyComputing;
+    currentlyComputing = this;
 
     try {
       this.#value = this.#computation();
       this.#isStale = false;
     } finally {
-      runningComputation = prevComputation;
+      currentlyComputing = prevComputation;
     }
   }
 
@@ -171,11 +171,11 @@ const watcher = new Watcher(() => {
   if (!pending) {
     pending = true;
     queueMicrotask(() => {
-      for (const signal of watcher.getPending()) {
-        signal.value;
-      }
-
       pending = false;
+
+      for (const signal of watcher.getPending()) {
+        console.log(signal.value);
+      }
     });
   }
 });
