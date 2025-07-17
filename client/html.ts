@@ -1,7 +1,7 @@
-import { createEffect, isSignal } from "../client/signals.ts";
-import { isComponent } from "./component.ts";
+import { effect, isSignal } from "../client/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
+import { isComponent } from "./component.ts";
 
 export const html: TemplateTag = (
   strings,
@@ -46,7 +46,7 @@ export const html: TemplateTag = (
         const text = document.createTextNode("");
         comment.before(text);
 
-        createEffect(() => {
+        effect(() => {
           const data = String(rawValue.value);
           text.textContent = data;
         });

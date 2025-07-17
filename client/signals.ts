@@ -125,11 +125,11 @@ export const isSignal = (value: unknown): value is Signal<any> => {
   return value instanceof Signal;
 };
 
-export const createState = <T>(initialValue: T) => {
+export const state = <T>(initialValue: T) => {
   return new State(initialValue);
 };
 
-export const createComputed = <T>(computation: () => T) => {
+export const computed = <T>(computation: () => T) => {
   return new Computed(computation);
 };
 
@@ -180,7 +180,7 @@ const watcher = new Watcher(() => {
   }
 });
 
-export const createEffect = (cb: () => (() => void) | void): () => void => {
+export const effect = (cb: () => (() => void) | void): () => void => {
   let destructor: (() => void) | void;
   const c = new Computed(() => {
     destructor?.();
