@@ -1,4 +1,4 @@
-let currentlyComputing: Computed<any> | undefined;
+let currentlyComputing: Computed<any> | null = null;
 
 const addWatcher = Symbol();
 const removeWatcher = Symbol();
@@ -201,4 +201,15 @@ export const effect = (cb: () => (() => void) | void): () => void => {
     destructor?.();
     watcher.unwatch(c);
   };
+};
+
+export const untrack = <T>(fn: () => T): T => {
+  const previousComputing = currentlyComputing;
+  currentlyComputing = null;
+
+  try {
+    return fn();
+  } finally {
+    currentlyComputing = previousComputing;
+  }
 };
