@@ -1,23 +1,28 @@
-import { withBindFully } from "./bindFully.ts";
-import type { Component } from "../definitions.d.ts";
-
-const componentBrand = Symbol();
-
-export const isComponent = (
-  value: unknown,
-): value is () => DocumentFragment => {
-  if (typeof value === "function" && componentBrand in value) return true;
-  return false;
+export const isComponent = (value: unknown): value is Component<any> => {
+  return value instanceof Component;
 };
 
-export const createComponent = <
-  Props extends Record<string, unknown>,
->(
-  component: (props: Props) => DocumentFragment,
-): Component<Props> => {
-  Object.assign(component, { [componentBrand]: true });
+export class Component<Props extends Record<string, any>> {
+  #callback: (props: Props) => DocumentFragment;
+  #props: Props | undefined;
 
-  return withBindFully(component);
+  constructor(callback: (props: Props) => DocumentFragment) {
+    this.#callback = callback;
+  }
+
+  bind(props: Props) {
+    this.#props = props;
+    return this;
+  }
+
+  call() {
+    if (!this.#props) throw new TypeError("Props are undefined");
+    return this.#callback.call(null, this.#props);
+  }
+}
+
+export const component = <Props extends Record<string, any>>(
+  callback: (props: Props) => DocumentFragment,
+) => {
+  return new Component(callback);
 };
-
-// Components look like a generic class, with a method bind, and tracking their own state, like whether it has been bound, they're also not called directly
