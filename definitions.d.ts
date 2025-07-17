@@ -1,5 +1,3 @@
-export type Effect = () => void;
-
 export type TemplateTag = (
   strings: TemplateStringsArray,
   ...values: unknown[]

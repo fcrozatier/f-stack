@@ -1,49 +1,196 @@
-import type { Effect } from "../definitions.d.ts";
+let runningComputation: Computed<any> | undefined;
 
-let runningEffect: Effect | undefined;
+const addWatcher = Symbol();
+const removeWatcher = Symbol();
+const removeDependent = Symbol();
 
-const SIGNAL = Symbol();
+abstract class Signal<T> {
+  abstract value: T;
+  protected dependents: Set<Computed<any>> = new Set();
+  protected watchers: Set<Watcher> = new Set();
 
-export const isSignal = (
-  value: unknown,
-): value is ReturnType<typeof createSignal> => {
-  if (value !== null && typeof value === "object" && SIGNAL in value) {
-    return true;
+  [addWatcher](watcher: Watcher) {
+    this.watchers.add(watcher);
   }
-  return false;
+
+  [removeWatcher](watcher: Watcher) {
+    this.watchers.delete(watcher);
+  }
+
+  [removeDependent](computed: Computed<any>) {
+    this.dependents.delete(computed);
+  }
+}
+
+class State<T> extends Signal<T> {
+  #value: T;
+
+  constructor(initial: T) {
+    super();
+    this.#value = initial;
+  }
+
+  get value() {
+    if (runningComputation) {
+      this.dependents.add(runningComputation);
+      runningComputation[addSource](this);
+    }
+
+    return this.#value;
+  }
+
+  set value(newValue: T) {
+    if (!this.#compare(this.#value, newValue)) {
+      this.#value = newValue;
+
+      for (const dependent of this.dependents) {
+        dependent[markStale]();
+      }
+
+      for (const watcher of this.watchers) {
+        watcher.notify(this);
+      }
+    }
+  }
+
+  #compare(value1: T, value2: T) {
+    return Object.is(value1, value2);
+  }
+}
+
+const addSource = Symbol();
+const markStale = Symbol();
+
+class Computed<T> extends Signal<T> {
+  #computation: () => T;
+  #value: T | undefined;
+  #isStale = true;
+  #sources: Set<Signal<any>> = new Set();
+
+  constructor(computation: () => T) {
+    super();
+    this.#computation = computation;
+  }
+
+  get value(): T {
+    if (this.#isStale) {
+      this.#recompute();
+    }
+
+    if (runningComputation) {
+      this.dependents.add(runningComputation);
+      runningComputation[addSource](this);
+    }
+
+    return this.#value!;
+  }
+
+  #recompute() {
+    for (const source of this.#sources) {
+      source[removeDependent](this);
+    }
+    this.#sources.clear();
+
+    const prevComputation = runningComputation;
+    runningComputation = this;
+
+    try {
+      this.#value = this.#computation();
+      this.#isStale = false;
+    } finally {
+      runningComputation = prevComputation;
+    }
+  }
+
+  [addSource](source: Signal<any>) {
+    this.#sources.add(source);
+  }
+
+  [markStale]() {
+    if (!this.#isStale) {
+      this.#isStale = true;
+
+      for (const dependent of this.dependents) {
+        dependent[markStale]();
+      }
+
+      for (const watcher of this.watchers) {
+        watcher.notify(this);
+      }
+    }
+  }
+}
+
+export const isSignal = (value: unknown): value is Signal<any> => {
+  return value instanceof State;
 };
 
 export const createSignal = <T>(initialValue: T) => {
-  let value = initialValue;
-  const subscribers = new Set<Effect>();
-
-  return {
-    [SIGNAL]: true,
-    get value() {
-      if (runningEffect) {
-        subscribers.add(runningEffect);
-      }
-      return value;
-    },
-    set value(newValue) {
-      value = newValue;
-      for (const subscriber of subscribers) {
-        subscriber();
-      }
-    },
-  };
+  return new State(initialValue);
 };
 
-export const createEffect = (fn: Effect) => {
-  function compute() {
-    let prev;
-    try {
-      prev = runningEffect;
-      runningEffect = compute;
-      fn();
-    } finally {
-      runningEffect = prev;
-    }
+export const createComputed = <T>(computation: () => T) => {
+  return new Computed(computation);
+};
+
+class Watcher {
+  #callback: () => void;
+  #watchedSignals: Set<Signal<any>> = new Set();
+  #pendingSignals: Set<Signal<any>> = new Set();
+
+  constructor(callback: () => void) {
+    this.#callback = callback;
   }
-  compute();
+
+  watch(signal: Signal<any>) {
+    this.#watchedSignals.add(signal);
+    signal[addWatcher](this);
+  }
+
+  unwatch(signal: Signal<any>) {
+    this.#watchedSignals.delete(signal);
+    this.#pendingSignals.delete(signal);
+    signal[removeWatcher](this);
+  }
+
+  getPending() {
+    const pending = Array.from(this.#pendingSignals);
+    this.#pendingSignals.clear();
+    return pending;
+  }
+
+  notify(signal: Signal<any>) {
+    this.#pendingSignals.add(signal);
+    this.#callback();
+  }
+}
+
+let pending = false;
+
+const watcher = new Watcher(() => {
+  if (!pending) {
+    pending = true;
+    queueMicrotask(() => {
+      for (const signal of watcher.getPending()) {
+        signal.value;
+      }
+
+      pending = false;
+    });
+  }
+});
+
+export const createEffect = (cb: () => (() => void) | void): () => void => {
+  let destructor: (() => void) | void;
+  const c = new Computed(() => {
+    destructor?.();
+    destructor = cb();
+  });
+  watcher.watch(c);
+  c.value;
+
+  return () => {
+    destructor?.();
+    watcher.unwatch(c);
+  };
 };
