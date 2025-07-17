@@ -125,6 +125,14 @@ export const isSignal = (value: unknown): value is Signal<any> => {
   return value instanceof Signal;
 };
 
+export const isState = (value: unknown): value is State<any> => {
+  return value instanceof State;
+};
+
+export const isComputed = (value: unknown): value is Computed<any> => {
+  return value instanceof Computed;
+};
+
 export const state = <T>(initialValue: T) => {
   return new State(initialValue);
 };
