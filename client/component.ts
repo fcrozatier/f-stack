@@ -1,8 +1,10 @@
+export type { Component } from "../definitions.d.ts";
+
 export const isComponent = (value: unknown): value is Component<any> => {
   return value instanceof Component;
 };
 
-export class Component<Props extends Record<string, any>> {
+class Component<Props extends Record<string, any>> implements Component<Props> {
   #callback: (props: Props) => DocumentFragment;
   #props: Props | undefined;
 
