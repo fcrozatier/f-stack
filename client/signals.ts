@@ -5,7 +5,7 @@ const removeWatcher = Symbol();
 const removeDependent = Symbol();
 
 abstract class Signal<T> {
-  abstract value: T;
+  abstract get value(): T;
   protected dependents: Set<Computed<any>> = new Set();
   protected watchers: Set<Watcher> = new Set();
 
@@ -122,10 +122,10 @@ class Computed<T> extends Signal<T> {
 }
 
 export const isSignal = (value: unknown): value is Signal<any> => {
-  return value instanceof State;
+  return value instanceof Signal;
 };
 
-export const createSignal = <T>(initialValue: T) => {
+export const createState = <T>(initialValue: T) => {
   return new State(initialValue);
 };
 
@@ -133,7 +133,7 @@ export const createComputed = <T>(computation: () => T) => {
   return new Computed(computation);
 };
 
-class Watcher {
+export class Watcher {
   #callback: () => void;
   #watchedSignals: Set<Signal<any>> = new Set();
   #pendingSignals: Set<Signal<any>> = new Set();
