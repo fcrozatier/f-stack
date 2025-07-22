@@ -121,16 +121,16 @@ class Computed<T> extends Signal<T> {
   }
 }
 
-export const isSignal = (value: unknown): value is Signal<any> => {
-  return value instanceof Signal;
-};
-
 export const isState = (value: unknown): value is State<any> => {
   return value instanceof State;
 };
 
 export const isComputed = (value: unknown): value is Computed<any> => {
   return value instanceof Computed;
+};
+
+export const isSignal = (value: unknown): value is Signal<any> => {
+  return isState(value) || isComputed(value);
 };
 
 export const state = <T>(initialValue: T) => {
@@ -182,7 +182,8 @@ const watcher = new Watcher(() => {
       pending = false;
 
       for (const signal of watcher.getPending()) {
-        console.log(signal.value);
+        signal.value;
+        // console.log(signal);
       }
     });
   }
