@@ -2,7 +2,7 @@ import { assert, assertExists } from "./assert.ts";
 import { isComponent } from "./component.ts";
 import { effect, isSignal } from "./signals.ts";
 
-const boundaries: Boundary<any>[] = [];
+let id = 0;
 
 export class Boundary<T> {
   #start: Comment | undefined;
@@ -13,11 +13,9 @@ export class Boundary<T> {
   data: T;
 
   constructor(data: T) {
-    this.id = boundaries.length;
+    this.id = id++;
     this.range = new Range();
     this.data = data;
-
-    boundaries.push(this);
   }
 
   set start(comment: Comment) {
@@ -68,9 +66,5 @@ export class Boundary<T> {
         };
       });
     }
-  }
-
-  static get(id: number) {
-    return boundaries[id];
   }
 }
