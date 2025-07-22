@@ -14,6 +14,14 @@ export const Counter = component<Props>(({ initial = 0 }) => {
 
   return html`
     <div>The count is: ${count}</div>
-    <span>is even: ${isEven}</span>
+    <div>even: ${isEven}</div>
+    <div>${() =>
+      isEven.value
+        ? html`
+          Oh it's <em>even</em>
+        `
+        : html`
+          How <strong>odd</strong>
+        `}</div>
   `;
 });
