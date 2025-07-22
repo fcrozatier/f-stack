@@ -1,6 +1,7 @@
 import { effect, isSignal } from "../client/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
+import { Boundary } from "./Boundary.ts";
 import { isComponent } from "./component.ts";
 
 export const html: TemplateTag = (
@@ -10,14 +11,23 @@ export const html: TemplateTag = (
   assertExists(strings[0]);
   let innerHTML: string = strings[0];
 
+  const boundariesMap = new Map<number, Boundary<any>>();
+
   for (let index = 0; index < values.length; index++) {
     const string = strings[index + 1];
-    const rawValue = values[index];
+    const data = values[index];
 
-    if (isSignal(rawValue) || isComponent(rawValue)) {
-      innerHTML += `<!----><!--${index}-->${string}`;
+    if (
+      isSignal(data) ||
+      isComponent(data) ||
+      typeof data === "function"
+    ) {
+      const boundary = new Boundary(data);
+      boundariesMap.set(boundary.id, boundary);
+
+      innerHTML += `${boundary}${string}`;
     } else {
-      innerHTML += `${rawValue}${string}`;
+      innerHTML += `${data}${string}`;
     }
   }
 
@@ -28,37 +38,42 @@ export const html: TemplateTag = (
   const tw = document.createTreeWalker(content, NodeFilter.SHOW_COMMENT);
   let comment: Comment;
 
-  const comments: Comment[] = [];
-
   while ((comment = tw.nextNode() as Comment)) {
-    comments.push(comment);
-    const data = comment.data;
+    const match = /^<(?<end>\/?)(?<id>\d+)>$/.exec(comment.data);
 
-    if (!data) continue;
+    // Unrelated comment
+    if (!match || !match.groups?.id) continue;
 
-    const match = /^(\d+)$/.exec(data);
+    const id = Number(match.groups.id);
+    const boundary = boundariesMap.get(id);
 
-    if (data && match) {
-      const index = Number(match[0]);
-      const rawValue = values[index];
+    // The boundary is managed elsewhere
+    if (!boundary) continue;
 
-      if (isSignal(rawValue)) {
+    if (match.groups.end) boundary.setEnd(comment);
+    else {
+      boundary.setStart(comment);
+      continue;
+    }
+
+    const data = boundary.data;
+
+    if (isSignal(data)) {
+      if (!(data.value instanceof DocumentFragment)) {
         const text = document.createTextNode("");
         comment.before(text);
 
         effect(() => {
-          const data = String(rawValue.value);
-          text.textContent = data;
+          text.textContent = String(data.value);
         });
-      } else if (isComponent(rawValue)) {
-        const fragments = rawValue.call();
-        comment.before(fragments);
+      } else {
+        // ... setup a node group, the inner html`` template will manage its reactivity
+        // cleanup the whole group when needed
       }
+    } else if (isComponent(data)) {
+      const fragments = data.call();
+      comment.before(fragments);
     }
-  }
-
-  for (const comment of comments) {
-    comment.remove();
   }
 
   return content;
