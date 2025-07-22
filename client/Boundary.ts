@@ -1,12 +1,12 @@
-import { assert, assertExists } from "./assert.ts";
+import { assert } from "./assert.ts";
 import { isComponent } from "./component.ts";
 import { effect, isSignal } from "./signals.ts";
 
 let id = 0;
 
 export class Boundary<T> {
-  #start: Comment | undefined;
-  #end: Comment | undefined;
+  #start: Comment;
+  #end: Comment;
 
   id: number;
   range: Range;
@@ -16,15 +16,17 @@ export class Boundary<T> {
     this.id = id++;
     this.range = new Range();
     this.data = data;
+    this.#start = document.createComment(`<${this.id}>`);
+    this.#end = document.createComment(`</${this.id}>`);
   }
 
   set start(comment: Comment) {
-    assert(comment.data === `<${this.id}>`, "Unmatched id");
+    assert(comment.data === `<${this.id}>`, "Unmatched ids");
     this.#start = comment;
   }
 
   set end(comment: Comment) {
-    assert(comment.data === `</${this.id}>`, "Unmatched id");
+    assert(comment.data === `</${this.id}>`, "Unmatched ids");
     this.#end = comment;
   }
 
@@ -33,9 +35,6 @@ export class Boundary<T> {
   }
 
   cleanup() {
-    assertExists(this.#start);
-    assertExists(this.#end);
-
     this.range.setStartAfter(this.#start);
     this.range.setEndBefore(this.#end);
     this.range.deleteContents();
@@ -44,8 +43,7 @@ export class Boundary<T> {
   render() {
     if (isSignal(this.data)) {
       effect(() => {
-        assertExists(this.#end);
-        assert(isSignal(this.data), "can't change type");
+        assert(isSignal(this.data), "Expected a Signal");
 
         this.#end.before(this.data.value);
         return () => {
@@ -53,12 +51,13 @@ export class Boundary<T> {
         };
       });
     } else if (isComponent(this.data)) {
-      assertExists(this.#end);
       this.#end.before(this.data.call());
     } else if (typeof this.data === "function") {
       effect(() => {
-        assertExists(this.#end);
-        assert(typeof this.data === "function", "can't change type");
+        assert(
+          typeof this.data === "function",
+          "Expected a (nullary) function",
+        );
 
         this.#end.before(this.data.call(null));
         return () => {
