@@ -50,12 +50,12 @@ export const html: TemplateTag = (
     // The boundary is managed elsewhere
     if (!boundary) continue;
 
-    if (match.groups.end) boundary.end = comment;
-    else {
+    if (!match.groups.end) {
       boundary.start = comment;
       continue;
     }
 
+    boundary.end = comment;
     boundary.render();
   }
 
