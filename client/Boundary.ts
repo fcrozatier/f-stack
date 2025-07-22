@@ -44,23 +44,30 @@ export class Boundary<T> {
   }
 
   render() {
-    effect(() => {
-      assertExists(this.#end);
+    if (isSignal(this.data)) {
+      effect(() => {
+        assertExists(this.#end);
+        assert(isSignal(this.data), "can't change type");
 
-      if (isSignal(this.data)) {
-        // Can be a string, or a DocumentFragment
         this.#end.before(this.data.value);
-      } else if (isComponent(this.data)) {
-        // Can be a string, or a DocumentFragment
-        this.#end.before(this.data.call());
-      } else if (typeof this.data === "function") {
-        this.#end.before(this.data.call(null));
-      }
+        return () => {
+          this.cleanup();
+        };
+      });
+    } else if (isComponent(this.data)) {
+      assertExists(this.#end);
+      this.#end.before(this.data.call());
+    } else if (typeof this.data === "function") {
+      effect(() => {
+        assertExists(this.#end);
+        assert(typeof this.data === "function", "can't change type");
 
-      return () => {
-        this.cleanup();
-      };
-    });
+        this.#end.before(this.data.call(null));
+        return () => {
+          this.cleanup();
+        };
+      });
+    }
   }
 
   static get(id: number) {
