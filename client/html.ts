@@ -1,4 +1,4 @@
-import { effect, isSignal } from "../client/signals.ts";
+import { isSignal } from "../client/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
@@ -50,30 +50,13 @@ export const html: TemplateTag = (
     // The boundary is managed elsewhere
     if (!boundary) continue;
 
-    if (match.groups.end) boundary.setEnd(comment);
+    if (match.groups.end) boundary.end = comment;
     else {
-      boundary.setStart(comment);
+      boundary.start = comment;
       continue;
     }
 
-    const data = boundary.data;
-
-    if (isSignal(data)) {
-      if (!(data.value instanceof DocumentFragment)) {
-        const text = document.createTextNode("");
-        comment.before(text);
-
-        effect(() => {
-          text.textContent = String(data.value);
-        });
-      } else {
-        // ... setup a node group, the inner html`` template will manage its reactivity
-        // cleanup the whole group when needed
-      }
-    } else if (isComponent(data)) {
-      const fragments = data.call();
-      comment.before(fragments);
-    }
+    boundary.render();
   }
 
   return content;
