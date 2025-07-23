@@ -1,36 +1,124 @@
 import { isSignal } from "../client/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
-import { assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
 import { isComponent } from "./component.ts";
+
+// data
+const text = /[^<]+/y;
+const rawTextElements = /^(?:script|style|textarea|title)$/i;
+const rawText =
+  /^(?:(?!<\/(?:script|style|textarea|title)[\t\n\f\r\u0020>/]).|\n)*/i;
+const comment = /<!--((?!-->)\p{Any})*-->/vy;
+const cdata = /<!\[CDATA\[(?:(?!\]\]>)\p{Any})*\]\]>/vy;
+
+// element
+const openTag = /<(?<tagname>[^\s>]+)\s+/vy;
+const attribute = /[^\s"'>\/=]+\s*=\s*/y;
+const booleanAttribute = /[^\s"'>\/=]+\s*/y;
+const attributeValueQuoted = /(['"])(.*?)\1\s*/y;
+const attributeValueUnquoted = /[^\s='"<>`]+\s*/y;
+const closeOpenTag = /\/?>/y;
+const endTag = /<\/(?<tagname>[^\s]+)>/y;
+
+let rawTextMode = false;
+let state: RegExp | null = null;
+let match: RegExpExecArray | null = null;
+
+const incrementalParse = (input: string) => {
+  let pos = 0;
+  let admissibleNextStates: RegExp[] = [];
+  let mode: "sequence" | "first" = "sequence";
+
+  const nextState = (opts: { mode: "sequence" | "first" }) => {
+    for (const regex of admissibleNextStates) {
+      regex.lastIndex = pos;
+      match = regex.exec(input);
+
+      if (match) {
+        pos = regex.lastIndex;
+        state = regex;
+
+        if (
+          state === openTag && match.groups?.tagname &&
+          rawTextElements.test(match.groups.tagname)
+        ) {
+          rawTextMode = true;
+        }
+        if (
+          state === endTag && match.groups?.tagname &&
+          rawTextElements.test(match.groups.tagname)
+        ) {
+          rawTextMode = false;
+        }
+        if (opts.mode === "first") break;
+      }
+    }
+  };
+
+  while (pos !== input.length) {
+    if (
+      !state ||
+      [text, comment, cdata, closeOpenTag, endTag].includes(state)
+    ) {
+      const textOrRawText = rawTextMode ? rawText : text;
+      admissibleNextStates = [textOrRawText, comment, cdata, endTag, openTag];
+      mode = "sequence";
+    } else if (
+      [openTag, attributeValueQuoted, attributeValueUnquoted, booleanAttribute]
+        .includes(state)
+    ) {
+      admissibleNextStates = [closeOpenTag, attribute, booleanAttribute];
+      mode = "first";
+    } else if (state === attribute) {
+      admissibleNextStates = [
+        attributeValueQuoted,
+        attributeValueUnquoted,
+      ];
+      mode = "first";
+    }
+
+    nextState({ mode });
+  }
+
+  return input;
+};
 
 export const html: TemplateTag = (
   strings,
   ...values
 ) => {
-  assertExists(strings[0]);
-  let innerHTML: string = strings[0];
+  let innerHTML = "";
 
   const boundariesMap = new Map<number, Boundary<any>>();
 
   for (let index = 0; index < values.length; index++) {
-    const string = strings[index + 1];
+    const string = strings[index]!;
+
+    innerHTML += incrementalParse(string);
     const data = values[index];
 
-    if (
-      isSignal(data) ||
-      isComponent(data) ||
-      typeof data === "function"
-    ) {
-      const boundary = new Boundary(data);
-      boundariesMap.set(boundary.id, boundary);
+    if (state !== attribute) {
+      if (
+        isSignal(data) ||
+        isComponent(data) ||
+        typeof data === "function"
+      ) {
+        const boundary = new Boundary(data);
+        boundariesMap.set(boundary.id, boundary);
 
-      innerHTML += `${boundary}${string}`;
-    } else {
-      innerHTML += `${data}${string}`;
+        innerHTML += String(boundary);
+      } else {
+        innerHTML += String(data);
+      }
+    } else if (
+      [openTag, attributeValueQuoted, attributeValueUnquoted, booleanAttribute]
+        .includes(state)
+    ) {
+      innerHTML += ` x-attach='${match?.groups?.name}' `;
     }
   }
 
+  innerHTML += strings[strings.length - 1];
   const template = document.createElement("template");
   template.innerHTML = innerHTML;
   const content = template.content;
