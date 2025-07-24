@@ -27,9 +27,8 @@ let match: RegExpExecArray | null = null;
 const incrementalParse = (input: string) => {
   let pos = 0;
   let admissibleNextStates: RegExp[] = [];
-  let mode: "sequence" | "first" = "sequence";
 
-  const nextState = (opts: { mode: "sequence" | "first" }) => {
+  const nextState = () => {
     for (const regex of admissibleNextStates) {
       regex.lastIndex = pos;
       match = regex.exec(input);
@@ -50,7 +49,8 @@ const incrementalParse = (input: string) => {
         ) {
           rawTextMode = false;
         }
-        if (opts.mode === "first") break;
+
+        return;
       }
     }
   };
@@ -58,26 +58,23 @@ const incrementalParse = (input: string) => {
   while (pos !== input.length) {
     if (
       !state ||
-      [text, comment, cdata, closeOpenTag, endTag].includes(state)
+      [text, rawText, comment, cdata, closeOpenTag, endTag].includes(state)
     ) {
       const textOrRawText = rawTextMode ? rawText : text;
       admissibleNextStates = [textOrRawText, comment, cdata, endTag, openTag];
-      mode = "sequence";
     } else if (
       [openTag, attributeValueQuoted, attributeValueUnquoted, booleanAttribute]
         .includes(state)
     ) {
       admissibleNextStates = [closeOpenTag, attribute, booleanAttribute];
-      mode = "first";
     } else if (state === attribute) {
       admissibleNextStates = [
         attributeValueQuoted,
         attributeValueUnquoted,
       ];
-      mode = "first";
     }
 
-    nextState({ mode });
+    nextState();
   }
 
   return input;
@@ -90,6 +87,7 @@ export const html: TemplateTag = (
   let innerHTML = "";
 
   const boundariesMap = new Map<number, Boundary<any>>();
+  const attachmentsMap = new Map<string, (node: Node) => any>();
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index]!;
