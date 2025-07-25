@@ -21,7 +21,12 @@ export const html: TemplateTag = (
     innerHTML += string;
     const data = values[index];
 
-    if (
+    if (isAttachment(data)) {
+      const id = nanoId();
+      attachmentsMap.set(id, data);
+
+      innerHTML += ` attachment-${id} `;
+    } else if (
       isSignal(data) ||
       isComponent(data) ||
       typeof data === "function"
@@ -30,11 +35,6 @@ export const html: TemplateTag = (
       boundariesMap.set(boundary.id, boundary);
 
       innerHTML += String(boundary);
-    } else if (isAttachment(data)) {
-      const id = nanoId();
-      attachmentsMap.set(id, data);
-
-      innerHTML += ` attachment-${id} `;
     } else {
       innerHTML += String(data);
     }

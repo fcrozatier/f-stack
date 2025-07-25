@@ -4,7 +4,7 @@ import { effect, isSignal } from "./signals.ts";
 
 let id = 0;
 
-export class Boundary<T> {
+export class Boundary<T = any> {
   #start: Comment;
   #end: Comment;
 
@@ -59,7 +59,13 @@ export class Boundary<T> {
           "Expected a (nullary) function",
         );
 
-        this.#end.before(this.data.call(null));
+        const nodes = this.data.call(null);
+
+        if (nodes instanceof DocumentFragment) {
+          this.#end.before(nodes);
+        } else if (Array.isArray(nodes)) {
+          this.#end.before(...nodes);
+        }
         return () => {
           this.cleanup();
         };
