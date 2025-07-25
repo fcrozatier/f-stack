@@ -4,9 +4,10 @@ export const isComponent = (value: unknown): value is Component<any> => {
   return value instanceof Component;
 };
 
-class Component<Props extends Record<string, any>> implements Component<Props> {
+class Component<Props extends Record<string, any> | undefined = undefined>
+  implements Component<Props> {
   #callback: (props: Props) => DocumentFragment;
-  #props: Props | undefined;
+  #props!: Props;
 
   constructor(callback: (props: Props) => DocumentFragment) {
     this.#callback = callback;
@@ -18,13 +19,14 @@ class Component<Props extends Record<string, any>> implements Component<Props> {
   }
 
   call() {
-    if (!this.#props) throw new TypeError("Props are undefined");
     return this.#callback.call(null, this.#props);
   }
 }
 
-export const component = <Props extends Record<string, any>>(
+export const component = <
+  Props extends Record<string, any> | undefined = undefined,
+>(
   callback: (props: Props) => DocumentFragment,
 ) => {
-  return new Component(callback);
+  return new Component<Props>(callback);
 };
