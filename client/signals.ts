@@ -22,7 +22,7 @@ abstract class Signal<T> {
   }
 }
 
-class State<T> extends Signal<T> {
+export class State<T> extends Signal<T> {
   #value: T;
 
   constructor(initial: T) {
@@ -61,7 +61,7 @@ class State<T> extends Signal<T> {
 const addSource = Symbol();
 const markStale = Symbol();
 
-class Computed<T> extends Signal<T> {
+export class Computed<T> extends Signal<T> {
   #computation: () => T;
   #value: T | undefined;
   #isStale = true;
