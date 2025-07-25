@@ -2,6 +2,11 @@ import typeStrip from "@fcrozatier/type-strip";
 import { ensureDirSync, existsSync, walkSync } from "@std/fs";
 import { dirname, globToRegExp, join } from "@std/path";
 
+export const buildConfig = {
+  matcher: globToRegExp("+(client|components|pages)/**"),
+  skip: /(\.d|\.test|\.spec)\.ts$/,
+} as const;
+
 export const buildPath = (path: string) => {
   console.log(path);
   const mod = Deno.readTextFileSync(path);
@@ -23,11 +28,10 @@ const build = () => {
     includeFiles: true,
     includeDirs: false,
     includeSymlinks: false,
-    skip: [/(\.d|\.test|\.spec)\.ts$/],
+    skip: [buildConfig.skip],
   }));
 
-  const matcher = globToRegExp("+(client|components|pages)/**");
-  const entries = allEntries.filter((e) => matcher.test(e.path));
+  const entries = allEntries.filter((e) => buildConfig.matcher.test(e.path));
 
   for (const entry of entries) {
     buildPath(entry.path);

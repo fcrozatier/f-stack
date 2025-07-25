@@ -1,6 +1,6 @@
 import { debounce } from "@std/async";
 import { extname } from "@std/path";
-import { buildPath } from "./build.ts";
+import { buildConfig, buildPath } from "./build.ts";
 
 const rebuild = debounce(buildPath, 200);
 const watcher = Deno.watchFs(".");
@@ -14,8 +14,9 @@ for await (const event of watcher) {
   if (event.kind === "modify") {
     for (const path of event.paths) {
       if (
-        extname(path) === ".ts" && !path.endsWith(".d.ts") &&
-        path.match(/client|components/)
+        extname(path) === ".ts" &&
+        !buildConfig.skip.test(path) &&
+        buildConfig.matcher.test(path)
       ) {
         rebuild(path);
       }
