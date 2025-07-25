@@ -65,11 +65,16 @@ export class Boundary<T = any> {
           this.#end.before(nodes);
         } else if (Array.isArray(nodes)) {
           this.#end.before(...nodes);
+        } else {
+          throw new Error("Unimplemented Boundary");
         }
+
         return () => {
           this.cleanup();
         };
       });
+    } else {
+      throw new Error("Unimplemented Boundary");
     }
   }
 }

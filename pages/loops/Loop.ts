@@ -1,7 +1,7 @@
 import { attach } from "../../client/attachement.ts";
 import { component } from "../../client/component.ts";
 import { html } from "../../client/html.ts";
-import { type State, state } from "../../client/signals.ts";
+import { state } from "../../client/signals.ts";
 
 export const Loop = component(() => {
   const colors = [
@@ -13,7 +13,7 @@ export const Loop = component(() => {
     "indigo",
     "violet",
   ];
-  const selected: State<string> = state("red");
+  const selected = state("red");
 
   return html`
     <h1 ${attach((button: HTMLElement) => {
