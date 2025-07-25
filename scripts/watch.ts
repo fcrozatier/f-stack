@@ -1,5 +1,5 @@
 import { debounce } from "@std/async";
-import { extname } from "@std/path";
+import { extname, relative } from "@std/path";
 import { buildConfig, buildPath } from "./build.ts";
 
 const rebuild = debounce(buildPath, 200);
@@ -12,13 +12,14 @@ console.log("Watching files...");
 
 for await (const event of watcher) {
   if (event.kind === "modify") {
-    for (const path of event.paths) {
+    for (const absolutePath of event.paths) {
+      const relativePath = relative(Deno.cwd(), absolutePath);
       if (
-        extname(path) === ".ts" &&
-        !buildConfig.skip.test(path) &&
-        buildConfig.matcher.test(path)
+        extname(relativePath) === ".ts" &&
+        !buildConfig.skip.test(relativePath) &&
+        buildConfig.matcher.test(relativePath)
       ) {
-        rebuild(path);
+        rebuild(relativePath);
       }
     }
   }
