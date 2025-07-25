@@ -4,7 +4,9 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "denoland.vscode-deno",
   "typescript.preferences.autoImportFileExcludePatterns": [
-    "build/**/*"
+    "build/**/*",
+    "**/posix/**/*",
+    "**/windows/**/*"
   ],
   "typescript.preferences.autoImportSpecifierExcludeRegexes": []
 }
