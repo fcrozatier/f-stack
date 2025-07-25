@@ -1,48 +1,35 @@
 import typeStrip from "@fcrozatier/type-strip";
-import { walkSync } from "@std/fs";
-import { extname } from "@std/path";
+import { ensureDirSync, existsSync, walkSync } from "@std/fs";
+import { dirname, globToRegExp, join } from "@std/path";
 
 export const buildPath = (path: string) => {
-  if (extname(path) === ".ts" && !path.endsWith(".d.ts")) {
-    console.log(path);
-    const mod = Deno.readTextFileSync(path);
-    const js = typeStrip(mod, { pathRewriting: true, removeComments: true });
-    const dest = path.replace(".ts", ".js");
-    Deno.writeTextFileSync(dest, js);
-  }
+  console.log(path);
+  const mod = Deno.readTextFileSync(path);
+  const js = typeStrip(mod, { pathRewriting: true, removeComments: true });
+  const dest = join("build", path.replace(".ts", ".js"));
+  ensureDirSync(dirname(dest));
+  Deno.writeTextFileSync(dest, js);
 };
 
 const build = () => {
   console.log("Building...");
 
-  for (
-    /**
-     * Remove all .js modules prior to doing a full build
-     */
-    const entry of walkSync(".", {
-      exts: [".js"],
-      includeFiles: true,
-      includeDirs: false,
-      includeSymlinks: false,
-      match: [/client|components/],
-    })
-  ) {
-    Deno.removeSync(entry.path);
+  if (existsSync("build")) {
+    Deno.removeSync("build", { recursive: true });
   }
 
-  for (
-    /**
-     * Only build the .ts modules in the specified folders
-     */
-    const entry of walkSync(".", {
-      exts: [".ts"],
-      includeFiles: true,
-      includeDirs: false,
-      includeSymlinks: false,
-      match: [/client|components/],
-      skip: [/\.d\.ts$/],
-    })
-  ) {
+  const allEntries = Array.from(walkSync(".", {
+    exts: [".ts"],
+    includeFiles: true,
+    includeDirs: false,
+    includeSymlinks: false,
+    skip: [/(\.d|\.test|\.spec)\.ts$/],
+  }));
+
+  const matcher = globToRegExp("+(client|components|pages)/**");
+  const entries = allEntries.filter((e) => matcher.test(e.path));
+
+  for (const entry of entries) {
     buildPath(entry.path);
   }
 };
