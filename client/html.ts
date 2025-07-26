@@ -1,9 +1,8 @@
-import { effect, isSignal } from "../client/signals.ts";
+import { effect } from "../client/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
 import { type Attachment, isAttachment } from "./attachement.ts";
 import { Boundary } from "./Boundary.ts";
-import { isComponent } from "./component.ts";
 import { nanoId } from "./utils.ts";
 
 export const html: TemplateTag = (
@@ -26,17 +25,11 @@ export const html: TemplateTag = (
       attachmentsMap.set(id, data);
 
       innerHTML += ` attachment-${id} `;
-    } else if (
-      isSignal(data) ||
-      isComponent(data) ||
-      typeof data === "function"
-    ) {
+    } else {
       const boundary = new Boundary(data);
       boundariesMap.set(boundary.id, boundary);
 
       innerHTML += String(boundary);
-    } else {
-      innerHTML += String(data);
     }
   }
 

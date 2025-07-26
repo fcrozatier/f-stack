@@ -41,16 +41,7 @@ export class Boundary<T = any> {
   }
 
   render() {
-    if (isSignal(this.data)) {
-      effect(() => {
-        assert(isSignal(this.data), "Expected a Signal");
-
-        this.#end.before(this.data.value);
-        return () => {
-          this.cleanup();
-        };
-      });
-    } else if (isComponent(this.data)) {
+    if (isComponent(this.data)) {
       this.#end.before(this.data.call());
     } else if (typeof this.data === "function") {
       effect(() => {
@@ -73,8 +64,19 @@ export class Boundary<T = any> {
           this.cleanup();
         };
       });
+    } else if (isSignal(this.data)) {
+      effect(() => {
+        assert(isSignal(this.data), "Expected a signal");
+        const data = this.data.value;
+
+        // strings are inserted as text nodes which is a safe sink
+        this.#end.before(String(data ?? ""));
+        return () => {
+          this.cleanup();
+        };
+      });
     } else {
-      throw new Error("Unimplemented Boundary");
+      this.#end.before(String(this.data ?? ""));
     }
   }
 }
