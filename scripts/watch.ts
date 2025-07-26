@@ -15,7 +15,7 @@ for await (const event of watcher) {
     for (const absolutePath of event.paths) {
       const relativePath = relative(Deno.cwd(), absolutePath);
       if (
-        extname(relativePath) === ".ts" &&
+        buildConfig.exts.includes(extname(relativePath)) &&
         !buildConfig.skip.test(relativePath) &&
         buildConfig.matcher.test(relativePath)
       ) {

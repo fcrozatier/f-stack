@@ -1,19 +1,33 @@
 import typeStrip from "@fcrozatier/type-strip";
 import { ensureDirSync, existsSync, walkSync } from "@std/fs";
-import { dirname, globToRegExp, join } from "@std/path";
+import { dirname, extname, globToRegExp, join } from "@std/path";
 
 export const buildConfig = {
+  exts: [".ts", ".css"],
   matcher: globToRegExp("+(client|components|pages)/**"),
   skip: /(\.d|\.test|\.spec)\.ts$/,
-} as const;
+};
 
 export const buildPath = (path: string) => {
   console.log(path);
-  const mod = Deno.readTextFileSync(path);
-  const js = typeStrip(mod, { pathRewriting: true, removeComments: true });
+
+  let content = Deno.readTextFileSync(path);
+  switch (extname(path)) {
+    case ".ts":
+      content = typeStrip(content, {
+        pathRewriting: true,
+        removeComments: true,
+      });
+      break;
+
+    case ".css":
+    default:
+      break;
+  }
+
   const dest = join("build", path.replace(".ts", ".js"));
   ensureDirSync(dirname(dest));
-  Deno.writeTextFileSync(dest, js);
+  Deno.writeTextFileSync(dest, content);
 };
 
 const build = () => {
@@ -24,7 +38,7 @@ const build = () => {
   }
 
   const allEntries = Array.from(walkSync(".", {
-    exts: [".ts"],
+    exts: buildConfig.exts,
     includeFiles: true,
     includeDirs: false,
     includeSymlinks: false,
