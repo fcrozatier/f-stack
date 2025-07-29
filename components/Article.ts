@@ -1,6 +1,6 @@
-import { component } from "../client/component.ts";
-import { html } from "../client/html.ts";
-import { Counter } from "./Counter.ts";
+import { component } from "$client/component.ts";
+import { html } from "$client/html.ts";
+import { Counter } from "../pages/reactivity/counter/Counter.ts";
 
 export const Article = component((props: { title: string }) => {
   return html`
