@@ -1,6 +1,6 @@
-import typeStrip from "@fcrozatier/type-strip";
+import stripTypes from "@fcrozatier/type-strip";
 import { ensureDirSync, existsSync, walkSync } from "@std/fs";
-import { dirname, extname, globToRegExp, join } from "@std/path";
+import { dirname, extname, globToRegExp, join, relative } from "@std/path";
 
 export const buildConfig = {
   exts: [".ts", ".css"],
@@ -14,10 +14,19 @@ export const buildPath = (path: string) => {
   let content = Deno.readTextFileSync(path);
   switch (extname(path)) {
     case ".ts":
-      content = typeStrip(content, {
+      content = stripTypes(content, {
         pathRewriting: true,
         removeComments: true,
       });
+
+      content = content.replaceAll(
+        "$client",
+        relative(dirname(path), "./client"),
+      );
+      content = content.replaceAll(
+        "$components",
+        relative(dirname(path), "./components"),
+      );
       break;
 
     case ".css":
