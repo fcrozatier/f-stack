@@ -1,7 +1,7 @@
 import { assert } from "./assert.ts";
 import { isUnsafeHTML } from "./attachement.ts";
 import { isComponent } from "./component.ts";
-import { effect, isSignal } from "./signals.ts";
+import { effect, isSignal } from "./reactivity/signals.ts";
 
 let id = 0;
 

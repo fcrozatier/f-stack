@@ -1,6 +1,6 @@
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
-import { effect, state } from "$client/signals.ts";
+import { effect, state } from "../../../client/reactivity/signals.ts";
 import { attach } from "$client/attachement.ts";
 
 export const Cleanup = component(() => {

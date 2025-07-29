@@ -1,4 +1,4 @@
-import { type Signal } from "./signals.ts";
+import { type Signal } from "./reactivity/signals.ts";
 
 export interface Attachment<T extends Node = Element> {
   (element: T): void | (() => void);

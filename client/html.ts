@@ -1,4 +1,4 @@
-import { effect } from "../client/signals.ts";
+import { effect } from "./reactivity/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
 import { type Attachment, isAttachment } from "./attachement.ts";
