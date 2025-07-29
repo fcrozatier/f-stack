@@ -1,7 +1,7 @@
+import { attach } from "$client/attachement.ts";
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { state } from "$client/signals.ts";
-import { attach } from "$client/attachement.ts";
 
 const count = state(0);
 
