@@ -58,40 +58,28 @@ export class Boundary<T = any> {
           throw new Error("Unimplemented Boundary");
         }
 
-        return () => {
-          this.cleanup();
-        };
+        return () => this.cleanup();
       });
     } else if (!isUnsafeHTML(data)) {
-      if (isSignal(data)) {
-        effect(() => {
-          // strings are inserted as text nodes which is a safe sink
-          this.#end.before(String(data.value ?? ""));
-          return () => {
-            this.cleanup();
-          };
-        });
-      } else {
-        this.#end.before(String(this.data ?? ""));
-      }
+      effect(() => {
+        const value = isSignal(data) ? data.value : data;
+        // strings are inserted as text nodes which is a safe sink
+        this.#end.before(String(value ?? ""));
+        return () => this.cleanup();
+      });
     } else {
       const unsafeData = data.unsafe;
       const template = document.createElement("template");
 
-      if (isSignal(unsafeData)) {
-        effect(() => {
-          template.innerHTML = unsafeData.value;
+      effect(() => {
+        template.innerHTML = isSignal(unsafeData)
+          ? unsafeData.value
+          : unsafeData;
 
-          // unsafe strings are inserted as-is
-          this.#end.before(template.content);
-          return () => {
-            this.cleanup();
-          };
-        });
-      } else {
-        template.innerHTML = unsafeData;
+        // unsafe strings are inserted as-is
         this.#end.before(template.content);
-      }
+        return () => this.cleanup();
+      });
     }
   }
 }
