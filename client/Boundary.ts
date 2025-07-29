@@ -1,4 +1,5 @@
 import { assert } from "./assert.ts";
+import { isUnsafeHTML } from "./attachement.ts";
 import { isComponent } from "./component.ts";
 import { effect, isSignal } from "./signals.ts";
 
@@ -41,16 +42,13 @@ export class Boundary<T = any> {
   }
 
   render() {
-    if (isComponent(this.data)) {
-      this.#end.before(this.data.call());
-    } else if (typeof this.data === "function") {
-      effect(() => {
-        assert(
-          typeof this.data === "function",
-          "Expected a (nullary) function",
-        );
+    const data = this.data;
 
-        const nodes = this.data.call(null);
+    if (isComponent(data)) {
+      this.#end.before(data.call());
+    } else if (typeof data === "function") {
+      effect(() => {
+        const nodes = data.call(null);
 
         if (nodes instanceof DocumentFragment) {
           this.#end.before(nodes);
@@ -64,19 +62,36 @@ export class Boundary<T = any> {
           this.cleanup();
         };
       });
-    } else if (isSignal(this.data)) {
-      effect(() => {
-        assert(isSignal(this.data), "Expected a signal");
-        const data = this.data.value;
-
-        // strings are inserted as text nodes which is a safe sink
-        this.#end.before(String(data ?? ""));
-        return () => {
-          this.cleanup();
-        };
-      });
+    } else if (!isUnsafeHTML(data)) {
+      if (isSignal(data)) {
+        effect(() => {
+          // strings are inserted as text nodes which is a safe sink
+          this.#end.before(String(data.value ?? ""));
+          return () => {
+            this.cleanup();
+          };
+        });
+      } else {
+        this.#end.before(String(this.data ?? ""));
+      }
     } else {
-      this.#end.before(String(this.data ?? ""));
+      const unsafeData = data.unsafe;
+      const template = document.createElement("template");
+
+      if (isSignal(unsafeData)) {
+        effect(() => {
+          template.innerHTML = unsafeData.value;
+
+          // unsafe strings are inserted as-is
+          this.#end.before(template.content);
+          return () => {
+            this.cleanup();
+          };
+        });
+      } else {
+        template.innerHTML = unsafeData;
+        this.#end.before(template.content);
+      }
     }
   }
 }

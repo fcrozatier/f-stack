@@ -4,7 +4,7 @@ const addWatcher = Symbol();
 const removeWatcher = Symbol();
 const removeDependent = Symbol();
 
-abstract class Signal<T> {
+export abstract class Signal<T> {
   abstract get value(): T;
   protected dependents: Set<Computed<any>> = new Set();
   protected watchers: Set<Watcher> = new Set();

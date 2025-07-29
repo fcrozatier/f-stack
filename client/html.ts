@@ -5,14 +5,11 @@ import { type Attachment, isAttachment } from "./attachement.ts";
 import { Boundary } from "./Boundary.ts";
 import { nanoId } from "./utils.ts";
 
-export const html: TemplateTag = (
-  strings,
-  ...values
-) => {
+export const html: TemplateTag = (strings, ...values) => {
   let innerHTML = "";
 
-  const boundariesMap = new Map<number, Boundary>();
-  const attachmentsMap = new Map<string, Attachment>();
+  const boundaries = new Map<number, Boundary>();
+  const attachments = new Map<string, Attachment>();
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index]!;
@@ -22,12 +19,12 @@ export const html: TemplateTag = (
 
     if (isAttachment(data)) {
       const id = nanoId();
-      attachmentsMap.set(id, data);
+      attachments.set(id, data);
 
       innerHTML += ` attachment-${id} `;
     } else {
       const boundary = new Boundary(data);
-      boundariesMap.set(boundary.id, boundary);
+      boundaries.set(boundary.id, boundary);
 
       innerHTML += String(boundary);
     }
@@ -48,7 +45,7 @@ export const html: TemplateTag = (
     if (!match || !match.groups?.id) continue;
 
     const id = Number(match.groups.id);
-    const boundary = boundariesMap.get(id);
+    const boundary = boundaries.get(id);
 
     // The boundary is managed elsewhere
     if (!boundary) continue;
@@ -62,7 +59,7 @@ export const html: TemplateTag = (
     boundary.render();
   }
 
-  for (const [id, attachment] of attachmentsMap.entries()) {
+  for (const [id, attachment] of attachments.entries()) {
     const element = content.querySelector(`[attachment-${id}]`);
     assertExists(element, `No element found with attachement id ${id}`);
 
