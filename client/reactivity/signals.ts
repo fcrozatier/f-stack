@@ -220,3 +220,60 @@ export const untrack = <T>(fn: () => T): T => {
     currentlyComputing = previousComputing;
   }
 };
+
+export class ReactiveArray<T> extends Array<T> {
+  constructor(arrayLength?: number);
+  constructor(...items: T[]);
+  constructor(...args: T[]) {
+    super(...args);
+
+    const length = state(
+      args.length === 1 && typeof args[0] === "number" ? args[0] : args.length,
+    );
+
+    const sources: Map<string | symbol, State<any>> = new Map(
+      [["length", length]],
+    );
+
+    const proxy = new Proxy(this, {
+      get(target, property, receiver) {
+        const source = sources.get(property);
+
+        if (source) {
+          return source.value;
+        }
+
+        if (Object.hasOwn(target, property)) {
+          const value = target[property as any];
+          sources.set(property, state(value));
+          return value;
+        }
+
+        return Reflect.get(target, property, receiver);
+      },
+      set(target, property, newValue, receiver) {
+        const source = sources.get(property);
+
+        // When setting the length directly, remove all sources above the new length
+        if (property === "length" && newValue < source?.value) {
+          for (let index = newValue; index < source?.value; index++) {
+            sources.delete(String(index));
+          }
+        }
+
+        if (source) {
+          source.value = newValue;
+        } else {
+          sources.set(property, state(newValue));
+        }
+
+        return Reflect.set(target, property, newValue, receiver);
+      },
+      deleteProperty(target, property) {
+        return Reflect.deleteProperty(target, property);
+      },
+    });
+
+    return Object.setPrototypeOf(proxy, new.target.prototype);
+  }
+}
