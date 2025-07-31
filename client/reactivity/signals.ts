@@ -6,7 +6,7 @@ const removeDependent = Symbol();
 
 export abstract class Signal<T> {
   abstract get value(): T;
-  protected dependents: Set<Computed<any>> = new Set();
+  protected reactions: Set<Computed<any>> = new Set();
   protected watchers: Set<Watcher> = new Set();
 
   [addWatcher](watcher: Watcher) {
@@ -18,7 +18,7 @@ export abstract class Signal<T> {
   }
 
   [removeDependent](computed: Computed<any>) {
-    this.dependents.delete(computed);
+    this.reactions.delete(computed);
   }
 }
 
@@ -32,7 +32,7 @@ export class State<T> extends Signal<T> {
 
   get value() {
     if (currentlyComputing) {
-      this.dependents.add(currentlyComputing);
+      this.reactions.add(currentlyComputing);
       currentlyComputing[addSource](this);
     }
 
@@ -43,8 +43,8 @@ export class State<T> extends Signal<T> {
     if (!this.#compare(this.#value, newValue)) {
       this.#value = newValue;
 
-      for (const dependent of this.dependents) {
-        dependent[markStale]();
+      for (const reaction of this.reactions) {
+        reaction[markStale]();
       }
 
       for (const watcher of this.watchers) {
@@ -78,7 +78,7 @@ export class Computed<T> extends Signal<T> {
     }
 
     if (currentlyComputing) {
-      this.dependents.add(currentlyComputing);
+      this.reactions.add(currentlyComputing);
       currentlyComputing[addSource](this);
     }
 
@@ -110,8 +110,8 @@ export class Computed<T> extends Signal<T> {
     if (!this.#isStale) {
       this.#isStale = true;
 
-      for (const dependent of this.dependents) {
-        dependent[markStale]();
+      for (const reaction of this.reactions) {
+        reaction[markStale]();
       }
 
       for (const watcher of this.watchers) {
