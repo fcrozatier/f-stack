@@ -204,6 +204,12 @@ export const effect = (cb: () => (() => void) | void): () => void => {
   };
 };
 
+export const flushSync = () => {
+  for (const signal of watcher.getPending()) {
+    signal.value;
+  }
+};
+
 export const untrack = <T>(fn: () => T): T => {
   const previousComputing = currentlyComputing;
   currentlyComputing = null;
