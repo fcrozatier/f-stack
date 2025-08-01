@@ -1,5 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
-import { computed, effect, flushSync, ReactiveArray } from "./signals.ts";
+import { assertEquals } from "@std/assert";
+import { effect, flushSync, ReactiveArray } from "./signals.ts";
 
 Deno.test("reactive array.push", () => {
   const original = [1, 2, 3];
@@ -13,7 +13,7 @@ Deno.test("reactive array.push", () => {
   assertEquals(state, new ReactiveArray(...[1, 2, 3, 4]));
 });
 
-Deno.test.only("reactive array mutations", () => {
+Deno.test("reactive array mutations", () => {
   const arr = new ReactiveArray("a", "b");
 
   let firstItemReads = 0;
@@ -66,6 +66,33 @@ Deno.test("reactive array.slice", () => {
   flushSync();
   assertEquals(sliceReads, 2);
   assertEquals(sliceLength, 3);
+});
+
+Deno.test("reactive array.join", () => {
+  const arr = new ReactiveArray(1, 2, 3);
+
+  let joinReads = 0;
+  let join: string | undefined;
+
+  effect(() => {
+    joinReads++;
+    join = arr.join(" + ");
+  });
+
+  assertEquals(joinReads, 1);
+  assertEquals(join, "1 + 2 + 3");
+
+  // Pushing reruns the join
+  arr.push(4);
+  flushSync();
+  assertEquals(joinReads, 2);
+  assertEquals(join, "1 + 2 + 3 + 4");
+
+  // Mutating reruns the join
+  arr[0] = 5;
+  flushSync();
+  assertEquals(joinReads, 3);
+  assertEquals(join, "5 + 2 + 3 + 4");
 });
 
 Deno.test("reactive array length mutation", () => {
