@@ -36,26 +36,26 @@ export const isUnsafeHTML = (value: unknown): value is UnsafeHTML => {
     Object.hasOwn(value, UNSAFE_SINK);
 };
 
-const ARRAY_LIKE_SINK = Symbol();
+const ARRAY_SINK = Symbol();
 
 type ArrayLikeSink<T = any> = {
   arrayLike: ArrayLike<T>;
   mapper: (value: T, index?: number, array?: T[]) => DocumentFragment;
-  [ARRAY_LIKE_SINK]?: true;
+  [ARRAY_SINK]?: true;
 };
 
-export const each = <T>(
+export const map = <T>(
   arrayLike: ArrayLike<T>,
   mapper: (value: T, index?: number, array?: T[]) => DocumentFragment,
 ): ArrayLikeSink<T> => {
   return {
     arrayLike,
     mapper,
-    [ARRAY_LIKE_SINK]: true,
+    [ARRAY_SINK]: true,
   };
 };
 
-export const isArrayLikeSink = (value: unknown): value is ArrayLikeSink => {
+export const isArraySink = (value: unknown): value is ArrayLikeSink => {
   return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, ARRAY_LIKE_SINK);
+    Object.hasOwn(value, ARRAY_SINK);
 };

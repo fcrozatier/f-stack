@@ -1,7 +1,7 @@
 import { assert, assertExists } from "./assert.ts";
 import { isComponent } from "./component.ts";
 import { effect, isSignal, ReactiveArray } from "./reactivity/signals.ts";
-import { isArrayLikeSink, isUnsafeHTML } from "./sinks.ts";
+import { isArraySink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
 
@@ -68,7 +68,7 @@ export class Boundary<T = any> {
 
         return () => this.deleteContents();
       });
-    } else if (isArrayLikeSink(data)) {
+    } else if (isArraySink(data)) {
       const values = data.arrayLike;
       // Each boundary data is a getter reading the values array in an effect when rendered.
       // So updating the values surgically updates the fragments
