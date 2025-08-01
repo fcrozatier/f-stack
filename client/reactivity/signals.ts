@@ -291,8 +291,7 @@ export class ReactiveArray<T> extends Array<T> {
 
         if (
           typeof property === "string" &&
-          Object.hasOwn(target, property) &&
-          !ARRAY_METHODS.includes(property)
+          Object.hasOwn(target, property)
         ) {
           const value = Reflect.get(target, property, receiver);
           sources.set(property, state(value));
@@ -315,8 +314,7 @@ export class ReactiveArray<T> extends Array<T> {
           source.value = newValue;
         } else if (
           typeof property === "string" &&
-          Object.hasOwn(target, property) &&
-          !ARRAY_METHODS.includes(property)
+          Object.hasOwn(target, property)
         ) {
           sources.set(property, state(newValue));
         }
@@ -328,53 +326,12 @@ export class ReactiveArray<T> extends Array<T> {
     return Object.setPrototypeOf(proxy, new.target.prototype);
   }
 
-  on = <E extends keyof ProxyHandler<ArrayLike<T>>>(
+  on<E extends keyof ProxyHandler<ArrayLike<T>>>(
     event: E,
     callback: (
       ...args: Parameters<NonNullable<ProxyHandler<ArrayLike<T>>[E]>>
     ) => void,
-  ): void => {
+  ): void {
     this.#callbacks[event].push(callback);
-  };
+  }
 }
-
-const ARRAY_METHODS = [
-  "at",
-  "concat",
-  "copyWithin",
-  "entries",
-  "every",
-  "fill",
-  "filter",
-  "find",
-  "findIndex",
-  "findLast",
-  "findLastIndex",
-  "flat",
-  "flatMap",
-  "forEach",
-  "includes",
-  "indexOf",
-  "join",
-  "keys",
-  "lastIndexOf",
-  "map",
-  "pop",
-  "push",
-  "reduce",
-  "reduceRight",
-  "reverse",
-  "shift",
-  "slice",
-  "some",
-  "sort",
-  "splice",
-  "toLocaleString",
-  "toReversed",
-  "toSorted",
-  "toSpliced",
-  "toString",
-  "unshift",
-  "values",
-  "with",
-];
