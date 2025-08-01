@@ -194,7 +194,9 @@ const watcher = new Watcher(() => {
   }
 });
 
-export const effect = (cb: () => (() => void) | void): () => void => {
+type EffectCallback = () => (() => void) | void;
+
+export const effect = (cb: EffectCallback): () => void => {
   let destructor: (() => void) | void;
   const c = new Computed(() => {
     destructor?.();
@@ -227,7 +229,24 @@ export const untrack = <T>(fn: () => T): T => {
 };
 
 export class ReactiveArray<T> extends Array<T> {
-  #sources: Map<string | symbol, State<any>> = new Map();
+  #callbacks: Record<
+    keyof ProxyHandler<ArrayLike<T>>,
+    ((...args: any[]) => void)[]
+  > = {
+    "apply": [],
+    "construct": [],
+    "defineProperty": [],
+    "deleteProperty": [],
+    "get": [],
+    "getOwnPropertyDescriptor": [],
+    "getPrototypeOf": [],
+    "has": [],
+    "isExtensible": [],
+    "ownKeys": [],
+    "preventExtensions": [],
+    "set": [],
+    "setPrototypeOf": [],
+  };
 
   constructor(...args: T[]) {
     super(...args);
@@ -239,79 +258,83 @@ export class ReactiveArray<T> extends Array<T> {
     const sources: Map<string | symbol, State<any>> = new Map(
       [["length", length]],
     );
-    this.#sources = sources;
-
-    const traps = this.traps;
+    const callbacks = this.#callbacks;
 
     const proxy = new Proxy(this, {
-      deleteProperty(t, p) {
-        return traps.deleteProperty(t, p);
+      defineProperty(target, property, descriptor) {
+        effect(() => {
+          untrack(() => {
+            for (const callback of callbacks["defineProperty"]) {
+              callback(target, property, descriptor);
+            }
+          });
+        });
+        return Reflect.defineProperty(target, property, descriptor);
       },
-      get(t, p, r) {
-        return traps.get(t, p, r);
+      deleteProperty(target, property) {
+        effect(() => {
+          untrack(() => {
+            for (const callback of callbacks["deleteProperty"]) {
+              callback(target, property);
+            }
+          });
+        });
+        sources.delete(property);
+        return Reflect.deleteProperty(target, property);
       },
-      set(t, p, n, r) {
-        return traps.set(t, p, n, r);
+      get(target, property, receiver) {
+        const source = sources.get(property);
+
+        if (source) {
+          return source.value;
+        }
+
+        if (
+          typeof property === "string" &&
+          Object.hasOwn(target, property) &&
+          !ARRAY_METHODS.includes(property)
+        ) {
+          const value = Reflect.get(target, property, receiver);
+          sources.set(property, state(value));
+          return value;
+        }
+
+        return Reflect.get(target, property, receiver);
+      },
+      set(target, property, newValue, receiver) {
+        const source = sources.get(property);
+
+        // When setting the length directly, remove all sources above the new length
+        if (property === "length" && newValue < source?.value) {
+          for (let index = newValue; index < source?.value; index++) {
+            sources.delete(String(index));
+          }
+        }
+
+        if (source) {
+          source.value = newValue;
+        } else if (
+          typeof property === "string" &&
+          Object.hasOwn(target, property) &&
+          !ARRAY_METHODS.includes(property)
+        ) {
+          sources.set(property, state(newValue));
+        }
+
+        return Reflect.set(target, property, newValue, receiver);
       },
     });
 
     return Object.setPrototypeOf(proxy, new.target.prototype);
   }
 
-  traps = {
-    deleteProperty: (target: this, property: string | symbol) => {
-      console.log("original delete trap");
-      this.#sources.delete(property);
-      return Reflect.deleteProperty(target, property);
-    },
-
-    get: (target: this, property: string | symbol, receiver: any) => {
-      const source = this.#sources.get(property);
-
-      if (source) {
-        return source.value;
-      }
-
-      if (
-        typeof property === "string" &&
-        Object.hasOwn(target, property) &&
-        !ARRAY_METHODS.includes(property)
-      ) {
-        const value = Reflect.get(target, property, receiver);
-        this.#sources.set(property, state(value));
-        return value;
-      }
-
-      return Reflect.get(target, property, receiver);
-    },
-
-    set: (
-      target: this,
-      property: string | symbol,
-      newValue: any,
-      receiver: any,
-    ) => {
-      const source = this.#sources.get(property);
-
-      // When setting the length directly, remove all sources above the new length
-      if (property === "length" && newValue < source?.value) {
-        for (let index = newValue; index < source?.value; index++) {
-          this.#sources.delete(String(index));
-        }
-      }
-
-      if (source) {
-        source.value = newValue;
-      } else if (
-        typeof property === "string" &&
-        Object.hasOwn(target, property) &&
-        !ARRAY_METHODS.includes(property)
-      ) {
-        this.#sources.set(property, state(newValue));
-      }
-
-      return Reflect.set(target, property, newValue, receiver);
-    },
+  on = <E extends keyof ProxyHandler<ArrayLike<T>>>(
+    event: E,
+    callback: (
+      ...args: Parameters<NonNullable<ProxyHandler<ArrayLike<T>>[E]>>
+    ) => void,
+  ): void => {
+    this.#callbacks[event].push(callback);
   };
 }
 
