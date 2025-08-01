@@ -1,7 +1,7 @@
-import { assert } from "./assert.ts";
-import { isUnsafeHTML } from "./attachement.ts";
+import { assert, assertExists } from "./assert.ts";
 import { isComponent } from "./component.ts";
-import { effect, isSignal } from "./reactivity/signals.ts";
+import { effect, isSignal, ReactiveArray } from "./reactivity/signals.ts";
+import { isArrayLikeSink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
 
@@ -21,9 +21,17 @@ export class Boundary<T = any> {
     this.#end = document.createComment(`</${this.id}>`);
   }
 
+  get start() {
+    return this.#start;
+  }
+
   set start(comment: Comment) {
     assert(comment.data === `<${this.id}>`, "Unmatched ids");
     this.#start = comment;
+  }
+
+  get end() {
+    return this.#end;
   }
 
   set end(comment: Comment) {
@@ -35,7 +43,7 @@ export class Boundary<T = any> {
     return `<!--<${this.id}>--><!--</${this.id}>-->`;
   }
 
-  cleanup() {
+  deleteContents() {
     this.range.setStartAfter(this.#start);
     this.range.setEndBefore(this.#end);
     this.range.deleteContents();
@@ -52,20 +60,70 @@ export class Boundary<T = any> {
 
         if (nodes instanceof DocumentFragment) {
           this.#end.before(nodes);
-        } else if (Array.isArray(nodes)) {
-          this.#end.before(...nodes);
+          // } else if (Array.isArray(nodes)) {
+          //   this.#end.before(...nodes);
         } else {
           throw new Error("Unimplemented Boundary");
         }
 
-        return () => this.cleanup();
+        return () => this.deleteContents();
       });
+    } else if (isArrayLikeSink(data)) {
+      const values = data.arrayLike;
+      // Each boundary data is a getter reading the values array in an effect when rendered.
+      // So updating the values surgically updates the fragments
+      effect(() => {
+      });
+      const boundaries = Array.from({ length: values.length })
+        .map((_, i) => new Boundary(() => data.mapper(values[i], i)));
+
+      const end = this.#end;
+
+      // Create a functorial relation with the original reactive array
+      if (values instanceof ReactiveArray) {
+        values.on("deleteProperty", (_target, property) => {
+          if (typeof property === "string" && /^\d+$/.test(property)) {
+            const boundary = boundaries[+property];
+            boundary?.deleteContents();
+            boundary?.end.remove();
+            boundary?.start.remove();
+            boundaries.splice(+property, 1);
+          }
+        });
+
+        values.on("defineProperty", (_target, property, attributes) => {
+          if (typeof property === "string" && /^\d+$/.test(property)) {
+            if (+property >= boundaries.length) {
+              const newBoundary = new Boundary(
+                () => data.mapper(attributes.value, +property),
+              );
+              boundaries[+property] = newBoundary;
+              end.before(newBoundary.start);
+              end.before(newBoundary.end);
+              newBoundary.render();
+            } else {
+              const boundary = boundaries[+property];
+              assertExists(boundary);
+              boundary.data = () => data.mapper(attributes.value, +property);
+              boundary.deleteContents();
+              boundary.render();
+            }
+          }
+        });
+      }
+
+      // Add initial values
+      for (const boundary of boundaries) {
+        end.before(boundary.start);
+        end.before(boundary.end);
+        boundary.render(); // runs inside an effect
+      }
     } else if (!isUnsafeHTML(data)) {
       effect(() => {
         const value = isSignal(data) ? data.value : data;
         // strings are inserted as text nodes which is a safe sink
         this.#end.before(String(value ?? ""));
-        return () => this.cleanup();
+        return () => this.deleteContents();
       });
     } else {
       const unsafeData = data.unsafe;
@@ -78,7 +136,7 @@ export class Boundary<T = any> {
 
         // unsafe strings are inserted as-is
         this.#end.before(template.content);
-        return () => this.cleanup();
+        return () => this.deleteContents();
       });
     }
   }
