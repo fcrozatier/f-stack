@@ -28,6 +28,11 @@ export class State<T> extends Signal<T> {
   constructor(initial: T) {
     super();
     this.#value = initial;
+
+    if (currentlyComputing) {
+      this.reactions.add(currentlyComputing);
+      currentlyComputing[addSource](this);
+    }
   }
 
   get value() {
