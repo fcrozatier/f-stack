@@ -1,11 +1,7 @@
-import { attach } from "$client/attachement.ts";
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
-import {
-  effect,
-  type State,
-  state,
-} from "../../../client/reactivity/signals.ts";
+import { effect, type State, state } from "$client/reactivity/signals.ts";
+import { attach } from "$client/sinks.ts";
 
 const emojis = {
   apple: "🍎",

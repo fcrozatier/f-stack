@@ -1,6 +1,6 @@
-import { attach } from "$client/attachement.ts";
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
+import { attach } from "$client/sinks.ts";
 import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);

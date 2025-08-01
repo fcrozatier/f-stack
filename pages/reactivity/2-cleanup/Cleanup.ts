@@ -1,7 +1,7 @@
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
-import { effect, state } from "../../../client/reactivity/signals.ts";
-import { attach } from "$client/attachement.ts";
+import { effect, state } from "$client/reactivity/signals.ts";
+import { attach } from "$client/sinks.ts";
 
 export const Cleanup = component(() => {
   const interval = state(1000);

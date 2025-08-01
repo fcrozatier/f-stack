@@ -1,7 +1,7 @@
 import { effect } from "./reactivity/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
-import { type Attachment, isAttachment } from "./attachement.ts";
+import { type Attachment, isAttachment } from "./sinks.ts";
 import { Boundary } from "./Boundary.ts";
 import { nanoId } from "./utils.ts";
 

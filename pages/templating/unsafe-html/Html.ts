@@ -1,7 +1,7 @@
-import { attach, unsafeHTML } from "$client/attachement.ts";
 import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
-import { state } from "../../../client/reactivity/signals.ts";
+import { state } from "$client/reactivity/signals.ts";
+import { attach, unsafeHTML } from "$client/sinks.ts";
 
 export const Html = component(() => {
   // nullish values are not rendered
