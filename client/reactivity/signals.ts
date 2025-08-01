@@ -227,8 +227,8 @@ export const untrack = <T>(fn: () => T): T => {
 };
 
 export class ReactiveArray<T> extends Array<T> {
-  constructor(arrayLength?: number);
-  constructor(...items: T[]);
+  #sources: Map<string | symbol, State<any>> = new Map();
+
   constructor(...args: T[]) {
     super(...args);
 
@@ -239,46 +239,119 @@ export class ReactiveArray<T> extends Array<T> {
     const sources: Map<string | symbol, State<any>> = new Map(
       [["length", length]],
     );
+    this.#sources = sources;
+
+    const traps = this.traps;
 
     const proxy = new Proxy(this, {
-      get(target, property, receiver) {
-        const source = sources.get(property);
-
-        if (source) {
-          return source.value;
-        }
-
-        if (Object.hasOwn(target, property)) {
-          const value = target[property as any];
-          sources.set(property, state(value));
-          return value;
-        }
-
-        return Reflect.get(target, property, receiver);
+      deleteProperty(t, p) {
+        return traps.deleteProperty(t, p);
       },
-      set(target, property, newValue, receiver) {
-        const source = sources.get(property);
-
-        // When setting the length directly, remove all sources above the new length
-        if (property === "length" && newValue < source?.value) {
-          for (let index = newValue; index < source?.value; index++) {
-            sources.delete(String(index));
-          }
-        }
-
-        if (source) {
-          source.value = newValue;
-        } else {
-          sources.set(property, state(newValue));
-        }
-
-        return Reflect.set(target, property, newValue, receiver);
+      get(t, p, r) {
+        return traps.get(t, p, r);
       },
-      deleteProperty(target, property) {
-        return Reflect.deleteProperty(target, property);
+      set(t, p, n, r) {
+        return traps.set(t, p, n, r);
       },
     });
 
     return Object.setPrototypeOf(proxy, new.target.prototype);
   }
+
+  traps = {
+    deleteProperty: (target: this, property: string | symbol) => {
+      console.log("original delete trap");
+      this.#sources.delete(property);
+      return Reflect.deleteProperty(target, property);
+    },
+
+    get: (target: this, property: string | symbol, receiver: any) => {
+      const source = this.#sources.get(property);
+
+      if (source) {
+        return source.value;
+      }
+
+      if (
+        typeof property === "string" &&
+        Object.hasOwn(target, property) &&
+        !ARRAY_METHODS.includes(property)
+      ) {
+        const value = Reflect.get(target, property, receiver);
+        this.#sources.set(property, state(value));
+        return value;
+      }
+
+      return Reflect.get(target, property, receiver);
+    },
+
+    set: (
+      target: this,
+      property: string | symbol,
+      newValue: any,
+      receiver: any,
+    ) => {
+      const source = this.#sources.get(property);
+
+      // When setting the length directly, remove all sources above the new length
+      if (property === "length" && newValue < source?.value) {
+        for (let index = newValue; index < source?.value; index++) {
+          this.#sources.delete(String(index));
+        }
+      }
+
+      if (source) {
+        source.value = newValue;
+      } else if (
+        typeof property === "string" &&
+        Object.hasOwn(target, property) &&
+        !ARRAY_METHODS.includes(property)
+      ) {
+        this.#sources.set(property, state(newValue));
+      }
+
+      return Reflect.set(target, property, newValue, receiver);
+    },
+  };
 }
+
+const ARRAY_METHODS = [
+  "at",
+  "concat",
+  "copyWithin",
+  "entries",
+  "every",
+  "fill",
+  "filter",
+  "find",
+  "findIndex",
+  "findLast",
+  "findLastIndex",
+  "flat",
+  "flatMap",
+  "forEach",
+  "includes",
+  "indexOf",
+  "join",
+  "keys",
+  "lastIndexOf",
+  "map",
+  "pop",
+  "push",
+  "reduce",
+  "reduceRight",
+  "reverse",
+  "shift",
+  "slice",
+  "some",
+  "sort",
+  "splice",
+  "toLocaleString",
+  "toReversed",
+  "toSorted",
+  "toSpliced",
+  "toString",
+  "unshift",
+  "values",
+  "with",
+];
