@@ -3,19 +3,18 @@ import { state } from "$client/reactivity/signals.ts";
 import { attach } from "$client/sinks.ts";
 
 interface ButtonProps {
+  label?: string;
   initial?: number;
 }
 
-// Type the default values with `satisfies`
-
-export const Button = (props = { initial: 0 } satisfies ButtonProps) => {
-  const count = state(props.initial);
+export const Button = ({ initial = 0, label = "click" }: ButtonProps = {}) => {
+  const count = state(initial);
 
   return html`
     <button ${attach((node) => {
       node.addEventListener("click", () => {
         count.value += 1;
       });
-    })}>click ${count}</button>
+    })}>${label} ${count}</button>
   `;
 };
