@@ -13,17 +13,9 @@ export const LogicPage = () => {
     })}>Clicked ${count} ${count.value === 1 ? "time" : "times"}</button>
 
     ${computed(() =>
-      count.value > 10
-        ? html`
-          <p>${count} is greater than 10</p>
-        `
-        : count.value < 5
-        ? html`
-          <p>${count} is less than 5</p>
-        `
-        : html`
-          <p>${count} is between 5 and 10</p>
-        `
+      count.value > 10 ? "Too big" : count.value < 5 ? count.value : html`
+        <span>${count} is between 5 and 10</span>
+      `
     )}
   `;
 };
