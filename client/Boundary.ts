@@ -119,9 +119,14 @@ export class Boundary<T = any> {
       }
     } else if (!isUnsafeHTML(data)) {
       effect(() => {
-        const value = isSignal(data) ? data.value : data;
-        // strings are inserted as text nodes which is a safe sink
-        this.#end.before(String(value ?? ""));
+        const content = isSignal(data) ? data.value : data;
+
+        if (content instanceof DocumentFragment) {
+          this.#end.before(content);
+        } else {
+          // strings are inserted as text nodes which is a safe sink
+          this.#end.before(String(content ?? ""));
+        }
         return () => this.deleteContents();
       });
     } else {
