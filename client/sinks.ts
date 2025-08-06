@@ -38,7 +38,7 @@ export const isUnsafeHTML = (value: unknown): value is UnsafeHTML => {
 
 const ARRAY_SINK = Symbol();
 
-type ArrayLikeSink<T = any> = {
+type ArraySink<T = any> = {
   arrayLike: ArrayLike<T>;
   mapper: (value: T, index?: number, array?: T[]) => DocumentFragment;
   [ARRAY_SINK]?: true;
@@ -47,7 +47,7 @@ type ArrayLikeSink<T = any> = {
 export const map = <T>(
   arrayLike: ArrayLike<T>,
   mapper: (value: T, index?: number, array?: T[]) => DocumentFragment,
-): ArrayLikeSink<T> => {
+): ArraySink<T> => {
   return {
     arrayLike,
     mapper,
@@ -55,7 +55,7 @@ export const map = <T>(
   };
 };
 
-export const isArraySink = (value: unknown): value is ArrayLikeSink => {
+export const isArraySink = (value: unknown): value is ArraySink => {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, ARRAY_SINK);
 };
