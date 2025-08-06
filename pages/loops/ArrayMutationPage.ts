@@ -21,7 +21,7 @@ const Thing = (props: { name: Name }) => {
   `;
 };
 
-export const MutationPage = () => {
+export const ArrayMutationPage = () => {
   const things: ReactiveArray<{
     id: number;
     name: Name;

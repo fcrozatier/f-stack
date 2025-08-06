@@ -2,7 +2,7 @@ import { html } from "$client/html.ts";
 import { computed, ReactiveArray, state } from "$client/reactivity/signals.ts";
 import { attach, map } from "$client/sinks.ts";
 
-export const DeepState = () => {
+export const DeepStatePage = () => {
   const numbers = new ReactiveArray(1, 2, 3);
   const join = computed(() => numbers.join(" + "));
   const total = computed(() => numbers.reduce((a, b) => a + b, 0));
