@@ -1,17 +1,16 @@
-import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { attach } from "$client/sinks.ts";
 import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);
 
-const Nested = component(() => {
+const Nested = () => {
   return html`
     <p data-scope="2">Another</p>
   `;
-});
+};
 
-export const Hello = component(() => {
+export const Hello = () => {
   // Add data
   const name = "World";
   const src =
@@ -32,4 +31,4 @@ export const Hello = component(() => {
       ${Nested}
     </div>
   `;
-});
+};

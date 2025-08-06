@@ -1,9 +1,8 @@
-import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { state } from "$client/reactivity/signals.ts";
 import { attach } from "$client/sinks.ts";
 
-export const Loop = component(() => {
+export const Loop = () => {
   const colors = [
     "red",
     "orange",
@@ -40,4 +39,4 @@ export const Loop = component(() => {
         )}
     </div>
   `;
-});
+};

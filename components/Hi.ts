@@ -1,8 +1,7 @@
-import { component } from "../client/component.ts";
-import { html } from "../client/html.ts";
+import { html } from "$client/html.ts";
 
-export const Hi = component(() => {
+export const Hi = () => {
   return html`
     <div>Hi</div>
   `;
-});
+};

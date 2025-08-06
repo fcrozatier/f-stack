@@ -1,4 +1,3 @@
-import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { effect, type State, state } from "$client/reactivity/signals.ts";
 import { attach } from "$client/sinks.ts";
@@ -13,16 +12,16 @@ const emojis = {
 
 type Name = keyof typeof emojis;
 
-const Thing = component((props: { name: Name }) => {
+const Thing = (props: { name: Name }) => {
   const { name } = props;
   const emoji = emojis[name];
 
   return html`
     <p>${emoji} ${name}</p>
   `;
-});
+};
 
-export const Mutation = component(() => {
+export const Mutation = () => {
   const things: State<{ id: number; name: Name }[]> = state(
     [
       { id: 1, name: "apple" },
@@ -53,4 +52,4 @@ export const Mutation = component(() => {
         `
       )}
   `;
-});
+};

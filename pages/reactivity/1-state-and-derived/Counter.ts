@@ -1,12 +1,12 @@
 import { attach } from "$client/sinks.ts";
-import { component } from "$client/component.ts";
+
 import { html } from "$client/html.ts";
 import { computed, state } from "$client/reactivity/signals.ts";
 
 type Props = { initial: number };
 
-export const Counter = component<Props>(({ initial = 0 }) => {
-  const count = state(initial);
+export const Counter = (props = { initial: 0 } satisfies Props) => {
+  const count = state(props.initial);
   const isEven = computed(() => (count.value & 1) === 0);
 
   return html`
@@ -17,4 +17,4 @@ export const Counter = component<Props>(({ initial = 0 }) => {
     <div>The count is: ${count}</div>
     <div>Is even: ${isEven}</div>
   `;
-});
+};

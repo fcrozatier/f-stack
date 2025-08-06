@@ -1,5 +1,4 @@
 import { assert, assertExists } from "./assert.ts";
-import { isComponent } from "./component.ts";
 import { effect, isSignal, ReactiveArray } from "./reactivity/signals.ts";
 import { isArraySink, isUnsafeHTML } from "./sinks.ts";
 
@@ -52,8 +51,8 @@ export class Boundary<T = any> {
   render() {
     const data = this.data;
 
-    if (isComponent(data)) {
-      this.#end.before(data.call());
+    if (data instanceof DocumentFragment) {
+      this.#end.before(data);
     } else if (typeof data === "function") {
       effect(() => {
         const nodes = data.call(null);

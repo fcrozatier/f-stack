@@ -1,9 +1,8 @@
-import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { effect, state } from "$client/reactivity/signals.ts";
 import { attach } from "$client/sinks.ts";
 
-export const Cleanup = component(() => {
+export const Cleanup = () => {
   const interval = state(1000);
   const elapsed = state(0);
 
@@ -28,4 +27,4 @@ export const Cleanup = component(() => {
 
     <p>elapsed: ${elapsed}</p>
   `;
-});
+};

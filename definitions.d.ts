@@ -3,12 +3,9 @@ export type TemplateTag = (
   ...values: unknown[]
 ) => DocumentFragment;
 
-export interface Component<Props extends Record<string, any>> {
-  bind(props: Props): Component<Props>;
-  call(): DocumentFragment;
-}
+type Page = () => DocumentFragment;
 
 export type Render = (
-  component: Component<any>,
+  component: Page,
   target: Node,
 ) => void;

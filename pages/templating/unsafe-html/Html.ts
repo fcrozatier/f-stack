@@ -1,9 +1,8 @@
-import { component } from "$client/component.ts";
 import { html } from "$client/html.ts";
 import { state } from "$client/reactivity/signals.ts";
 import { attach, unsafeHTML } from "$client/sinks.ts";
 
-export const Html = component(() => {
+export const Html = () => {
   // nullish values are not rendered
   let username;
 
@@ -27,4 +26,4 @@ export const Html = component(() => {
     </div>
     ${unsafeHTML(unsafeInput)}
   `;
-});
+};
