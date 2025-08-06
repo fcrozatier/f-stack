@@ -40,13 +40,13 @@ const ARRAY_SINK = Symbol();
 
 type ArraySink<T = any> = {
   arrayLike: ArrayLike<T>;
-  mapper: (value: T, index?: number, array?: T[]) => DocumentFragment;
+  mapper: (value: T, index: number, array?: T[]) => DocumentFragment;
   [ARRAY_SINK]?: true;
 };
 
 export const map = <T>(
   arrayLike: ArrayLike<T>,
-  mapper: (value: T, index?: number, array?: T[]) => DocumentFragment,
+  mapper: (value: T, index: number, array?: T[]) => DocumentFragment,
 ): ArraySink<T> => {
   return {
     arrayLike,

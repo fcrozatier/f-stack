@@ -229,7 +229,7 @@ export const untrack = <T>(fn: () => T): T => {
 };
 
 export class ReactiveArray<T> extends Array<T> {
-  #callbacks: Record<
+  private callbacks: Record<
     keyof ProxyHandler<ArrayLike<T>>,
     ((...args: any[]) => void)[]
   > = {
@@ -258,9 +258,9 @@ export class ReactiveArray<T> extends Array<T> {
     const sources: Map<string | symbol, State<any>> = new Map(
       [["length", length]],
     );
-    const callbacks = this.#callbacks;
+    const callbacks = this.callbacks;
 
-    const proxy = new Proxy(this, {
+    return new Proxy(this, {
       defineProperty(target, property, descriptor) {
         effect(() => {
           untrack(() => {
@@ -322,8 +322,6 @@ export class ReactiveArray<T> extends Array<T> {
         return Reflect.set(target, property, newValue, receiver);
       },
     });
-
-    return Object.setPrototypeOf(proxy, new.target.prototype);
   }
 
   on<E extends keyof ProxyHandler<ArrayLike<T>>>(
@@ -332,6 +330,6 @@ export class ReactiveArray<T> extends Array<T> {
       ...args: Parameters<NonNullable<ProxyHandler<ArrayLike<T>>[E]>>
     ) => void,
   ): void {
-    this.#callbacks[event].push(callback);
+    this.callbacks[event].push(callback);
   }
 }
