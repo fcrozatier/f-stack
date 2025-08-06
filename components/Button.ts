@@ -2,7 +2,7 @@ import { html } from "$client/html.ts";
 import { state } from "$client/reactivity/signals.ts";
 import { attach } from "$client/sinks.ts";
 
-interface ButtonProps {
+export interface ButtonProps {
   label?: string;
   initial?: number;
 }
