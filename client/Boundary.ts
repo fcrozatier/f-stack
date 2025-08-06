@@ -69,16 +69,14 @@ export class Boundary<T = any> {
       });
     } else if (isArraySink(data)) {
       const values = data.arrayLike;
-      // Each boundary data is a getter reading the values array in an effect when rendered.
-      // So updating the values surgically updates the fragments
-      effect(() => {
-      });
       const boundaries = Array.from({ length: values.length })
-        .map((_, i) => new Boundary(() => data.mapper(values[i], i)));
+        .map((_, i) => new Boundary(data.mapper(values[i], i)));
 
       const end = this.#end;
 
-      // Create a functorial relation with the original reactive array
+      // Creates a functorial relation with the original reactive array
+      // With each boundary receiving fine grained listeners
+      // So updating the values surgically updates the fragments
       if (values instanceof ReactiveArray) {
         values.on("deleteProperty", (_target, property) => {
           if (typeof property === "string" && /^\d+$/.test(property)) {
@@ -94,7 +92,7 @@ export class Boundary<T = any> {
           if (typeof property === "string" && /^\d+$/.test(property)) {
             if (+property >= boundaries.length) {
               const newBoundary = new Boundary(
-                () => data.mapper(attributes.value, +property),
+                data.mapper(attributes.value, +property),
               );
               boundaries[+property] = newBoundary;
               end.before(newBoundary.start);
@@ -103,7 +101,7 @@ export class Boundary<T = any> {
             } else {
               const boundary = boundaries[+property];
               assertExists(boundary);
-              boundary.data = () => data.mapper(attributes.value, +property);
+              boundary.data = data.mapper(attributes.value, +property);
               boundary.deleteContents();
               boundary.render();
             }
@@ -115,7 +113,7 @@ export class Boundary<T = any> {
       for (const boundary of boundaries) {
         end.before(boundary.start);
         end.before(boundary.end);
-        boundary.render(); // runs inside an effect
+        boundary.render();
       }
     } else if (!isUnsafeHTML(data)) {
       effect(() => {
