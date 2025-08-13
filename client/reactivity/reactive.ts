@@ -320,9 +320,13 @@ export const reactive = <T extends object>(
         descriptor?.writable === false &&
         value !== newValue
       ) return false;
+
       if (
         descriptor?.configurable === false &&
-        descriptor?.set === undefined
+        descriptor?.set === undefined &&
+        // exception: the `length` property of arrays can actually be set
+        !(Array.isArray(target) &&
+          property === "length")
       ) return false;
 
       const prop = path + "." + stringifyKey(property);
