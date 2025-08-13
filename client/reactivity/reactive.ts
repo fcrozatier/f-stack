@@ -257,6 +257,20 @@ export const reactive = <T extends object>(
       console.log("reading", property);
 
       const value = Reflect.get(target, property, receiver);
+
+      // get invariants
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+      if (
+        descriptor?.configurable === false &&
+        descriptor?.writable === false
+      ) return value;
+      if (
+        descriptor?.configurable === false &&
+        descriptor?.get === undefined
+      ) {
+        return undefined;
+      }
+
       if (value !== null && typeof value === "object") {
         let proxiedValue = graph.get(value);
         if (proxiedValue) return proxiedValue;
@@ -270,36 +284,51 @@ export const reactive = <T extends object>(
         return proxiedValue;
       }
 
-      // if (typeof value === "function") {
-      //   if (property === ADD_LISTENER) return addListener;
+      if (typeof value === "function") {
+        let proxiedMethod = graph.get(value);
+        if (proxiedMethod) return proxiedMethod;
 
-      //   let proxiedMethod = graph.get(value);
-      //   if (!proxiedMethod) return proxiedMethod;
+        proxiedMethod = new Proxy(() => {}, {
+          apply(target, thisArg, argArray) {
+            console.log("calling ", property);
 
-      //   proxiedMethod = new Proxy(() => {}, {
-      //     apply(target, thisArg, argArray) {
-      //       console.log("calling ", property);
+            notify({
+              type: "apply",
+              path: path + "." + stringifyKey(property),
+              args: argArray,
+            });
+            return Reflect.apply(target, thisArg, argArray);
+          },
+        });
 
-      //       notify({ type: "apply", path: property, args: argArray });
-      //       return Reflect.apply(target, thisArg, argArray);
-      //     },
-      //   });
+        graph.set(value, proxiedMethod);
 
-      //   graph.set(value, proxiedMethod);
-
-      //   return proxiedMethod;
-      // }
+        return proxiedMethod;
+      }
 
       return value;
     },
     set(target, property, newValue, receiver) {
       console.log("setting", property, newValue);
 
+      const value = Reflect.get(target, property, receiver);
+
+      // set invariants
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+      if (
+        descriptor?.configurable === false &&
+        descriptor?.writable === false &&
+        value !== newValue
+      ) return false;
+      if (
+        descriptor?.configurable === false &&
+        descriptor?.set === undefined
+      ) return false;
+
       const prop = path + "." + stringifyKey(property);
       if (property in target) {
-        const old = Reflect.get(target, property, receiver);
         // optional fancy equality check here
-        if (old !== newValue) {
+        if (value !== newValue) {
           notify({ type: "update", path: prop, value: newValue });
           Reflect.set(target, property, newValue, receiver);
         }
@@ -312,6 +341,14 @@ export const reactive = <T extends object>(
     },
     deleteProperty(target, property) {
       console.log("deleting", property);
+
+      // delete invariants
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+      if (descriptor?.configurable === false) return false;
+      if (
+        !Reflect.isExtensible(target) &&
+        !!descriptor
+      ) return false;
 
       if (property in target) {
         notify({ type: "delete", path: path + "." + stringifyKey(property) });
