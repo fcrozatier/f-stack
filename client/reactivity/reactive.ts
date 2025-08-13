@@ -230,7 +230,6 @@ export const reactive = <T extends object>(
   object: T,
   { parent, path }: { parent: any; path: string } = { parent: null, path: "" },
 ) => {
-  console.log("new reactive");
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
 
@@ -254,8 +253,6 @@ export const reactive = <T extends object>(
 
   const proxy = new Proxy(object, {
     get(target, property, receiver) {
-      console.log("reading", property);
-
       const value = Reflect.get(target, property, receiver);
 
       // get invariants
@@ -290,8 +287,6 @@ export const reactive = <T extends object>(
 
         proxiedMethod = new Proxy(() => {}, {
           apply(target, thisArg, argArray) {
-            console.log("calling ", property);
-
             notify({
               type: "apply",
               path: path + "." + stringifyKey(property),
@@ -309,8 +304,6 @@ export const reactive = <T extends object>(
       return value;
     },
     set(target, property, newValue, receiver) {
-      console.log("setting", property, newValue);
-
       const value = Reflect.get(target, property, receiver);
 
       // set invariants
@@ -344,8 +337,6 @@ export const reactive = <T extends object>(
       return true;
     },
     deleteProperty(target, property) {
-      console.log("deleting", property);
-
       // delete invariants
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
       if (descriptor?.configurable === false) return false;
