@@ -99,7 +99,6 @@ export const html: TemplateTag = (strings, ...values) => {
       }
     }
 
-    console.log("add listener");
     addListener(attribute, (e) => {
       if (!(typeof e.path === "string")) return;
       const key = e.path.slice(1);
@@ -108,8 +107,12 @@ export const html: TemplateTag = (strings, ...values) => {
         case "create":
         case "update": {
           const value = e.value;
-          if (booleanAttributes.includes(key) && value) {
-            element.setAttribute(key, "");
+          if (booleanAttributes.includes(key)) {
+            if (value) {
+              element.setAttribute(key, "");
+            } else {
+              element.removeAttribute(key);
+            }
           } else {
             element.setAttribute(key, String(value));
           }

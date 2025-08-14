@@ -14,12 +14,10 @@ export const Attr = () => {
     <p>
       <button ${attr(myAttr)}>I'm a button</button>
     </p>
-    <div>
+    <p>
       <button ${attach((b) => {
         b.addEventListener("click", () => {
-          console.log("add");
           myAttr["value"] = "0";
-          console.log(myAttr);
         });
       })}>Add value attribute</button>
       <button ${attach((b) => {
@@ -29,11 +27,21 @@ export const Attr = () => {
       })}>Update value attribute</button>
       <button ${attach((b) => {
         b.addEventListener("click", () => {
-          console.log("delete");
           delete myAttr["value"];
-          console.log(myAttr);
         });
       })}>Remove value attribute</button>
-    </div>
+    </p>
+    <p>
+      <button ${attach((b) => {
+        b.addEventListener("click", () => {
+          myAttr["disabled"] = true;
+        });
+      })}>Set disabled attribute</button>
+      <button ${attach((b) => {
+        b.addEventListener("click", () => {
+          myAttr["disabled"] = false;
+        });
+      })}>Remove disabled attribute</button>
+    </p>
   `;
 };
