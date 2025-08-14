@@ -231,7 +231,7 @@ const NOTIFY = Symbol.for("notify");
 
 export const reactive = <T extends object>(
   object: T,
-  { roots }: { roots: Map<any, string> } = { roots: new Map() },
+  { roots }: { roots: [parent: any, path: string][] } = { roots: [] },
 ) => {
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
@@ -245,9 +245,8 @@ export const reactive = <T extends object>(
       callback(e);
     }
 
-    for (const [parent, path] of roots.entries()) {
-      e.path = path + stringifyKey(e.path);
-      parent[NOTIFY](e);
+    for (const [parent, path] of roots) {
+      parent[NOTIFY]({ ...e, path: path + stringifyKey(e.path) });
     }
   };
 
@@ -256,7 +255,7 @@ export const reactive = <T extends object>(
   };
 
   const addParent = (p: any, path: string) => {
-    roots.set(p, path);
+    roots.push([p, path]);
   };
 
   const proxy = new Proxy(object, {
@@ -280,9 +279,10 @@ export const reactive = <T extends object>(
         let proxiedValue = graph.get(value);
         if (proxiedValue) return proxiedValue;
 
+        // avoid double-proxying
         if (!isReactive(value)) {
           proxiedValue = reactive(value, {
-            roots: new Map([[proxy, "." + stringifyKey(property)]]),
+            roots: [[proxy, "." + stringifyKey(property)]],
           });
         } else {
           proxiedValue = value;
@@ -336,15 +336,15 @@ export const reactive = <T extends object>(
           property === "length")
       ) return false;
 
-      const prop = "." + stringifyKey(property);
+      const path = "." + stringifyKey(property);
       if (property in target) {
         // optional fancy equality check here
         if (value !== newValue) {
-          notify({ type: "update", path: prop, value: newValue });
+          notify({ type: "update", path, value: newValue });
           Reflect.set(target, property, newValue, receiver);
         }
       } else {
-        notify({ type: "create", path: prop, value: newValue });
+        notify({ type: "create", path, value: newValue });
         Reflect.set(target, property, newValue, receiver);
       }
 
@@ -379,6 +379,12 @@ export const reactive = <T extends object>(
     });
   }
 
+  if (!("get_roots" in proxy)) {
+    Object.defineProperty(proxy, "get_roots", {
+      value: () => roots,
+    });
+  }
+
   if (!(NOTIFY in proxy)) {
     Object.defineProperty(proxy, NOTIFY, {
       value: notify,
@@ -396,10 +402,14 @@ export const reactive = <T extends object>(
   return proxy;
 };
 
-export const addListener = (node: any, callback: ReactiveEventCallback) => {
-  node[ADD_LISTENER]?.(callback);
-};
-
 export const isReactive = (value: unknown): boolean => {
   return value !== null && typeof value === "object" && IS_REACTIVE in value;
+};
+
+export const addListener = (node: any, callback: ReactiveEventCallback) => {
+  if (!isReactive(node)) {
+    throw new Error("Can't add a listener on a non reactive node");
+  }
+
+  node[ADD_LISTENER]?.(callback);
 };

@@ -42,7 +42,7 @@ Deno.test("value listeners", () => {
   assertEquals(event, { type: "delete", path: ".a" });
 });
 
-Deno.test.only("can adopt another reactive", () => {
+Deno.test("can adopt another reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
 
@@ -56,6 +56,36 @@ Deno.test.only("can adopt another reactive", () => {
   bool.value = true;
   assertEquals(r.a.value, true);
   assertEquals(event, { type: "update", path: ".a.value", value: true });
+});
+
+Deno.test("multi-parent adoption", () => {
+  const bool = reactive({ value: false });
+  const r = reactive({ a: bool });
+  const r1 = reactive({ a1: bool });
+  const r2 = reactive({ a2: bool });
+
+  let event!: ReactiveEvent;
+  let event1!: ReactiveEvent;
+  let event2!: ReactiveEvent;
+
+  addListener(r, (e) => (event = e));
+  addListener(r1, (e) => (event1 = e));
+  addListener(r2, (e) => (event2 = e));
+
+  // the dependency tracking between r and bool begins when the path is taken
+  assertEquals(r.a.value, false);
+  assertEquals(r1.a1.value, false);
+  assertEquals(r2.a2.value, false);
+
+  // update bool
+  bool.value = true;
+  assertEquals(r.a.value, true);
+  assertEquals(r1.a1.value, true);
+  assertEquals(r2.a2.value, true);
+
+  assertEquals(event, { type: "update", path: ".a.value", value: true });
+  assertEquals(event1, { type: "update", path: ".a1.value", value: true });
+  assertEquals(event2, { type: "update", path: ".a2.value", value: true });
 });
 
 Deno.test("deep listeners", () => {
@@ -81,12 +111,12 @@ Deno.test("deep listeners", () => {
   assertEquals(event, { type: "create", path: ".a.b.c.d.new", value: true });
   assertEquals(refCEvent, {
     type: "create",
-    path: ".a.b.c.d.new",
+    path: ".d.new",
     value: true,
   });
   assertEquals(refDEvent, {
     type: "create",
-    path: ".a.b.c.d.new",
+    path: ".new",
     value: true,
   });
   assertEquals(refEEvent, undefined);
@@ -97,12 +127,12 @@ Deno.test("deep listeners", () => {
   assertEquals(event, { type: "update", path: ".a.b.c.d.new", value: false });
   assertEquals(refCEvent, {
     type: "update",
-    path: ".a.b.c.d.new",
+    path: ".d.new",
     value: false,
   });
   assertEquals(refDEvent, {
     type: "update",
-    path: ".a.b.c.d.new",
+    path: ".new",
     value: false,
   });
   assertEquals(refEEvent, undefined);
@@ -113,11 +143,11 @@ Deno.test("deep listeners", () => {
   assertEquals(event, { type: "delete", path: ".a.b.c.d.new" });
   assertEquals(refCEvent, {
     type: "delete",
-    path: ".a.b.c.d.new",
+    path: ".d.new",
   });
   assertEquals(refDEvent, {
     type: "delete",
-    path: ".a.b.c.d.new",
+    path: ".new",
   });
   assertEquals(refEEvent, undefined);
 });
