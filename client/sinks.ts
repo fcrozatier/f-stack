@@ -59,3 +59,22 @@ export const isArraySink = (value: unknown): value is ArraySink => {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, ARRAY_SINK);
 };
+
+const ATTR_SINK = Symbol.for("attr sink");
+
+type Primitive = string | number | boolean | null | undefined;
+
+export interface AttrSink extends Record<string, Primitive> {
+  [ATTR_SINK]?: true;
+}
+
+export const attr = (attributes: AttrSink) => {
+  Object.defineProperty(attributes, ATTR_SINK, { value: true });
+  return attributes;
+};
+
+export const isAttrSink = (value: unknown): value is AttrSink => {
+  return value !== null &&
+    typeof value === "object" &&
+    Object.hasOwn(value, ATTR_SINK);
+};
