@@ -225,6 +225,7 @@ export type ReactiveEvent =
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
 const ADD_LISTENER = Symbol.for("add listener");
+const NOTIFY = Symbol.for("notify");
 
 export const reactive = <T extends object>(
   object: T,
@@ -361,7 +362,7 @@ export const reactive = <T extends object>(
   }
 
   if (!("notify" in proxy)) {
-    Object.defineProperty(proxy, "notify", { value: notify, enumerable: true });
+    Object.defineProperty(proxy, NOTIFY, { value: notify, enumerable: true });
   }
 
   return proxy;
