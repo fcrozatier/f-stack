@@ -42,6 +42,22 @@ Deno.test("value listeners", () => {
   assertEquals(event, { type: "delete", path: ".a" });
 });
 
+Deno.test.only("can adopt another reactive", () => {
+  const bool = reactive({ value: false });
+  const r = reactive({ a: bool });
+
+  let event!: ReactiveEvent;
+  addListener(r, (e) => (event = e));
+
+  // the dependency tracking between r and bool begins when the path is taken
+  assertEquals(r.a.value, false);
+
+  // update bool
+  bool.value = true;
+  assertEquals(r.a.value, true);
+  assertEquals(event, { type: "update", path: ".a.value", value: true });
+});
+
 Deno.test("deep listeners", () => {
   const r = reactive({ a: { b: { c: { d: { e: { f: true } } } } } });
   let event!: ReactiveEvent;
@@ -165,11 +181,11 @@ Deno.test("deep object functoriality", () => {
   const mirror = {};
 
   addListener(ref, (e) => {
-    const root = ".a.b.c.";
     if (typeof e.path !== "string") return;
 
-    const paths = e.path.split(root).slice(1);
-    assertEquals(paths.length, 1);
+    const paths = e.path.split(".").slice(1);
+
+    assertEquals(paths.length, 1, "the path didn't have length 1");
     assertExists(paths[0]);
     const path = paths[0];
 
