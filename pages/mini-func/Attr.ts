@@ -3,11 +3,12 @@ import { attach, attr, type AttrSink } from "$client/sinks.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
 
 export const Attr = () => {
+  const disabled = reactive({ value: false });
   const myAttr: AttrSink = reactive({
     id: "ok",
     type: "button",
-    disabled: false,
-  }) satisfies Partial<HTMLButtonElement>;
+    disabled,
+  });
 
   return html`
     <p>The attr() mini-functor manages attributes</p>
@@ -22,7 +23,7 @@ export const Attr = () => {
       })}>Add value attribute</button>
       <button ${attach((b) => {
         b.addEventListener("click", () => {
-          myAttr["value"] = String(Number(myAttr["value"]) + 1);
+          myAttr["value"] = String(Number(myAttr["value"]) + 2);
         });
       })}>Update value attribute</button>
       <button ${attach((b) => {
@@ -34,12 +35,12 @@ export const Attr = () => {
     <p>
       <button ${attach((b) => {
         b.addEventListener("click", () => {
-          myAttr["disabled"] = true;
+          disabled.value = true;
         });
       })}>Set disabled attribute</button>
       <button ${attach((b) => {
         b.addEventListener("click", () => {
-          myAttr["disabled"] = false;
+          disabled.value = false;
         });
       })}>Remove disabled attribute</button>
     </p>

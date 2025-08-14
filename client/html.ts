@@ -1,15 +1,15 @@
-import { effect } from "./reactivity/signals.ts";
 import type { TemplateTag } from "../definitions.d.ts";
 import { assertExists } from "./assert.ts";
+import { Boundary } from "./Boundary.ts";
+import { addListener } from "./reactivity/reactive.ts";
+import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
   type AttrSink,
   isAttachment,
   isAttrSink,
 } from "./sinks.ts";
-import { Boundary } from "./Boundary.ts";
 import { nanoId } from "./utils.ts";
-import { addListener } from "./reactivity/reactive.ts";
 
 export const html: TemplateTag = (strings, ...values) => {
   let innerHTML = "";
@@ -88,20 +88,23 @@ export const html: TemplateTag = (strings, ...values) => {
     element.removeAttribute(`attr-${id}`);
 
     for (const [key, val] of Object.entries(attribute)) {
+      const value = val && typeof val === "object" ? val.value : val;
+
       if (booleanAttributes.includes(key)) {
-        if (val) {
+        if (value) {
           element.setAttribute(key, "");
         } else {
           element.removeAttribute(key);
         }
       } else {
-        element.setAttribute(key, String(val));
+        element.setAttribute(key, String(value));
       }
     }
 
     addListener(attribute, (e) => {
       if (!(typeof e.path === "string")) return;
-      const key = e.path.slice(1);
+      const key = e.path.split(".")[1];
+      assertExists(key);
 
       switch (e.type) {
         case "create":

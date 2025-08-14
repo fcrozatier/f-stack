@@ -64,7 +64,8 @@ const ATTR_SINK = Symbol.for("attr sink");
 
 type Primitive = string | number | boolean | null | undefined;
 
-export interface AttrSink extends Record<string, Primitive> {
+export interface AttrSink
+  extends Record<string, Primitive | { value: Primitive }> {
   [ATTR_SINK]?: true;
 }
 

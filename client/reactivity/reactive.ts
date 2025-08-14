@@ -378,12 +378,6 @@ export const reactive = <T extends object>(
     });
   }
 
-  if (!("get_roots" in proxy)) {
-    Object.defineProperty(proxy, "get_roots", {
-      value: () => roots,
-    });
-  }
-
   if (!(NOTIFY in proxy)) {
     Object.defineProperty(proxy, NOTIFY, {
       value: notify,
