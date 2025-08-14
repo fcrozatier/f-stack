@@ -332,8 +332,7 @@ export const reactive = <T extends object>(
         descriptor?.configurable === false &&
         descriptor?.set === undefined &&
         // exception: the `length` property of arrays can actually be set
-        !(Array.isArray(target) &&
-          property === "length")
+        !(Array.isArray(target) && property === "length")
       ) return false;
 
       const path = "." + stringifyKey(property);
