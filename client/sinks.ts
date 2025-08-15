@@ -60,12 +60,14 @@ export const isArraySink = (value: unknown): value is ArraySink => {
     Object.hasOwn(value, ARRAY_SINK);
 };
 
+// Attr
+
 const ATTR_SINK = Symbol.for("attr sink");
 
 type Primitive = string | number | boolean | null | undefined;
+type ReactiveValue = { value: Primitive };
 
-export interface AttrSink
-  extends Record<string, Primitive | { value: Primitive }> {
+export interface AttrSink extends Record<string, Primitive | ReactiveValue> {
   [ATTR_SINK]?: true;
 }
 
@@ -78,4 +80,28 @@ export const isAttrSink = (value: unknown): value is AttrSink => {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, ATTR_SINK);
+};
+
+// classList
+
+const CLASS_SINK = Symbol.for("class sink");
+
+export interface ClassSink extends Record<string, Primitive | ReactiveValue> {
+  [CLASS_SINK]?: true;
+}
+
+export type ClassListValue = Record<
+  string,
+  boolean | null | undefined | ReactiveValue
+>;
+
+export const classList = (classes: ClassListValue) => {
+  Object.defineProperty(classes, CLASS_SINK, { value: true });
+  return classes;
+};
+
+export const isClassSink = (value: unknown): value is ClassListValue => {
+  return value !== null &&
+    typeof value === "object" &&
+    Object.hasOwn(value, CLASS_SINK);
 };

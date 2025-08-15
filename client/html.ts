@@ -6,8 +6,10 @@ import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
   type AttrSink,
+  type ClassListValue,
   isAttachment,
   isAttrSink,
+  isClassSink,
 } from "./sinks.ts";
 import { nanoId } from "./utils.ts";
 
@@ -17,6 +19,7 @@ export const html: TemplateTag = (strings, ...values) => {
   const boundaries = new Map<number, Boundary>();
   const attachments = new Map<string, Attachment>();
   const attributes = new Map<string, AttrSink>();
+  const classLists = new Map<string, ClassListValue>();
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index]!;
@@ -24,13 +27,16 @@ export const html: TemplateTag = (strings, ...values) => {
     innerHTML += string;
     const data = values[index];
 
+    const id = nanoId();
     if (isAttrSink(data)) {
-      const id = nanoId();
       attributes.set(id, data);
 
       innerHTML += ` attr-${id} `;
+    } else if (isClassSink(data)) {
+      classLists.set(id, data);
+
+      innerHTML += ` class-${id} `;
     } else if (isAttachment(data)) {
-      const id = nanoId();
       attachments.set(id, data);
 
       innerHTML += ` attachment-${id} `;
@@ -123,6 +129,50 @@ export const html: TemplateTag = (strings, ...values) => {
         }
         case "delete":
           element.removeAttribute(key);
+          break;
+      }
+    });
+  }
+
+  for (const [id, classList] of classLists.entries()) {
+    const element = content.querySelector(`[class-${id}]`);
+    assertExists(element, `No element found with attribute class-${id}`);
+
+    element.removeAttribute(`class-${id}`);
+
+    for (const [key, val] of Object.entries(classList)) {
+      const value = val && typeof val === "object" ? val.value : val;
+      const classes = key.split(" ");
+
+      if (value) {
+        element.classList.add(...classes);
+      } else {
+        element.classList.remove(...classes);
+      }
+    }
+
+    addListener(classList, (e) => {
+      if (!(typeof e.path === "string")) return;
+      const key = e.path.split(".")[1];
+      assertExists(key);
+
+      const classes = key.split(" ");
+
+      switch (e.type) {
+        case "create":
+        case "update": {
+          const value = e.value;
+
+          if (value) {
+            element.classList.add(...classes);
+          } else {
+            element.classList.remove(...classes);
+          }
+
+          break;
+        }
+        case "delete":
+          element.classList.remove(...classes);
           break;
       }
     });
