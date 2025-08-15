@@ -1,7 +1,7 @@
 import type { TemplateTag } from "../definitions.d.ts";
-import { assertExists } from "./assert.ts";
+import { assert, assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
-import { addListener } from "./reactivity/reactive.ts";
+import { addListener, isReactive } from "./reactivity/reactive.ts";
 import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
@@ -10,6 +10,8 @@ import {
   isAttachment,
   isAttrSink,
   isClassSink,
+  isStyleSink,
+  type ReactiveStyles,
 } from "./sinks.ts";
 import { nanoId } from "./utils.ts";
 
@@ -20,6 +22,7 @@ export const html: TemplateTag = (strings, ...values) => {
   const attachments = new Map<string, Attachment>();
   const attributes = new Map<string, AttrSink>();
   const classLists = new Map<string, ClassListValue>();
+  const styles = new Map<string, ReactiveStyles>();
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index]!;
@@ -36,6 +39,10 @@ export const html: TemplateTag = (strings, ...values) => {
       classLists.set(id, data);
 
       innerHTML += ` class-${id} `;
+    } else if (isStyleSink(data)) {
+      styles.set(id, data);
+
+      innerHTML += ` style-${id} `;
     } else if (isAttachment(data)) {
       attachments.set(id, data);
 
@@ -173,6 +180,42 @@ export const html: TemplateTag = (strings, ...values) => {
         }
         case "delete":
           element.classList.remove(...classes);
+          break;
+      }
+    });
+  }
+
+  for (const [id, style] of styles.entries()) {
+    const element = content.querySelector(`[style-${id}]`);
+    assert(
+      element instanceof HTMLElement ||
+        element instanceof SVGElement ||
+        element instanceof MathMLElement,
+      "expected an html, svg or mathML element",
+    );
+    assertExists(element, `No element found with attribute style-${id}`);
+
+    element.removeAttribute(`style-${id}`);
+
+    for (const [key, val] of Object.entries(style)) {
+      const value = val && isReactive(val) && "value" in val ? val.value : val;
+
+      element.style.setProperty(key, String(value));
+    }
+
+    addListener(style, (e) => {
+      if (!(typeof e.path === "string")) return;
+      const key = e.path.split(".")[1];
+      assertExists(key);
+
+      switch (e.type) {
+        case "create":
+        case "update": {
+          element.style.setProperty(key, e.value);
+          break;
+        }
+        case "delete":
+          element.style.removeProperty(key);
           break;
       }
     });

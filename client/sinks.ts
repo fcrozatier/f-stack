@@ -65,7 +65,7 @@ export const isArraySink = (value: unknown): value is ArraySink => {
 const ATTR_SINK = Symbol.for("attr sink");
 
 type Primitive = string | number | boolean | null | undefined;
-type ReactiveValue = { value: Primitive };
+type ReactiveValue<T = Primitive> = { value: T };
 
 export interface AttrSink extends Record<string, Primitive | ReactiveValue> {
   [ATTR_SINK]?: true;
@@ -104,4 +104,42 @@ export const isClassSink = (value: unknown): value is ClassListValue => {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, CLASS_SINK);
+};
+
+// style
+
+/**
+ * CSS Typed Object Model is not implemented on Firefox
+ * https://bugzilla.mozilla.org/show_bug.cgi?id=1278697
+ */
+
+const STYLE_SINK = Symbol.for("style sink");
+
+export type CamelToKebab<T extends string> = T extends
+  `${infer First}${infer Rest}` ? Rest extends "" ? Lowercase<First>
+  : Rest extends Capitalize<Rest> ? `${Lowercase<First>}-${CamelToKebab<Rest>}`
+  : `${Lowercase<First>}${CamelToKebab<Rest>}`
+  : T;
+
+export interface StyleSink extends Record<string, Primitive | ReactiveValue> {
+  [STYLE_SINK]?: true;
+}
+
+export type ReactiveStyles = {
+  [
+    K in CamelToKebab<keyof CSSStyleDeclaration & string> | `--${string}`
+  ]?: string | number | ReactiveValue<string | number>;
+};
+
+export const style = (styles: ReactiveStyles) => {
+  Object.defineProperty(styles, STYLE_SINK, { value: true });
+  return styles;
+};
+
+export const isStyleSink = (
+  value: unknown,
+): value is ReactiveStyles => {
+  return value !== null &&
+    typeof value === "object" &&
+    Object.hasOwn(value, STYLE_SINK);
 };
