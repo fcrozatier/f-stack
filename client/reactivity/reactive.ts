@@ -244,7 +244,7 @@ export const reactive = <T extends object>(
 ) => {
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
-  const derived: string[] = [];
+  const derived: Set<string> = new Set();
 
   const stringifyKey = (key: string | symbol) => {
     return typeof key === "symbol" ? key.description ?? String(key) : key;
@@ -254,7 +254,7 @@ export const reactive = <T extends object>(
     for (const callback of callbacks) {
       if (
         (e.type === "create" || e.type === "update") &&
-        typeof e.path === "string" && derived.includes(e.path)
+        typeof e.path === "string" && derived.has(e.path)
       ) {
         e.value = readPath(e.path);
       }
@@ -364,7 +364,7 @@ export const reactive = <T extends object>(
       }
 
       if (descriptor?.get) {
-        derived.push("." + stringifyKey(property));
+        derived.add("." + stringifyKey(property));
       }
 
       return value;
@@ -410,9 +410,13 @@ export const reactive = <T extends object>(
         !!descriptor
       ) return false;
 
+      const path = "." + stringifyKey(property);
+
       if (property in target) {
-        notify({ type: "delete", path: "." + stringifyKey(property) });
+        notify({ type: "delete", path });
       }
+
+      derived.delete(path);
 
       return Reflect.deleteProperty(target, property);
     },
