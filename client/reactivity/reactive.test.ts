@@ -144,6 +144,15 @@ Deno.test("glitch free (diamond)", () => {
     },
   });
 
+  let aEvent: ReactiveEvent | undefined;
+  addListener(a, (e) => (aEvent = e));
+
+  let bEvent: ReactiveEvent | undefined;
+  addListener(b, (e) => (bEvent = e));
+
+  let cEvent: ReactiveEvent | undefined;
+  addListener(c, (e) => (cEvent = e));
+
   let dEvent: ReactiveEvent | undefined;
   addListener(d, (e) => (dEvent = e));
 
@@ -153,6 +162,10 @@ Deno.test("glitch free (diamond)", () => {
 
   // The event propagates the latest computed value
   assertEquals(dEvent, { type: "update", path: ".v", value: 7 });
+  assertEquals(cEvent, { type: "update", path: ".v", value: 4 });
+  assertEquals(bEvent, { type: "update", path: ".v", value: 3 });
+  assertEquals(aEvent, { type: "update", path: ".v", value: 2 });
+
   assertEquals(d.v, 7);
   assertEquals(seenGlitch, false);
 });
