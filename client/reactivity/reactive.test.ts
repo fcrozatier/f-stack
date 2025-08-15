@@ -25,7 +25,7 @@ Deno.test("get/set values", () => {
 
 Deno.test("value listeners", () => {
   const r: Record<string, unknown> = reactive({ a: 1 });
-  let event!: ReactiveEvent;
+  let event: ReactiveEvent | undefined;
 
   addListener(r, (e) => (event = e));
 
@@ -42,11 +42,31 @@ Deno.test("value listeners", () => {
   assertEquals(event, { type: "delete", path: ".a" });
 });
 
+Deno.test("events collapse", () => {
+  const r: Record<string, unknown> = reactive({ a: 1 });
+  let event: ReactiveEvent | undefined;
+
+  addListener(r, (e) => (event = e));
+
+  // no "update" to the initial state event
+  r.a = 1;
+  assertEquals(event, undefined);
+
+  r.a = 2;
+  assertEquals(event, { type: "update", path: ".a", value: 2 });
+
+  event = undefined;
+
+  // no "update" to the same state event
+  r.a = 2;
+  assertEquals(event, undefined);
+});
+
 Deno.test("can adopt another reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
 
-  let event!: ReactiveEvent;
+  let event: ReactiveEvent | undefined;
   addListener(r, (e) => (event = e));
 
   // the dependency tracking between r and bool begins when the path is taken
@@ -64,9 +84,9 @@ Deno.test("multi-parent adoption", () => {
   const r1 = reactive({ a1: bool });
   const r2 = reactive({ a2: bool });
 
-  let event!: ReactiveEvent;
-  let event1!: ReactiveEvent;
-  let event2!: ReactiveEvent;
+  let event: ReactiveEvent | undefined;
+  let event1: ReactiveEvent | undefined;
+  let event2: ReactiveEvent | undefined;
 
   addListener(r, (e) => (event = e));
   addListener(r1, (e) => (event1 = e));
@@ -90,19 +110,19 @@ Deno.test("multi-parent adoption", () => {
 
 Deno.test("deep listeners", () => {
   const r = reactive({ a: { b: { c: { d: { e: { f: true } } } } } });
-  let event!: ReactiveEvent;
+  let event: ReactiveEvent | undefined;
   addListener(r, (e) => (event = e));
 
   const refC = r.a.b.c;
-  let refCEvent!: ReactiveEvent;
+  let refCEvent: ReactiveEvent | undefined;
   addListener(refC, (e) => (refCEvent = e));
 
   const refD = r.a.b.c.d;
-  let refDEvent!: ReactiveEvent;
+  let refDEvent: ReactiveEvent | undefined;
   addListener(refD, (e) => (refDEvent = e));
 
   const refE = r.a.b.c.d.e;
-  let refEEvent!: ReactiveEvent;
+  let refEEvent: ReactiveEvent | undefined;
   addListener(refE, (e) => (refEEvent = e));
 
   // root, c and d see the create event but not e
