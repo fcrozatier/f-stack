@@ -82,7 +82,8 @@ Deno.test("derivation", () => {
   assertEquals(first.a, false);
   assertEquals(second.b, true);
 
-  assertEquals(event, { type: "update", path: ".b", value: false });
+  // The event represent the latest value not a's value
+  assertEquals(event, { type: "update", path: ".b", value: true });
 });
 
 Deno.test("nested derivations", () => {
@@ -115,11 +116,11 @@ Deno.test("nested derivations", () => {
   assertEquals(lower.last, "doe");
   assertEquals(fullname.value, "johnny doe");
 
-  assertEquals(event, { type: "update", path: ".value", value: "JOHNNY" });
+  assertEquals(event, { type: "update", path: ".value", value: "johnny doe" });
 });
 
 Deno.test("glitch free (diamond)", () => {
-  // a synchronous system is glitch free by construction, it's an inherent property...
+  // a synchronous system is glitch free by construction
 
   const a = reactive({ v: 1 });
   const b = reactive({
@@ -132,6 +133,7 @@ Deno.test("glitch free (diamond)", () => {
       return 2 * a.v;
     },
   });
+
   let seenGlitch = false;
   const d = reactive({
     get v() {
@@ -142,10 +144,16 @@ Deno.test("glitch free (diamond)", () => {
     },
   });
 
+  let dEvent: ReactiveEvent | undefined;
+  addListener(d, (e) => (dEvent = e));
+
   assertEquals(d.v, 2 + 2);
 
   a.v = 2;
-  assertEquals(d.v, 3 + 4);
+
+  // The event propagates the latest computed value
+  assertEquals(dEvent, { type: "update", path: ".v", value: 7 });
+  assertEquals(d.v, 7);
   assertEquals(seenGlitch, false);
 });
 

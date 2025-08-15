@@ -228,17 +228,23 @@ const ADD_LISTENER = Symbol.for("add listener");
 const ADD_PARENT = Symbol.for("add parent");
 const IS_REACTIVE = Symbol.for("is reactive");
 const NOTIFY = Symbol.for("notify");
+const READ_PATH = Symbol.for("read path");
 
-type Root = [parent: any, path: string, reroot?: boolean];
+type Root = [parent: Record<PropertyKey, any>, path: string, reroot?: boolean];
 
 let root: Root | undefined;
 
 export const reactive = <T extends object>(
   object: T,
-  { roots }: { roots: Root[] } = { roots: [] },
+  { roots }: {
+    roots: Map<Record<PropertyKey, any>, Map<string, boolean>>;
+  } = {
+    roots: new Map(),
+  },
 ) => {
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
+  const derived: string[] = [];
 
   const stringifyKey = (key: string | symbol) => {
     return typeof key === "symbol" ? key.description ?? String(key) : key;
@@ -246,15 +252,29 @@ export const reactive = <T extends object>(
 
   const notify = (e: ReactiveEvent) => {
     for (const callback of callbacks) {
+      if (
+        (e.type === "create" || e.type === "update") &&
+        typeof e.path === "string" && derived.includes(e.path)
+      ) {
+        e.value = readPath(e.path);
+      }
+
       callback(e);
     }
 
-    for (const [parent, path, reroot] of roots) {
-      parent[NOTIFY]({
-        ...e,
-        path: reroot ? path : path + stringifyKey(e.path),
-      });
+    for (const [parent, map] of roots.entries()) {
+      for (const [rootPath, reroot] of map.entries()) {
+        const path = reroot ? rootPath : rootPath + stringifyKey(e.path);
+        parent[NOTIFY]({ ...e, path });
+      }
     }
+  };
+
+  const readPath = (path: string) => {
+    return path.split(".").slice(1).reduce(
+      (acc, curr) => (acc[curr]),
+      object as Record<string, any>,
+    );
   };
 
   const addListener = (callback: ReactiveEventCallback) => {
@@ -262,7 +282,13 @@ export const reactive = <T extends object>(
   };
 
   const addParent = (p: any, path: string, reroot?: boolean) => {
-    roots.push([p, path, !!reroot]);
+    // idempotent: only one entry from same (parent, path) pair
+    const map = roots.get(p);
+    if (map) {
+      map.set(path, !!reroot);
+    } else {
+      roots.set(p, new Map([[path, !!reroot]]));
+    }
   };
 
   const proxy = new Proxy(object, {
@@ -301,7 +327,10 @@ export const reactive = <T extends object>(
         // avoid double-proxying
         if (!isReactive(value)) {
           proxiedValue = reactive(value, {
-            roots: [[proxy, "." + stringifyKey(property)]],
+            roots: new Map([[
+              proxy,
+              new Map([["." + stringifyKey(property), false]]),
+            ]]),
           });
         } else {
           proxiedValue = value;
@@ -334,6 +363,10 @@ export const reactive = <T extends object>(
         return proxiedMethod;
       }
 
+      if (descriptor?.get) {
+        derived.push("." + stringifyKey(property));
+      }
+
       return value;
     },
     set(target, property, newValue, receiver) {
@@ -358,12 +391,12 @@ export const reactive = <T extends object>(
       if (property in target) {
         // optional fancy equality check here
         if (value !== newValue) {
-          notify({ type: "update", path, value: newValue });
           Reflect.set(target, property, newValue, receiver);
+          notify({ type: "update", path, value: newValue });
         }
       } else {
-        notify({ type: "create", path, value: newValue });
         Reflect.set(target, property, newValue, receiver);
+        notify({ type: "create", path, value: newValue });
       }
 
       return true;
@@ -403,11 +436,15 @@ export const reactive = <T extends object>(
     });
   }
 
+  if (!(READ_PATH in proxy)) {
+    Object.defineProperty(proxy, READ_PATH, {
+      value: readPath,
+    });
+  }
+
   if (!(IS_REACTIVE in proxy)) {
     Object.defineProperty(proxy, IS_REACTIVE, {
       value: true,
-      configurable: false,
-      writable: false,
     });
   }
 
