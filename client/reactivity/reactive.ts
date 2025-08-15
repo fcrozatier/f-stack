@@ -229,9 +229,13 @@ const ADD_PARENT = Symbol.for("add parent");
 const IS_REACTIVE = Symbol.for("is reactive");
 const NOTIFY = Symbol.for("notify");
 
+type Root = [parent: any, path: string, reroot?: boolean];
+
+let root: Root | undefined;
+
 export const reactive = <T extends object>(
   object: T,
-  { roots }: { roots: [parent: any, path: string][] } = { roots: [] },
+  { roots }: { roots: Root[] } = { roots: [] },
 ) => {
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
@@ -245,8 +249,11 @@ export const reactive = <T extends object>(
       callback(e);
     }
 
-    for (const [parent, path] of roots) {
-      parent[NOTIFY]({ ...e, path: path + stringifyKey(e.path) });
+    for (const [parent, path, reroot] of roots) {
+      parent[NOTIFY]({
+        ...e,
+        path: reroot ? path : path + stringifyKey(e.path),
+      });
     }
   };
 
@@ -254,16 +261,28 @@ export const reactive = <T extends object>(
     callbacks.push(callback);
   };
 
-  const addParent = (p: any, path: string) => {
-    roots.push([p, path]);
+  const addParent = (p: any, path: string, reroot?: boolean) => {
+    roots.push([p, path, !!reroot]);
   };
 
   const proxy = new Proxy(object, {
     get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver);
+      if (root && root[0] !== proxy) {
+        addParent(...root);
+      }
+
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+
+      let value;
+      try {
+        var prevParent = root;
+        root = [proxy, "." + stringifyKey(property), !!descriptor?.get];
+        value = Reflect.get(target, property, receiver);
+      } finally {
+        root = prevParent;
+      }
 
       // get invariants
-      const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
       if (
         descriptor?.configurable === false &&
         descriptor?.writable === false

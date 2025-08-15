@@ -62,6 +62,62 @@ Deno.test("events collapse", () => {
   assertEquals(event, undefined);
 });
 
+Deno.test("derivation", () => {
+  const first = reactive({ a: true });
+  const second = reactive({
+    get b() {
+      return !first.a;
+    },
+  });
+
+  let event: ReactiveEvent | undefined;
+
+  addListener(second, (e) => (event = e));
+
+  assertEquals(first.a, true);
+  assertEquals(second.b, false);
+
+  first.a = false;
+
+  assertEquals(first.a, false);
+  assertEquals(second.b, true);
+
+  assertEquals(event, { type: "update", path: ".b", value: false });
+});
+
+Deno.test("nested derivations", () => {
+  const user = reactive({ first: "John", last: "Doe" });
+  const lower = reactive({
+    get first() {
+      return user.first.toLowerCase();
+    },
+    get last() {
+      return user.last.toLowerCase();
+    },
+  });
+  const fullname = reactive({
+    get value() {
+      return lower.first + " " + lower.last;
+    },
+  });
+
+  let event: ReactiveEvent | undefined;
+
+  addListener(fullname, (e) => (event = e));
+
+  assertEquals(lower.first, "john");
+  assertEquals(lower.last, "doe");
+  assertEquals(fullname.value, "john doe");
+
+  user.first = "JOHNNY";
+
+  assertEquals(lower.first, "johnny");
+  assertEquals(lower.last, "doe");
+  assertEquals(fullname.value, "johnny doe");
+
+  assertEquals(event, { type: "update", path: ".value", value: "JOHNNY" });
+});
+
 Deno.test("can adopt another reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
