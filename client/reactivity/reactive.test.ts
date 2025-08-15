@@ -118,6 +118,37 @@ Deno.test("nested derivations", () => {
   assertEquals(event, { type: "update", path: ".value", value: "JOHNNY" });
 });
 
+Deno.test("glitch free (diamond)", () => {
+  // a synchronous system is glitch free by construction, it's an inherent property...
+
+  const a = reactive({ v: 1 });
+  const b = reactive({
+    get v() {
+      return a.v + 1;
+    },
+  });
+  const c = reactive({
+    get v() {
+      return 2 * a.v;
+    },
+  });
+  let seenGlitch = false;
+  const d = reactive({
+    get v() {
+      if (b.v !== a.v + 1 || c.v !== 2 * a.v) {
+        seenGlitch = true;
+      }
+      return b.v + c.v;
+    },
+  });
+
+  assertEquals(d.v, 2 + 2);
+
+  a.v = 2;
+  assertEquals(d.v, 3 + 4);
+  assertEquals(seenGlitch, false);
+});
+
 Deno.test("can adopt another reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
