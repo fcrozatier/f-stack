@@ -1,21 +1,11 @@
 let currentlyComputing: Computed<any> | null = null;
 
-const addWatcher = Symbol();
-const removeWatcher = Symbol();
 const removeDependent = Symbol();
 
 export abstract class Signal<T> {
   abstract get value(): T;
   protected reactions: Set<Computed<any>> = new Set();
-  protected watchers: Set<Watcher> = new Set();
-
-  [addWatcher](watcher: Watcher) {
-    this.watchers.add(watcher);
-  }
-
-  [removeWatcher](watcher: Watcher) {
-    this.watchers.delete(watcher);
-  }
+  protected watchers = new Set();
 
   [removeDependent](computed: Computed<any>) {
     this.reactions.delete(computed);
@@ -50,10 +40,6 @@ export class State<T> extends Signal<T> {
 
       for (const reaction of this.reactions) {
         reaction[markStale]();
-      }
-
-      for (const watcher of this.watchers) {
-        watcher.notify(this);
       }
     }
   }
@@ -118,98 +104,9 @@ export class Computed<T> extends Signal<T> {
       for (const reaction of this.reactions) {
         reaction[markStale]();
       }
-
-      for (const watcher of this.watchers) {
-        watcher.notify(this);
-      }
     }
   }
 }
-
-export const isState = (value: unknown): value is State<any> => {
-  return value instanceof State;
-};
-
-export const isComputed = (value: unknown): value is Computed<any> => {
-  return value instanceof Computed;
-};
-
-export const isSignal = (value: unknown): value is Signal<any> => {
-  return isState(value) || isComputed(value);
-};
-
-export const state = <T>(initialValue: T) => {
-  return new State(initialValue);
-};
-
-export const computed = <T>(computation: () => T) => {
-  return new Computed(computation);
-};
-
-export class Watcher {
-  #callback: () => void;
-  #watchedSignals: Set<Signal<any>> = new Set();
-  #pendingSignals: Set<Signal<any>> = new Set();
-
-  constructor(callback: () => void) {
-    this.#callback = callback;
-  }
-
-  watch(signal: Signal<any>) {
-    this.#watchedSignals.add(signal);
-    signal[addWatcher](this);
-  }
-
-  unwatch(signal: Signal<any>) {
-    this.#watchedSignals.delete(signal);
-    this.#pendingSignals.delete(signal);
-    signal[removeWatcher](this);
-  }
-
-  getPending() {
-    const pending = Array.from(this.#pendingSignals);
-    this.#pendingSignals.clear();
-    return pending;
-  }
-
-  notify(signal: Signal<any>) {
-    this.#pendingSignals.add(signal);
-    this.#callback();
-  }
-}
-
-let pending = false;
-
-const watcher = new Watcher(() => {
-  if (!pending) {
-    pending = true;
-    queueMicrotask(() => {
-      pending = false;
-
-      for (const signal of watcher.getPending()) {
-        signal.value;
-        // console.log(signal);
-      }
-    });
-  }
-});
-
-type EffectCallback = () => (() => void) | void;
-
-export const effect = (cb: EffectCallback): () => void => {
-  let destructor: (() => void) | void;
-  const c = new Computed(() => {
-    destructor?.();
-    destructor = cb();
-  });
-  watcher.watch(c);
-  c.value;
-
-  return () => {
-    destructor?.();
-    watcher.unwatch(c);
-  };
-};
 
 export type ReactiveEventType = "create" | "update" | "delete" | "apply";
 export type ReactiveEvent =
@@ -224,8 +121,76 @@ export type ReactiveEvent =
 
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
+export class Scheduler {
+  #callback: () => void;
+  #pending: [Record<PropertyKey, any>, ReactiveEventCallback, ReactiveEvent][] =
+    [];
+
+  constructor(callback: () => void) {
+    this.#callback = callback;
+  }
+
+  getPending() {
+    const pending = this.#pending;
+    this.#pending = [];
+    return pending;
+  }
+
+  flushSync() {
+    this.#callback();
+  }
+
+  schedule(
+    proxy: Record<PropertyKey, any>,
+    callback: ReactiveEventCallback,
+    event: ReactiveEvent,
+  ) {
+    // topological enqueuing
+    for (let index = this.#pending.length - 1; index >= 0; index--) {
+      const [p] = this.#pending[index]!;
+
+      if (p[HAS_PARENT](proxy)) {
+        this.#pending.splice(index, 0, [proxy, callback, event]);
+        this.#callback();
+        return;
+      }
+    }
+
+    this.#pending.push([proxy, callback, event]);
+    this.#callback();
+  }
+}
+
+let pending = false;
+
+const scheduler = new Scheduler(() => {
+  if (!pending) {
+    pending = true;
+
+    queueMicrotask(() => {
+      pending = false;
+
+      flushSync();
+    });
+  }
+});
+
+export const flushSync = () => {
+  for (const [proxy, callback, e] of scheduler.getPending()) {
+    if (
+      (e.type === "create" || e.type === "update") &&
+      typeof e.path === "string"
+    ) {
+      // get the latest value and recache the derived values
+      e.value = proxy[READ_PATH](e.path);
+    }
+    callback(e);
+  }
+};
+
 const ADD_LISTENER = Symbol.for("add listener");
 const ADD_PARENT = Symbol.for("add parent");
+const HAS_PARENT = Symbol.for("has parent");
 const IS_REACTIVE = Symbol.for("is reactive");
 const NOTIFY = Symbol.for("notify");
 const READ_PATH = Symbol.for("read path");
@@ -238,28 +203,27 @@ export const reactive = <T extends object>(
   object: T,
   { roots }: {
     roots: Map<Record<PropertyKey, any>, Map<string, boolean>>;
-  } = {
-    roots: new Map(),
-  },
+  } = { roots: new Map() },
 ) => {
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
-  const derived: Set<string> = new Set();
+  const derived: Map<string, any> = new Map();
 
   const stringifyKey = (key: string | symbol) => {
     return typeof key === "symbol" ? key.description ?? String(key) : key;
   };
 
   const notify = (e: ReactiveEvent) => {
-    for (const callback of callbacks) {
-      if (
-        (e.type === "create" || e.type === "update") &&
-        typeof e.path === "string" && derived.has(e.path)
-      ) {
-        e.value = readPath(e.path);
-      }
+    if (
+      (e.type === "create" || e.type === "update") &&
+      typeof e.path === "string" && derived.has(e.path)
+    ) {
+      // invalidate the cache
+      derived.delete(e.path);
+    }
 
-      callback(e);
+    for (const callback of callbacks) {
+      scheduler.schedule(proxy, callback, e);
     }
 
     for (const [parent, map] of roots.entries()) {
@@ -273,21 +237,28 @@ export const reactive = <T extends object>(
   const readPath = (path: string) => {
     return path.split(".").slice(1).reduce(
       (acc, curr) => (acc[curr]),
-      object as Record<string, any>,
+      proxy as Record<string, any>,
     );
+  };
+
+  const hasParent = (p: Record<PropertyKey, any>): boolean => {
+    for (const [root] of roots.entries()) {
+      if (root === p || root[HAS_PARENT](p)) return true;
+    }
+    return false;
   };
 
   const addListener = (callback: ReactiveEventCallback) => {
     callbacks.push(callback);
   };
 
-  const addParent = (p: any, path: string, reroot?: boolean) => {
-    // idempotent: only one entry from same (parent, path) pair
-    const map = roots.get(p);
+  const addParent = (parent: any, path: string, reroot?: boolean) => {
+    // idempotent: only one entry for a given (parent, path) pair
+    const map = roots.get(parent);
     if (map) {
       map.set(path, !!reroot);
     } else {
-      roots.set(p, new Map([[path, !!reroot]]));
+      roots.set(parent, new Map([[path, !!reroot]]));
     }
   };
 
@@ -300,12 +271,19 @@ export const reactive = <T extends object>(
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
 
       let value;
-      try {
-        var prevParent = root;
-        root = [proxy, "." + stringifyKey(property), !!descriptor?.get];
-        value = Reflect.get(target, property, receiver);
-      } finally {
-        root = prevParent;
+      const path = "." + stringifyKey(property);
+
+      // if its a derived value, check if it's cached first
+      if (descriptor?.get && derived.has(path)) {
+        return derived.get(path);
+      } else {
+        try {
+          var prevParent = root;
+          root = [proxy, path, !!descriptor?.get];
+          value = Reflect.get(target, property, receiver);
+        } finally {
+          root = prevParent;
+        }
       }
 
       // get invariants
@@ -317,6 +295,10 @@ export const reactive = <T extends object>(
         descriptor?.configurable === false &&
         descriptor?.get === undefined
       ) {
+        // exception: the length property of Arrays
+        if (Array.isArray(target) && property === "length") {
+          return value;
+        }
         return undefined;
       }
 
@@ -327,15 +309,12 @@ export const reactive = <T extends object>(
         // avoid double-proxying
         if (!isReactive(value)) {
           proxiedValue = reactive(value, {
-            roots: new Map([[
-              proxy,
-              new Map([["." + stringifyKey(property), false]]),
-            ]]),
+            roots: new Map([[proxy, new Map([[path, false]])]]),
           });
         } else {
           proxiedValue = value;
           // adopt
-          proxiedValue[ADD_PARENT](proxy, "." + stringifyKey(property));
+          proxiedValue[ADD_PARENT](proxy, path);
         }
 
         graph.set(value, proxiedValue);
@@ -349,11 +328,7 @@ export const reactive = <T extends object>(
 
         proxiedMethod = new Proxy(() => {}, {
           apply(target, thisArg, argArray) {
-            notify({
-              type: "apply",
-              path: "." + stringifyKey(property),
-              args: argArray,
-            });
+            notify({ type: "apply", path, args: argArray });
             return Reflect.apply(target, thisArg, argArray);
           },
         });
@@ -364,7 +339,7 @@ export const reactive = <T extends object>(
       }
 
       if (descriptor?.get) {
-        derived.add("." + stringifyKey(property));
+        derived.set(path, value);
       }
 
       return value;
@@ -434,6 +409,12 @@ export const reactive = <T extends object>(
     });
   }
 
+  if (!(HAS_PARENT in proxy)) {
+    Object.defineProperty(proxy, HAS_PARENT, {
+      value: hasParent,
+    });
+  }
+
   if (!(NOTIFY in proxy)) {
     Object.defineProperty(proxy, NOTIFY, {
       value: notify,
@@ -455,7 +436,9 @@ export const reactive = <T extends object>(
   return proxy;
 };
 
-export const isReactive = (value: unknown): boolean => {
+export const isReactive = (
+  value: unknown,
+): value is Record<PropertyKey, any> => {
   return value !== null && typeof value === "object" && IS_REACTIVE in value;
 };
 

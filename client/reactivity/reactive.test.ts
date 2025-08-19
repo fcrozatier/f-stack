@@ -1,5 +1,10 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { addListener, reactive, type ReactiveEvent } from "./reactive.ts";
+import {
+  addListener,
+  flushSync,
+  reactive,
+  type ReactiveEvent,
+} from "./reactive.ts";
 
 Deno.test("get/set values", () => {
   const r = reactive({ a: 1, b: { c: true } });
@@ -31,14 +36,17 @@ Deno.test("value listeners", () => {
 
   // create
   r.new = true;
+  flushSync();
   assertEquals(event, { type: "create", path: ".new", value: true });
 
   // update
   r.a = 2;
+  flushSync();
   assertEquals(event, { type: "update", path: ".a", value: 2 });
 
   // delete
   delete r.a;
+  flushSync();
   assertEquals(event, { type: "delete", path: ".a" });
 });
 
@@ -50,15 +58,18 @@ Deno.test("events collapse", () => {
 
   // no "update" to the initial state event
   r.a = 1;
+  flushSync();
   assertEquals(event, undefined);
 
   r.a = 2;
+  flushSync();
   assertEquals(event, { type: "update", path: ".a", value: 2 });
 
   event = undefined;
 
   // no "update" to the same state event
   r.a = 2;
+  flushSync();
   assertEquals(event, undefined);
 });
 
@@ -78,6 +89,7 @@ Deno.test("derivation", () => {
   assertEquals(second.b, false);
 
   first.a = false;
+  flushSync();
 
   assertEquals(first.a, false);
   assertEquals(second.b, true);
@@ -111,6 +123,7 @@ Deno.test("nested derivations", () => {
   assertEquals(fullname.value, "john doe");
 
   user.first = "JOHNNY";
+  flushSync();
 
   assertEquals(lower.first, "johnny");
   assertEquals(lower.last, "doe");
@@ -119,9 +132,57 @@ Deno.test("nested derivations", () => {
   assertEquals(event, { type: "update", path: ".value", value: "johnny doe" });
 });
 
-Deno.test("glitch free (diamond)", () => {
-  // a synchronous system is glitch free by construction
+Deno.test("derived values are cached", () => {
+  let recomputeFirst = 0;
+  let recomputeFull = 0;
 
+  const user = reactive({ first: "John", last: "Doe" });
+  const lower = reactive({
+    get first() {
+      recomputeFirst++;
+      return user.first.toLowerCase();
+    },
+    get last() {
+      return user.last.toLowerCase();
+    },
+  });
+  const fullname = reactive({
+    get value() {
+      recomputeFull++;
+      return lower.first + " " + lower.last;
+    },
+  });
+
+  assertEquals(recomputeFirst, 0);
+  assertEquals(recomputeFull, 0);
+
+  assertEquals(lower.first, "john");
+
+  assertEquals(recomputeFirst, 1);
+  assertEquals(recomputeFull, 0);
+
+  assertEquals(fullname.value, "john doe");
+
+  assertEquals(recomputeFirst, 1);
+  assertEquals(recomputeFull, 1);
+
+  user.first = "JOHNNY";
+  flushSync();
+
+  assertEquals(recomputeFirst, 1);
+  assertEquals(recomputeFull, 1);
+
+  assertEquals(lower.first, "johnny");
+
+  assertEquals(recomputeFirst, 2);
+  assertEquals(recomputeFull, 1);
+
+  assertEquals(fullname.value, "johnny doe");
+  assertEquals(recomputeFirst, 2);
+  assertEquals(recomputeFull, 2);
+});
+
+Deno.test("glitch free (diamond)", () => {
   const a = reactive({ v: 1 });
   const b = reactive({
     get v() {
@@ -134,6 +195,7 @@ Deno.test("glitch free (diamond)", () => {
     },
   });
 
+  // a naive depth-first synchronous event updates strategy would cause the chain of recomputations a -> b -> d -> (then) c -> (then again) d and we catch the glitch in the first update of d
   let seenGlitch = false;
   const d = reactive({
     get v() {
@@ -157,9 +219,12 @@ Deno.test("glitch free (diamond)", () => {
   addListener(d, (e) => (dEvent = e));
 
   assertEquals(d.v, 2 + 2);
+  assertEquals(seenGlitch, false);
 
   a.v = 2;
+  assertEquals(seenGlitch, false);
 
+  flushSync();
   // The event propagates the latest computed value
   assertEquals(dEvent, { type: "update", path: ".v", value: 7 });
   assertEquals(cEvent, { type: "update", path: ".v", value: 4 });
@@ -182,6 +247,7 @@ Deno.test("can adopt another reactive", () => {
 
   // update bool
   bool.value = true;
+  flushSync();
   assertEquals(r.a.value, true);
   assertEquals(event, { type: "update", path: ".a.value", value: true });
 });
@@ -207,6 +273,7 @@ Deno.test("multi-parent adoption", () => {
 
   // update bool
   bool.value = true;
+  flushSync();
   assertEquals(r.a.value, true);
   assertEquals(r1.a1.value, true);
   assertEquals(r2.a2.value, true);
@@ -236,6 +303,8 @@ Deno.test("deep listeners", () => {
   // root, c and d see the create event but not e
   // @ts-ignore
   r.a.b.c.d.new = true;
+  flushSync();
+
   assertEquals(event, { type: "create", path: ".a.b.c.d.new", value: true });
   assertEquals(refCEvent, {
     type: "create",
@@ -252,6 +321,8 @@ Deno.test("deep listeners", () => {
   // update
   // @ts-ignore
   r.a.b.c.d.new = false;
+  flushSync();
+
   assertEquals(event, { type: "update", path: ".a.b.c.d.new", value: false });
   assertEquals(refCEvent, {
     type: "update",
@@ -268,6 +339,8 @@ Deno.test("deep listeners", () => {
   // delete
   // @ts-ignore
   delete r.a.b.c.d.new;
+  flushSync();
+
   assertEquals(event, { type: "delete", path: ".a.b.c.d.new" });
   assertEquals(refCEvent, {
     type: "delete",
@@ -320,16 +393,19 @@ Deno.test("object functoriality", () => {
 
   // @ts-ignore
   r.a = 1;
+  flushSync();
   assertEquals(mirror, { a: 1 });
 
   // update
   // @ts-ignore
   r.a = 2;
+  flushSync();
   assertEquals(mirror, { a: 2 });
 
   // delete
   // @ts-ignore
   delete r.a;
+  flushSync();
   assertEquals(mirror, {});
 });
 
@@ -373,16 +449,19 @@ Deno.test("deep object functoriality", () => {
 
   // @ts-ignore
   ref.a = 1;
+  flushSync();
   assertEquals(mirror, { a: 1 });
 
   // update
   // @ts-ignore
   ref.a = 2;
+  flushSync();
   assertEquals(mirror, { a: 2 });
 
   // delete
   // @ts-ignore
   delete ref.a;
+  flushSync();
   assertEquals(mirror, {});
 });
 
@@ -421,25 +500,31 @@ Deno.test("array functoriality", () => {
 
   // @ts-ignore
   r[0] = 1;
+  flushSync();
   assertEquals(mirror, [1]);
 
   // update
   // @ts-ignore
   r[0] = 2;
+  flushSync();
   assertEquals(mirror, [2]);
 
   // delete
   // @ts-ignore
   r.length = 0;
+  flushSync();
   assertEquals(mirror, []);
 
   r.push(1, 2, 3);
+  flushSync();
   assertEquals(mirror, [1, 2, 3]);
 
   r.pop();
+  flushSync();
   assertEquals(mirror, [1, 2]);
 
   r.unshift(4);
+  flushSync();
   assertEquals(mirror, [4, 1, 2]);
 });
 
@@ -480,17 +565,21 @@ Deno.test("Map functoriality", () => {
 
   r.set("a", 1);
   r.set("b", true);
+  flushSync();
   assertEquals(mirror, { a: 1, b: true });
 
   // update
   r.set("a", 2);
+  flushSync();
   assertEquals(mirror, { a: 2, b: true });
 
   // delete
   r.delete("a");
+  flushSync();
   assertEquals(mirror, { b: true });
 
   // clear
   r.clear();
+  flushSync();
   assertEquals(mirror, {});
 });
