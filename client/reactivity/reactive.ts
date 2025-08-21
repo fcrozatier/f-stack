@@ -238,6 +238,13 @@ export const reactive = <T extends object>(
             isDerived: !!descriptor?.get,
           };
           var value = Reflect.get(target, property, receiver);
+        } catch (e) {
+          // Some objects have exotic properties like Map.size
+          if (e instanceof TypeError) {
+            value = target[property];
+          } else {
+            throw e;
+          }
         } finally {
           root = prevParent;
         }

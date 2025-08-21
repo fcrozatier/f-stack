@@ -193,6 +193,20 @@ Deno.test("glitch free (diamond)", () => {
   assertEquals(seenGlitch, false);
 });
 
+Deno.test("preserve correct 'this' binding in getters/setters", () => {
+  const obj = reactive({
+    get value() {
+      return this._hidden;
+    },
+    _hidden: 123,
+  });
+
+  const derived = Object.create(obj);
+  derived._hidden = 456;
+
+  assertEquals(derived.value, 456); // not 123
+});
+
 // Derived values
 
 Deno.test("derivation", () => {
