@@ -1,7 +1,9 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import {
   addListener,
+  equals,
   flushSync,
+  isReactive,
   reactive,
   type ReactiveEvent,
 } from "./reactive.ts";
@@ -35,7 +37,8 @@ Deno.test("functions", () => {
   const r = reactive({ a: () => logs.push(Math.random()) });
   const f = reactive(() => logs.push(Math.random()));
 
-  assertEquals(logs.length, 0);
+  assertEquals(isReactive(r.a), true);
+  assertEquals(isReactive(f), true);
 
   r.a();
   assertEquals(logs.length, 1);
@@ -241,6 +244,35 @@ Deno.test("preserve correct 'this' binding in getters/setters", () => {
   derived._hidden = 456;
 
   assertEquals(derived.value, 456); // not 123
+});
+
+Deno.test("identity can be tested", () => {
+  const obj = {};
+  const obj2 = { internal: obj };
+
+  const r = reactive(obj);
+  const r2 = reactive(obj2);
+
+  assert(r !== obj);
+  assert(equals(r, obj));
+
+  assert(r2 !== obj2);
+  assert(equals(r2, obj2));
+
+  assert(r2.internal !== obj2.internal);
+  assert(equals(r2.internal, obj2.internal));
+
+  const f = () => {};
+  function g() {}
+
+  const rf = reactive(f);
+  const rg = reactive({ g: g });
+
+  assert(rf !== f);
+  assert(equals(rf, f));
+
+  assert(rg.g !== g);
+  assert(equals(rg.g, g));
 });
 
 // Derived values

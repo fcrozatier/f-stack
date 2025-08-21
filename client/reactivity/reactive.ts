@@ -452,10 +452,29 @@ export const reactive = <T extends object>(
   if (!(ns.IS_REACTIVE in proxy)) {
     Object.defineProperty(proxy, ns.IS_REACTIVE, {
       value: true,
+      configurable: true,
+    });
+  }
+
+  if (!(ns.TARGET in proxy)) {
+    Object.defineProperty(proxy, ns.TARGET, {
+      value: object,
+      configurable: true,
     });
   }
 
   return proxy;
+};
+
+// we grab the proxy's virtual properties by [[GetOwnProperty]] semantics instead of [[Get]] to avoid having to add logic to the main get trap that would have to be executed for every property access of the target
+const get = (proxy: Record<string, any>, symbol: symbol) => {
+  return Object.getOwnPropertyDescriptor(proxy, symbol)?.value;
+};
+
+export const equals = (a: unknown, b: unknown): boolean => {
+  const first = isReactive(a) ? get(a, ns.TARGET) : a;
+  const second = isReactive(b) ? get(b, ns.TARGET) : b;
+  return first === second;
 };
 
 export const isReactive = (
