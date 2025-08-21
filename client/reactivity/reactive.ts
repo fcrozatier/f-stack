@@ -125,6 +125,8 @@ export const reactive = <T extends object>(
     >;
   } = { roots: new Map() },
 ) => {
+  if (isReactive(object)) return object;
+
   const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
   const derived: Map<string, any> = new Map();
