@@ -67,6 +67,42 @@ Deno.test("value listeners", () => {
   assertEquals(event, { type: "delete", path: ".a", oldValue: 2 });
 });
 
+Deno.test("function listeners", () => {
+  const logs = [];
+
+  const f1 = () => logs.push(1);
+  const f2 = () => logs.push(2);
+
+  const r = reactive({ a: f1 });
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(logs.length, 0);
+
+  r.a();
+  flushSync();
+  assertEquals(logs.length, 1);
+  assertEquals(events.length, 1);
+  assertEquals(events[0], { type: "apply", path: ".a", args: [] });
+
+  r.a = f2;
+  flushSync();
+  assertEquals(events.length, 2);
+  assertEquals(events[1]!, {
+    type: "update",
+    path: ".a",
+    newValue: f2,
+    oldValue: f1,
+  });
+
+  r.a();
+  flushSync();
+  assertEquals(logs.length, 2);
+  assertEquals(events.length, 3);
+  assertEquals(events[2], { type: "apply", path: ".a", args: [] });
+});
+
 // Properties
 
 Deno.test("events collapse", () => {

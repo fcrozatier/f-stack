@@ -170,7 +170,7 @@ export const reactive = <T extends object>(
   const readPath = (path: string) => {
     return path.split(".").slice(1).reduce(
       (acc, curr) => (acc[curr]),
-      proxy as Record<string, any>,
+      object as Record<string, any>,
     );
   };
 
@@ -220,6 +220,10 @@ export const reactive = <T extends object>(
   };
 
   const proxy = new Proxy(object, {
+    apply(target, thisArg, argArray) {
+      notify({ type: "apply", path: "", args: argArray });
+      return Reflect.apply(target, thisArg, argArray);
+    },
     get(target, property, receiver) {
       const path = "." + stringifyKey(property);
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
@@ -301,11 +305,11 @@ export const reactive = <T extends object>(
 
         // @ts-ignore value is a function
         const bound = value.bind(object);
-        proxiedMethod = new Proxy(bound, {
-          apply(target, thisArg, argArray) {
-            notify({ type: "apply", path, args: argArray });
-            return Reflect.apply(target, thisArg, argArray);
-          },
+        proxiedMethod = reactive(bound, {
+          roots: new Map([[
+            proxy,
+            new Map([[path, { rootPath: path, isDerived: false }]]),
+          ]]),
         });
 
         graph.set(value, proxiedMethod);
