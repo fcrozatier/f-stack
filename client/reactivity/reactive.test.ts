@@ -30,6 +30,20 @@ Deno.test("get/set values", () => {
   assertEquals(b2.c, false);
 });
 
+Deno.test("functions", () => {
+  const logs = [];
+  const r = reactive({ a: () => logs.push(Math.random()) });
+  const f = reactive(() => logs.push(Math.random()));
+
+  assertEquals(logs.length, 0);
+
+  r.a();
+  assertEquals(logs.length, 1);
+
+  f();
+  assertEquals(logs.length, 2);
+});
+
 Deno.test("value listeners", () => {
   const r: Record<string, unknown> = reactive({ a: 1 });
   let event: ReactiveEvent | undefined;
@@ -570,6 +584,8 @@ Deno.test("deep object functoriality", () => {
   assertEquals(mirror, {});
 });
 
+// Data structures
+
 Deno.test("array functoriality", () => {
   const r: number[] = reactive([]);
   const mirror: number[] = [];
@@ -606,30 +622,39 @@ Deno.test("array functoriality", () => {
   // @ts-ignore
   r[0] = 1;
   flushSync();
+  assertEquals(r, [1]);
   assertEquals(mirror, [1]);
 
   // update
   // @ts-ignore
   r[0] = 2;
   flushSync();
+  assertEquals(r, [2]);
   assertEquals(mirror, [2]);
 
   // delete
   // @ts-ignore
   r.length = 0;
   flushSync();
+  assertEquals(r, []);
   assertEquals(mirror, []);
 
-  r.push(1, 2, 3);
+  let length = r.push(1, 2, 3);
   flushSync();
+  assertEquals(length, 3);
+  assertEquals(r, [1, 2, 3]);
   assertEquals(mirror, [1, 2, 3]);
 
-  r.pop();
+  const last = r.pop();
   flushSync();
+  assertEquals(last, 3);
+  assertEquals(r, [1, 2]);
   assertEquals(mirror, [1, 2]);
 
-  r.unshift(4);
+  length = r.unshift(4);
   flushSync();
+  assertEquals(length, 3);
+  assertEquals(r, [4, 1, 2]);
   assertEquals(mirror, [4, 1, 2]);
 });
 
@@ -668,23 +693,30 @@ Deno.test("Map functoriality", () => {
 
   // we can transport operations
 
+  assertEquals(r.size, 0);
+
   r.set("a", 1);
   r.set("b", true);
   flushSync();
+  assertEquals(r.get("a"), 1);
+  assertEquals(r.get("b"), true);
   assertEquals(mirror, { a: 1, b: true });
 
   // update
   r.set("a", 2);
   flushSync();
+  assertEquals(r.get("a"), 2);
   assertEquals(mirror, { a: 2, b: true });
 
   // delete
-  r.delete("a");
+  const deleted = r.delete("a");
   flushSync();
+  assertEquals(deleted, true);
   assertEquals(mirror, { b: true });
 
   // clear
   r.clear();
   flushSync();
+  assertEquals(r.size, 0);
   assertEquals(mirror, {});
 });

@@ -290,7 +290,9 @@ export const reactive = <T extends object>(
         let proxiedMethod = graph.get(value);
         if (proxiedMethod) return proxiedMethod;
 
-        proxiedMethod = new Proxy(() => {}, {
+        // @ts-ignore value is a function
+        const bound = value.bind(object);
+        proxiedMethod = new Proxy(bound, {
           apply(target, thisArg, argArray) {
             notify({ type: "apply", path, args: argArray });
             return Reflect.apply(target, thisArg, argArray);
