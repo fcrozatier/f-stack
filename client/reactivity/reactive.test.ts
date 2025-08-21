@@ -6,6 +6,8 @@ import {
   type ReactiveEvent,
 } from "./reactive.ts";
 
+// Basics
+
 Deno.test("get/set values", () => {
   const r = reactive({ a: 1, b: { c: true } });
   // get
@@ -37,41 +39,147 @@ Deno.test("value listeners", () => {
   // create
   r.new = true;
   flushSync();
-  assertEquals(event, { type: "create", path: ".new", value: true });
+  assertEquals(event, { type: "create", path: ".new", newValue: true });
 
   // update
   r.a = 2;
   flushSync();
-  assertEquals(event, { type: "update", path: ".a", value: 2 });
+  assertEquals(event, { type: "update", path: ".a", newValue: 2, oldValue: 1 });
 
   // delete
   delete r.a;
   flushSync();
-  assertEquals(event, { type: "delete", path: ".a" });
+  // Some APIs need to know the deleted value e.g. to communicate with removeEventListener
+  assertEquals(event, { type: "delete", path: ".a", oldValue: 2 });
 });
+
+// Properties
 
 Deno.test("events collapse", () => {
   const r: Record<string, unknown> = reactive({ a: 1 });
-  let event: ReactiveEvent | undefined;
 
-  addListener(r, (e) => (event = e));
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
 
-  // no "update" to the initial state event
+  // no update to the initial state
   r.a = 1;
   flushSync();
-  assertEquals(event, undefined);
+  assertEquals(events, []);
 
+  // only one event is fired per batch
   r.a = 2;
+  r.a = 3;
+  r.a = 4;
   flushSync();
-  assertEquals(event, { type: "update", path: ".a", value: 2 });
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".a",
+    newValue: 4,
+    oldValue: 1,
+  });
 
-  event = undefined;
+  events.length = 0;
 
-  // no "update" to the same state event
-  r.a = 2;
+  // no update to the same state
+  r.a = 4;
   flushSync();
-  assertEquals(event, undefined);
+  assertEquals(events, []);
 });
+
+Deno.test("optimization: only dependencies trigger events", () => {
+  const r: Record<string, any> = reactive({ a: 1, b: 2 });
+  const s = reactive({
+    get v() {
+      return r.a + 1;
+    },
+  });
+
+  const events: ReactiveEvent[] = [];
+  addListener(s, (e) => events.push(e));
+
+  // no event is triggered on s when updating something it doesn't depend on
+  r.b = 3;
+  r.c = true;
+  delete r.b;
+
+  assertEquals(events.length, 0);
+});
+
+Deno.test("glitch free (diamond)", () => {
+  const a = reactive({ a: 1 });
+  const b = reactive({
+    get b() {
+      return a.a + 1;
+    },
+  });
+  const c = reactive({
+    get c() {
+      return 2 * a.a;
+    },
+  });
+
+  // a naive depth-first synchronous event updates strategy would cause the chain of recomputations a -> b -> d -> (then) c -> (then again) d and we catch the glitch in the first update of d
+  let seenGlitch = false;
+  const d = reactive({
+    get d() {
+      if (b.b !== a.a + 1 || c.c !== 2 * a.a) {
+        seenGlitch = true;
+      }
+      return b.b + c.c;
+    },
+  });
+
+  let aEvent: ReactiveEvent | undefined;
+  addListener(a, (e) => (aEvent = e));
+
+  let bEvent: ReactiveEvent | undefined;
+  addListener(b, (e) => (bEvent = e));
+
+  let cEvent: ReactiveEvent | undefined;
+  addListener(c, (e) => (cEvent = e));
+
+  let dEvent: ReactiveEvent | undefined;
+  addListener(d, (e) => (dEvent = e));
+
+  assertEquals(d.d, 2 + 2);
+  assertEquals(seenGlitch, false);
+
+  a.a = 2;
+  assertEquals(seenGlitch, false);
+
+  flushSync();
+  // The event propagates the latest computed value
+  assertEquals(dEvent, {
+    type: "update",
+    path: ".d",
+    newValue: 7,
+    oldValue: 4,
+  });
+  assertEquals(cEvent, {
+    type: "update",
+    path: ".c",
+    newValue: 4,
+    oldValue: 2,
+  });
+  assertEquals(bEvent, {
+    type: "update",
+    path: ".b",
+    newValue: 3,
+    oldValue: 2,
+  });
+  assertEquals(aEvent, {
+    type: "update",
+    path: ".a",
+    newValue: 2,
+    oldValue: 1,
+  });
+
+  assertEquals(d.d, 7);
+  assertEquals(seenGlitch, false);
+});
+
+// Derived values
 
 Deno.test("derivation", () => {
   const first = reactive({ a: true });
@@ -95,7 +203,12 @@ Deno.test("derivation", () => {
   assertEquals(second.b, true);
 
   // The event represent the latest value not a's value
-  assertEquals(event, { type: "update", path: ".b", value: true });
+  assertEquals(event, {
+    type: "update",
+    path: ".b",
+    newValue: true,
+    oldValue: false,
+  });
 });
 
 Deno.test("nested derivations", () => {
@@ -114,9 +227,8 @@ Deno.test("nested derivations", () => {
     },
   });
 
-  let event: ReactiveEvent | undefined;
-
-  addListener(fullname, (e) => (event = e));
+  const events: ReactiveEvent[] = [];
+  addListener(fullname, (e) => (events.push(e)));
 
   assertEquals(lower.first, "john");
   assertEquals(lower.last, "doe");
@@ -129,7 +241,13 @@ Deno.test("nested derivations", () => {
   assertEquals(lower.last, "doe");
   assertEquals(fullname.value, "johnny doe");
 
-  assertEquals(event, { type: "update", path: ".value", value: "johnny doe" });
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".value",
+    newValue: "johnny doe",
+    oldValue: "john doe",
+  });
 });
 
 Deno.test("derived values are cached", () => {
@@ -182,65 +300,14 @@ Deno.test("derived values are cached", () => {
   assertEquals(recomputeFull, 2);
 });
 
-Deno.test("glitch free (diamond)", () => {
-  const a = reactive({ v: 1 });
-  const b = reactive({
-    get v() {
-      return a.v + 1;
-    },
-  });
-  const c = reactive({
-    get v() {
-      return 2 * a.v;
-    },
-  });
-
-  // a naive depth-first synchronous event updates strategy would cause the chain of recomputations a -> b -> d -> (then) c -> (then again) d and we catch the glitch in the first update of d
-  let seenGlitch = false;
-  const d = reactive({
-    get v() {
-      if (b.v !== a.v + 1 || c.v !== 2 * a.v) {
-        seenGlitch = true;
-      }
-      return b.v + c.v;
-    },
-  });
-
-  let aEvent: ReactiveEvent | undefined;
-  addListener(a, (e) => (aEvent = e));
-
-  let bEvent: ReactiveEvent | undefined;
-  addListener(b, (e) => (bEvent = e));
-
-  let cEvent: ReactiveEvent | undefined;
-  addListener(c, (e) => (cEvent = e));
-
-  let dEvent: ReactiveEvent | undefined;
-  addListener(d, (e) => (dEvent = e));
-
-  assertEquals(d.v, 2 + 2);
-  assertEquals(seenGlitch, false);
-
-  a.v = 2;
-  assertEquals(seenGlitch, false);
-
-  flushSync();
-  // The event propagates the latest computed value
-  assertEquals(dEvent, { type: "update", path: ".v", value: 7 });
-  assertEquals(cEvent, { type: "update", path: ".v", value: 4 });
-  assertEquals(bEvent, { type: "update", path: ".v", value: 3 });
-  assertEquals(aEvent, { type: "update", path: ".v", value: 2 });
-
-  assertEquals(d.v, 7);
-  assertEquals(seenGlitch, false);
-});
+// Adoption
 
 Deno.test("can adopt another reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
 
-  let event: ReactiveEvent | undefined;
-  addListener(r, (e) => (event = e));
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
 
   // the dependency tracking between r and bool begins when the path is taken
   assertEquals(r.a.value, false);
@@ -249,7 +316,13 @@ Deno.test("can adopt another reactive", () => {
   bool.value = true;
   flushSync();
   assertEquals(r.a.value, true);
-  assertEquals(event, { type: "update", path: ".a.value", value: true });
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".a.value",
+    newValue: true,
+    oldValue: false,
+  });
 });
 
 Deno.test("multi-parent adoption", () => {
@@ -278,10 +351,27 @@ Deno.test("multi-parent adoption", () => {
   assertEquals(r1.a1.value, true);
   assertEquals(r2.a2.value, true);
 
-  assertEquals(event, { type: "update", path: ".a.value", value: true });
-  assertEquals(event1, { type: "update", path: ".a1.value", value: true });
-  assertEquals(event2, { type: "update", path: ".a2.value", value: true });
+  assertEquals(event, {
+    type: "update",
+    path: ".a.value",
+    newValue: true,
+    oldValue: false,
+  });
+  assertEquals(event1, {
+    type: "update",
+    path: ".a1.value",
+    newValue: true,
+    oldValue: false,
+  });
+  assertEquals(event2, {
+    type: "update",
+    path: ".a2.value",
+    newValue: true,
+    oldValue: false,
+  });
 });
+
+// Listeners
 
 Deno.test("deep listeners", () => {
   const r = reactive({ a: { b: { c: { d: { e: { f: true } } } } } });
@@ -305,16 +395,16 @@ Deno.test("deep listeners", () => {
   r.a.b.c.d.new = true;
   flushSync();
 
-  assertEquals(event, { type: "create", path: ".a.b.c.d.new", value: true });
+  assertEquals(event, { type: "create", path: ".a.b.c.d.new", newValue: true });
   assertEquals(refCEvent, {
     type: "create",
     path: ".d.new",
-    value: true,
+    newValue: true,
   });
   assertEquals(refDEvent, {
     type: "create",
     path: ".new",
-    value: true,
+    newValue: true,
   });
   assertEquals(refEEvent, undefined);
 
@@ -323,16 +413,23 @@ Deno.test("deep listeners", () => {
   r.a.b.c.d.new = false;
   flushSync();
 
-  assertEquals(event, { type: "update", path: ".a.b.c.d.new", value: false });
+  assertEquals(event, {
+    type: "update",
+    path: ".a.b.c.d.new",
+    newValue: false,
+    oldValue: true,
+  });
   assertEquals(refCEvent, {
     type: "update",
     path: ".d.new",
-    value: false,
+    newValue: false,
+    oldValue: true,
   });
   assertEquals(refDEvent, {
     type: "update",
     path: ".new",
-    value: false,
+    newValue: false,
+    oldValue: true,
   });
   assertEquals(refEEvent, undefined);
 
@@ -341,17 +438,25 @@ Deno.test("deep listeners", () => {
   delete r.a.b.c.d.new;
   flushSync();
 
-  assertEquals(event, { type: "delete", path: ".a.b.c.d.new" });
+  assertEquals(event, {
+    type: "delete",
+    path: ".a.b.c.d.new",
+    oldValue: false,
+  });
   assertEquals(refCEvent, {
     type: "delete",
     path: ".d.new",
+    oldValue: false,
   });
   assertEquals(refDEvent, {
     type: "delete",
     path: ".new",
+    oldValue: false,
   });
   assertEquals(refEEvent, undefined);
 });
+
+// Functoriality
 
 Deno.test("object functoriality", () => {
   const r = reactive({});
@@ -370,7 +475,7 @@ Deno.test("object functoriality", () => {
     switch (e.type) {
       case "create": {
         Object.defineProperty(mirror, path, {
-          value: e.value,
+          value: e.newValue,
           enumerable: true,
           writable: true,
           configurable: true,
@@ -380,7 +485,7 @@ Deno.test("object functoriality", () => {
       }
       case "update":
         // @ts-ignore
-        mirror[path] = e.value;
+        mirror[path] = e.newValue;
         break;
       case "delete":
         // @ts-ignore
@@ -426,7 +531,7 @@ Deno.test("deep object functoriality", () => {
     switch (e.type) {
       case "create": {
         Object.defineProperty(mirror, path, {
-          value: e.value,
+          value: e.newValue,
           enumerable: true,
           writable: true,
           configurable: true,
@@ -436,7 +541,7 @@ Deno.test("deep object functoriality", () => {
       }
       case "update":
         // @ts-ignore
-        mirror[path] = e.value;
+        mirror[path] = e.newValue;
         break;
       case "delete":
         // @ts-ignore
@@ -483,7 +588,7 @@ Deno.test("array functoriality", () => {
       case "create":
       case "update":
         // @ts-ignore
-        mirror[path] = e.value;
+        mirror[path] = e.newValue;
         break;
       case "delete":
         // @ts-ignore

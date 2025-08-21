@@ -1,130 +1,23 @@
-let currentlyComputing: Computed<any> | null = null;
-
-const removeDependent = Symbol();
-
-export abstract class Signal<T> {
-  abstract get value(): T;
-  protected reactions: Set<Computed<any>> = new Set();
-  protected watchers = new Set();
-
-  [removeDependent](computed: Computed<any>) {
-    this.reactions.delete(computed);
-  }
-}
-
-export class State<T> extends Signal<T> {
-  #value: T;
-
-  constructor(initial: T) {
-    super();
-    this.#value = initial;
-
-    if (currentlyComputing) {
-      this.reactions.add(currentlyComputing);
-      currentlyComputing[addSource](this);
-    }
-  }
-
-  get value() {
-    if (currentlyComputing) {
-      this.reactions.add(currentlyComputing);
-      currentlyComputing[addSource](this);
-    }
-
-    return this.#value;
-  }
-
-  set value(newValue: T) {
-    if (!this.#compare(this.#value, newValue)) {
-      this.#value = newValue;
-
-      for (const reaction of this.reactions) {
-        reaction[markStale]();
-      }
-    }
-  }
-
-  #compare(value1: T, value2: T) {
-    return Object.is(value1, value2);
-  }
-}
-
-const addSource = Symbol();
-const markStale = Symbol();
-
-export class Computed<T> extends Signal<T> {
-  #computation: () => T;
-  #value: T | undefined;
-  #isStale = true;
-  #sources: Set<Signal<any>> = new Set();
-
-  constructor(computation: () => T) {
-    super();
-    this.#computation = computation;
-  }
-
-  get value(): T {
-    if (this.#isStale) {
-      this.#recompute();
-    }
-
-    if (currentlyComputing) {
-      this.reactions.add(currentlyComputing);
-      currentlyComputing[addSource](this);
-    }
-
-    return this.#value!;
-  }
-
-  #recompute() {
-    for (const source of this.#sources) {
-      source[removeDependent](this);
-    }
-    this.#sources.clear();
-
-    const prevComputation = currentlyComputing;
-    currentlyComputing = this;
-
-    try {
-      this.#value = this.#computation();
-      this.#isStale = false;
-    } finally {
-      currentlyComputing = prevComputation;
-    }
-  }
-
-  [addSource](source: Signal<any>) {
-    this.#sources.add(source);
-  }
-
-  [markStale]() {
-    if (!this.#isStale) {
-      this.#isStale = true;
-
-      for (const reaction of this.reactions) {
-        reaction[markStale]();
-      }
-    }
-  }
-}
-
 export type ReactiveEventType = "create" | "update" | "delete" | "apply";
 export type ReactiveEvent =
   | {
     type: "create";
     path: string | symbol;
-    value?: any;
+    newValue: any;
   }
-  | { type: "update"; path: string | symbol; value?: any }
-  | { type: "delete"; path: string | symbol }
+  | { type: "update"; path: string | symbol; newValue: any; oldValue?: any }
+  | { type: "delete"; path: string | symbol; oldValue: any }
   | { type: "apply"; path: string | symbol; args: any[] };
 
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
 export class Scheduler {
   #callback: () => void;
-  #pending: [Record<PropertyKey, any>, ReactiveEventCallback, ReactiveEvent][] =
-    [];
+  // idempotent insertion collapses events
+  #pending: Map<
+    Record<PropertyKey, any>,
+    Map<ReactiveEventCallback, ReactiveEvent[]>
+  > = new Map();
 
   constructor(callback: () => void) {
     this.#callback = callback;
@@ -132,7 +25,7 @@ export class Scheduler {
 
   getPending() {
     const pending = this.#pending;
-    this.#pending = [];
+    this.#pending = new Map();
     return pending;
   }
 
@@ -145,18 +38,29 @@ export class Scheduler {
     callback: ReactiveEventCallback,
     event: ReactiveEvent,
   ) {
-    // topological enqueuing
-    for (let index = this.#pending.length - 1; index >= 0; index--) {
-      const [p] = this.#pending[index]!;
-
-      if (p[HAS_PARENT](proxy)) {
-        this.#pending.splice(index, 0, [proxy, callback, event]);
-        this.#callback();
-        return;
+    const proxyLevel = this.#pending.get(proxy);
+    if (proxyLevel) {
+      const callbackLevel = proxyLevel.get(callback);
+      if (!callbackLevel) {
+        proxyLevel.set(callback, [event]);
+      } else {
+        const index = callbackLevel?.findIndex((e) =>
+          e.type === event.type && e.path === event.path
+        );
+        // collapsing rules:
+        // only the first enqueued event contains the correct old value in general since derived values are cleared afterwards
+        // the correct new value is read when dequeuing
+        // we don't collapse "apply" events
+        if (index === -1) {
+          callbackLevel?.push(event);
+        } else if (event.type === "apply") {
+          callbackLevel?.push(event);
+        }
       }
+    } else {
+      this.#pending.set(proxy, new Map([[callback, [event]]]));
     }
 
-    this.#pending.push([proxy, callback, event]);
     this.#callback();
   }
 }
@@ -176,15 +80,23 @@ const scheduler = new Scheduler(() => {
 });
 
 export const flushSync = () => {
-  for (const [proxy, callback, e] of scheduler.getPending()) {
-    if (
-      (e.type === "create" || e.type === "update") &&
-      typeof e.path === "string"
-    ) {
-      // get the latest value and recache the derived values
-      e.value = proxy[READ_PATH](e.path);
+  // topological dequeuing
+  const scheduled = [...scheduler.getPending().entries()];
+  scheduled.sort(([p1], [p2]) => p1[HAS_PARENT](p2) ? -1 : 1);
+
+  for (const [proxy, map] of scheduled) {
+    for (const [callback, events] of map?.entries()) {
+      for (const e of events) {
+        if (
+          (e.type === "create" || e.type === "update") &&
+          typeof e.path === "string"
+        ) {
+          // get the latest value and recache the derived values
+          e.newValue = proxy[READ_PATH](e.path);
+        }
+        callback(e);
+      }
     }
-    callback(e);
   }
 };
 
@@ -195,14 +107,22 @@ const IS_REACTIVE = Symbol.for("is reactive");
 const NOTIFY = Symbol.for("notify");
 const READ_PATH = Symbol.for("read path");
 
-type Root = [parent: Record<PropertyKey, any>, path: string, reroot?: boolean];
+type Root = {
+  parent: Record<PropertyKey, any>;
+  rootPath: string;
+  isDerived: boolean;
+  deps?: Set<string> | undefined;
+};
 
 let root: Root | undefined;
 
 export const reactive = <T extends object>(
   object: T,
   { roots }: {
-    roots: Map<Record<PropertyKey, any>, Map<string, boolean>>;
+    roots: Map<
+      Record<PropertyKey, any>,
+      Map<string, Omit<Root, "parent">>
+    >;
   } = { roots: new Map() },
 ) => {
   const graph = new WeakMap();
@@ -215,9 +135,10 @@ export const reactive = <T extends object>(
 
   const notify = (e: ReactiveEvent) => {
     if (
-      (e.type === "create" || e.type === "update") &&
+      (e.type === "update" || e.type === "delete") &&
       typeof e.path === "string" && derived.has(e.path)
     ) {
+      e.oldValue = derived.get(e.path);
       // invalidate the cache
       derived.delete(e.path);
     }
@@ -226,10 +147,20 @@ export const reactive = <T extends object>(
       scheduler.schedule(proxy, callback, e);
     }
 
-    for (const [parent, map] of roots.entries()) {
-      for (const [rootPath, reroot] of map.entries()) {
-        const path = reroot ? rootPath : rootPath + stringifyKey(e.path);
-        parent[NOTIFY]({ ...e, path });
+    // topological scheduling
+    const parents = [...roots.entries()];
+    parents.sort(([p1], [p2]) => p1[HAS_PARENT](p2) ? -1 : 1);
+
+    for (const [parent, map] of parents) {
+      for (const [rootPath, { isDerived, deps }] of map.entries()) {
+        const path = isDerived ? rootPath : rootPath + stringifyKey(e.path);
+
+        if (
+          !isDerived ||
+          isDerived && typeof e.path === "string" && deps?.has(e.path)
+        ) {
+          parent[NOTIFY]({ ...e, path });
+        }
       }
     }
   };
@@ -252,26 +183,48 @@ export const reactive = <T extends object>(
     callbacks.push(callback);
   };
 
-  const addParent = (parent: any, path: string, reroot?: boolean) => {
-    // idempotent: only one entry for a given (parent, path) pair
-    const map = roots.get(parent);
-    if (map) {
-      map.set(path, !!reroot);
+  const addParent = (
+    options: Omit<Root, "deps"> & { dep?: string | undefined },
+  ) => {
+    const { parent, rootPath, isDerived, dep } = options;
+
+    // idempotent inserts: only one entry for a given (parent, path) pair
+    const parentEntry = roots.get(parent);
+    if (parentEntry) {
+      const pathEntry = parentEntry.get(rootPath);
+      if (pathEntry && dep) {
+        if (pathEntry.deps) {
+          pathEntry.deps.add(dep);
+        } else {
+          pathEntry.deps = new Set([dep]);
+        }
+      } else {
+        parentEntry.set(rootPath, {
+          rootPath,
+          isDerived,
+          deps: dep ? new Set([dep]) : undefined,
+        });
+      }
     } else {
-      roots.set(parent, new Map([[path, !!reroot]]));
+      roots.set(
+        parent,
+        new Map([[rootPath, {
+          rootPath,
+          isDerived,
+          deps: dep ? new Set([dep]) : undefined,
+        }]]),
+      );
     }
   };
 
   const proxy = new Proxy(object, {
     get(target, property, receiver) {
-      if (root && root[0] !== proxy) {
-        addParent(...root);
-      }
-
+      const path = "." + stringifyKey(property);
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
 
-      let value;
-      const path = "." + stringifyKey(property);
+      if (root && root.parent !== proxy) {
+        addParent({ ...root, dep: path });
+      }
 
       // if its a derived value, check if it's cached first
       if (descriptor?.get && derived.has(path)) {
@@ -279,8 +232,12 @@ export const reactive = <T extends object>(
       } else {
         try {
           var prevParent = root;
-          root = [proxy, path, !!descriptor?.get];
-          value = Reflect.get(target, property, receiver);
+          root = {
+            parent: proxy,
+            rootPath: path,
+            isDerived: !!descriptor?.get,
+          };
+          var value = Reflect.get(target, property, receiver);
         } finally {
           root = prevParent;
         }
@@ -309,12 +266,19 @@ export const reactive = <T extends object>(
         // avoid double-proxying
         if (!isReactive(value)) {
           proxiedValue = reactive(value, {
-            roots: new Map([[proxy, new Map([[path, false]])]]),
+            roots: new Map([[
+              proxy,
+              new Map([[path, { rootPath: path, isDerived: false }]]),
+            ]]),
           });
         } else {
           proxiedValue = value;
           // adopt
-          proxiedValue[ADD_PARENT](proxy, path);
+          (proxiedValue[ADD_PARENT] as typeof addParent)({
+            parent: proxy,
+            rootPath: path,
+            isDerived: false,
+          });
         }
 
         graph.set(value, proxiedValue);
@@ -345,14 +309,14 @@ export const reactive = <T extends object>(
       return value;
     },
     set(target, property, newValue, receiver) {
-      const value = Reflect.get(target, property, receiver);
+      const oldValue = Reflect.get(target, property, receiver);
 
       // set invariants
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
       if (
         descriptor?.configurable === false &&
         descriptor?.writable === false &&
-        value !== newValue
+        oldValue !== newValue
       ) return false;
 
       if (
@@ -365,13 +329,13 @@ export const reactive = <T extends object>(
       const path = "." + stringifyKey(property);
       if (property in target) {
         // optional fancy equality check here
-        if (value !== newValue) {
+        if (newValue !== oldValue) {
           Reflect.set(target, property, newValue, receiver);
-          notify({ type: "update", path, value: newValue });
+          notify({ type: "update", path, newValue, oldValue });
         }
       } else {
         Reflect.set(target, property, newValue, receiver);
-        notify({ type: "create", path, value: newValue });
+        notify({ type: "create", path, newValue });
       }
 
       return true;
@@ -388,7 +352,8 @@ export const reactive = <T extends object>(
       const path = "." + stringifyKey(property);
 
       if (property in target) {
-        notify({ type: "delete", path });
+        const value = Reflect.get(target, property);
+        notify({ type: "delete", path, oldValue: value });
       }
 
       derived.delete(path);
