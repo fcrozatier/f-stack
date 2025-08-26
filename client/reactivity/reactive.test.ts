@@ -9,7 +9,7 @@ import {
   target,
 } from "./reactive.ts";
 
-// Basics
+// Fundamentals
 
 Deno.test("get/set values", () => {
   const r = reactive({ a: 1, b: { c: true } });
@@ -255,6 +255,34 @@ Deno.test("preserve correct 'this' binding in getters/setters", () => {
   derived._hidden = 456;
 
   assertEquals(derived.value, 456); // not 123
+});
+
+Deno.test("preserve `this` bindings in reactive functions", () => {
+  const r = reactive({
+    _x: 42,
+    getX() {
+      return this._x;
+    },
+  });
+
+  const u = {
+    _x: 24,
+  };
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  // already bound
+  const getX = r.getX;
+  assertEquals(getX(), 42);
+
+  // noop
+  const bound = r.getX.bind(r);
+  assertEquals(bound(), 42);
+
+  // can be re-bound
+  const rebound = target(getX).bind(u);
+  assertEquals(rebound(), 24);
 });
 
 Deno.test("identity can be tested", () => {
