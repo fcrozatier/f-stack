@@ -1,5 +1,5 @@
 import { assert, assertExists } from "./assert.ts";
-import { addListener, isLeafValue } from "./reactivity/reactive.ts";
+import { addListener, isLeafValue, target } from "./reactivity/reactive.ts";
 import { effect, isSignal, ReactiveArray } from "./reactivity/signals.ts";
 import { isArraySink, isUnsafeHTML } from "./sinks.ts";
 
@@ -123,23 +123,27 @@ export class Boundary<T = any> {
         this.#end.before(content);
       } else {
         // a text node is a safe sink
-        // coerces `null` and `undefined` to ""
-        const text = new Text(content);
-        this.#end.before(text);
-
-        addListener(data, (e) => {
-          switch (e.type) {
-            case "update":
-              // coerces `null` and `undefined` to ""
-              text.textContent = e.newValue;
-              break;
-
-            case "delete":
-              this.deleteContents();
-              break;
-          }
-        });
+        this.#end.before(String(content ?? ""));
       }
+
+      addListener(data, (e) => {
+        switch (e.type) {
+          case "update": {
+            const newValue = target(e.newValue);
+            this.deleteContents();
+            if (newValue instanceof DocumentFragment) {
+              this.#end.before(newValue);
+            } else {
+              this.#end.before(String(e.newValue ?? ""));
+            }
+            break;
+          }
+
+          case "delete":
+            this.deleteContents();
+            break;
+        }
+      });
     } else {
       const unsafeData = data.unsafe;
       const template = document.createElement("template");
