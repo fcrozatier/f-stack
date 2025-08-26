@@ -174,7 +174,7 @@ export const reactive = <T extends object>(
   const readPath = (path: string) => {
     return path.split(".").slice(1).reduce(
       (acc, curr) => (acc[curr]),
-      object as Record<string, any>,
+      proxy as Record<string, any>,
     );
   };
 
@@ -332,7 +332,7 @@ export const reactive = <T extends object>(
       return value;
     },
     set(target, property, newValue, receiver) {
-      const oldValue = Reflect.get(target, property, receiver);
+      const oldValue = proxy[property];
 
       // set invariants
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
@@ -375,8 +375,8 @@ export const reactive = <T extends object>(
       const path = "." + stringifyKey(property);
 
       if (property in target) {
-        const value = Reflect.get(target, property);
-        notify({ type: "delete", path, oldValue: value });
+        const oldValue = proxy[property];
+        notify({ type: "delete", path, oldValue });
       }
 
       derived.delete(path);
@@ -475,6 +475,10 @@ export const equals = (a: unknown, b: unknown): boolean => {
   const first = isReactive(a) ? get(a, ns.TARGET) : a;
   const second = isReactive(b) ? get(b, ns.TARGET) : b;
   return first === second;
+};
+
+export const target = (p: object) => {
+  return isReactive(p) ? get(p, ns.TARGET) : p;
 };
 
 export const isReactive = (

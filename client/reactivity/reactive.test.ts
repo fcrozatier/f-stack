@@ -6,6 +6,7 @@ import {
   isReactive,
   reactive,
   type ReactiveEvent,
+  target,
 } from "./reactive.ts";
 
 // Basics
@@ -76,34 +77,44 @@ Deno.test("function listeners", () => {
   const f1 = () => logs.push(1);
   const f2 = () => logs.push(2);
 
-  const r = reactive({ a: f1 });
+  const r: Record<string, () => any> = reactive({ a: f1 });
 
   const events: ReactiveEvent[] = [];
   addListener(r, (e) => events.push(e));
 
   assertEquals(logs.length, 0);
 
-  r.a();
+  r.a?.();
   flushSync();
   assertEquals(logs.length, 1);
   assertEquals(events.length, 1);
   assertEquals(events[0], { type: "apply", path: ".a", args: [] });
 
+  // events return proxied values for consistency
+  const old = r.a;
   r.a = f2;
   flushSync();
   assertEquals(events.length, 2);
   assertEquals(events[1]!, {
     type: "update",
     path: ".a",
-    newValue: f2,
-    oldValue: f1,
+    oldValue: old,
+    newValue: r.a,
   });
+  // @ts-ignore
+  assertEquals(target(events[1]!.newValue), f2);
 
   r.a();
   flushSync();
   assertEquals(logs.length, 2);
   assertEquals(events.length, 3);
   assertEquals(events[2], { type: "apply", path: ".a", args: [] });
+
+  const oldValue = r.a;
+  delete r.a;
+  flushSync();
+  assertEquals(events.length, 4);
+  assertEquals(events[3], { type: "delete", path: ".a", oldValue });
 });
 
 // Properties

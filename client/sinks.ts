@@ -16,6 +16,34 @@ export const isAttachment = (value: unknown): value is Attachment => {
   return typeof value === "function" && Object.hasOwn(value, ATTACHMENT_SINK);
 };
 
+const ON_SINK = Symbol();
+
+/**
+ * @template U, V
+ * @param U The node receiving the event listener
+ * @param V The global event list
+ */
+export type On<U = HTMLElement, V = HTMLElementEventMap> = {
+  [K in keyof Partial<V>]:
+    | ((this: U, event: V[K]) => any)
+    | [
+      (this: U, event: V[K]) => any,
+      options?: boolean | AddEventListenerOptions,
+    ];
+};
+
+export const on = <U = HTMLElement, V = HTMLElementEventMap>(
+  listeners: On<U, V>,
+) => {
+  Object.defineProperty(listeners, ON_SINK, { value: true });
+  return listeners;
+};
+
+export const isOnSink = (value: unknown): value is On => {
+  return value !== null && typeof value === "object" &&
+    Object.hasOwn(value, ON_SINK);
+};
+
 const UNSAFE_SINK = Symbol();
 
 type UnsafeHTML = {
