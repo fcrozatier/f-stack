@@ -16,7 +16,7 @@ export const OnPage = () => {
     console.log("boom");
   };
 
-  const state = reactive({ count: 1 });
+  const state = reactive({ count: 1, input: "" });
   const listeners: On<HTMLButtonElement> = reactive({ "click": increment });
 
   addListener(state, () => {
@@ -48,5 +48,18 @@ export const OnPage = () => {
         },
       })}>Switch Mode (increment/decrement)</button>
     </p>
+
+    <p>
+      <input ${on<HTMLInputElement>({
+        "input": function () {
+          state.input = this.value;
+        },
+      })}>
+    </p>
+    <div>${reactive({
+      get value() {
+        return state.input;
+      },
+    })}</div>
   `;
 };

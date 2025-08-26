@@ -1,7 +1,7 @@
 import type { TemplateTag } from "../definitions.d.ts";
 import { assert, assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
-import { addListener, isReactive } from "./reactivity/reactive.ts";
+import { addListener, isReactive, target } from "./reactivity/reactive.ts";
 import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
@@ -112,70 +112,86 @@ export const html: TemplateTag = (strings, ...values) => {
     );
 
     element.removeAttribute(`on-${id}`);
+    const elementListeners = new WeakMap();
 
     for (const [key, val] of Object.entries(maybeReactive)) {
       if (Array.isArray(val)) {
         const [listener, options] = val;
+        const bound = target(listener).bind(element);
+        elementListeners.set(listener, bound);
         // @ts-ignore
-        element.addEventListener(key, listener, options);
+        element.addEventListener(key, bound, options);
       } else {
+        const bound = target(val).bind(element);
+        elementListeners.set(val, bound);
         // @ts-ignore
-        element.addEventListener(key, val);
+        element.addEventListener(key, bound);
       }
     }
 
-    if (isReactive(maybeReactive)) {
-      addListener(maybeReactive, (e) => {
-        if (!(typeof e.path === "string")) return;
-        const key = e.path.split(".")[1];
-        assertExists(key);
+    addListener(maybeReactive, (e) => {
+      if (!(typeof e.path === "string")) return;
+      const key = e.path.split(".")[1];
+      assertExists(key);
 
-        switch (e.type) {
-          case "create": {
-            const newValue = e.newValue;
+      switch (e.type) {
+        case "create": {
+          const newValue = e.newValue;
 
-            if (Array.isArray(newValue)) {
-              const [listener, options] = newValue;
-              element.addEventListener(key, listener, options);
-            } else {
-              element.addEventListener(key, newValue);
-            }
-            break;
+          if (Array.isArray(newValue)) {
+            const [listener, options] = newValue;
+            const bound = target(listener).bind(element);
+            elementListeners.set(listener, bound);
+            element.addEventListener(key, bound, options);
+          } else {
+            const bound = target(newValue).bind(element);
+            elementListeners.set(newValue, bound);
+            element.addEventListener(key, bound);
           }
-          case "update": {
-            const oldValue = e.oldValue;
-            const newValue = e.newValue;
-
-            if (Array.isArray(oldValue)) {
-              const [listener, options] = oldValue;
-              element.removeEventListener(key, listener, options);
-            } else {
-              element.removeEventListener(key, oldValue);
-            }
-
-            if (Array.isArray(newValue)) {
-              const [listener, options] = newValue;
-              element.addEventListener(key, listener, options);
-            } else {
-              element.addEventListener(key, newValue);
-            }
-
-            break;
-          }
-          case "delete": {
-            const oldValue = e.oldValue;
-
-            if (Array.isArray(oldValue)) {
-              const [listener, options] = oldValue;
-              element.removeEventListener(key, listener, options);
-            } else {
-              element.removeEventListener(key, oldValue);
-            }
-            break;
-          }
+          break;
         }
-      });
-    }
+        case "update": {
+          const oldValue = e.oldValue;
+          const newValue = e.newValue;
+
+          if (Array.isArray(oldValue)) {
+            const [listener, options] = oldValue;
+            const bound = elementListeners.get(listener);
+            element.removeEventListener(key, bound, options);
+          } else {
+            const bound = elementListeners.get(oldValue);
+            element.removeEventListener(key, bound);
+          }
+
+          if (Array.isArray(newValue)) {
+            const [listener, options] = newValue;
+            const bound = target(listener).bind(element);
+            elementListeners.set(listener, bound);
+            element.addEventListener(key, bound, options);
+          } else {
+            const bound = target(newValue).bind(element);
+            elementListeners.set(newValue, bound);
+            element.addEventListener(key, bound);
+          }
+          break;
+        }
+        case "delete": {
+          const oldValue = e.oldValue;
+
+          if (Array.isArray(oldValue)) {
+            const [listener, options] = oldValue;
+            const bound = elementListeners.get(listener);
+            element.removeEventListener(key, bound, options);
+            elementListeners.delete(listener);
+          } else {
+            const bound = elementListeners.get(oldValue);
+            element.removeEventListener(key, bound);
+            elementListeners.delete(oldValue);
+          }
+          break;
+        }
+      }
+    });
   }
 
   // Attributes
