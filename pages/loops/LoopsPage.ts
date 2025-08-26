@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { state } from "$client/reactivity/signals.ts";
-import { attach, map } from "$client/sinks.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { attr, map, on, style } from "$client/sinks.ts";
 
 export const LoopsPage = () => {
   const colors = [
@@ -21,14 +21,14 @@ export const LoopsPage = () => {
       ${map(colors, (color, i) =>
         html`
           <button
-            ${attach((button: HTMLButtonElement) => {
-              button.style.background = color;
-              button.ariaLabel = color;
-              button.ariaCurrent = String(selected.value === color);
-              button.addEventListener("click", () => {
-                selected.value = color;
-              });
+            ${attr({
+              "aria-label": color,
+              get "aria-current"() {
+                return String(selected.value === color);
+              },
             })}
+            ${on({ click: () => selected.value = color })}
+            ${style({ "background": color })}
           >
             ${i + 1}
           </button>
