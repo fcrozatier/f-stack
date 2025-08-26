@@ -1,5 +1,5 @@
 import { html } from "$client/html.ts";
-import { addListener, reactive } from "$client/reactivity/reactive.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
 import { on, unsafeHTML } from "$client/sinks.ts";
 
 export const UnsafeHtmlPage = () => {
@@ -11,10 +11,6 @@ export const UnsafeHtmlPage = () => {
 
   // unsafe HTML
   const unsafeInput = reactive({ value: "" });
-
-  addListener(unsafeInput, () => {
-    console.log(unsafeInput.value);
-  });
 
   return html`
     <p>username: ${username}</p>
