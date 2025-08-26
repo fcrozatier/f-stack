@@ -2,7 +2,7 @@ import { html } from "$client/html.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
 import { attach, classList } from "$client/sinks.ts";
 
-export const ClassList = () => {
+export const ClassListPage = () => {
   const selected = reactive({ value: false });
 
   const classes: Record<string, any> = reactive({

@@ -10,8 +10,9 @@ export interface Attachment<T extends Node = Element> {
 }
 
 export const attach = <T extends Node>(attachment: Attachment<T>) => {
-  Object.defineProperty(attachment, ATTACHMENT_SINK, { value: true });
-  return attachment;
+  const attachmentSink = reactive(attachment);
+  Object.defineProperty(attachmentSink, ATTACHMENT_SINK, { value: true });
+  return attachmentSink;
 };
 
 export const isAttachment = (value: unknown): value is Attachment => {
@@ -39,8 +40,9 @@ export type On<U = HTMLElement, V = HTMLElementEventMap> = {
 export const on = <U = HTMLElement, V = HTMLElementEventMap>(
   listeners: On<U, V>,
 ) => {
-  Object.defineProperty(listeners, ON_SINK, { value: true });
-  return listeners;
+  const onSink = reactive(listeners);
+  Object.defineProperty(onSink, ON_SINK, { value: true });
+  return onSink;
 };
 
 export const isOnSink = (value: unknown): value is On => {
@@ -108,8 +110,9 @@ export interface AttrSink extends Record<string, Primitive | ReactiveLeaf> {
 }
 
 export const attr = (attributes: AttrSink) => {
-  Object.defineProperty(attributes, ATTR_SINK, { value: true });
-  return attributes;
+  const attrSink = reactive(attributes);
+  Object.defineProperty(attrSink, ATTR_SINK, { value: true });
+  return attrSink;
 };
 
 export const isAttrSink = (value: unknown): value is AttrSink => {
@@ -132,8 +135,9 @@ export type ClassListValue = Record<
 >;
 
 export const classList = (classes: ClassListValue) => {
-  Object.defineProperty(classes, CLASS_SINK, { value: true });
-  return classes;
+  const classSink = reactive(classes);
+  Object.defineProperty(classSink, CLASS_SINK, { value: true });
+  return classSink;
 };
 
 export const isClassSink = (value: unknown): value is ClassListValue => {
