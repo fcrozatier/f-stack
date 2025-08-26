@@ -333,3 +333,188 @@ export class ReactiveArray<T> extends Array<T> {
     this.callbacks[event].push(callback);
   }
 }
+
+export class ReactiveObject<T extends Record<string, any>> extends Object {
+  private callbacks: Record<
+    keyof ProxyHandler<ArrayLike<T>>,
+    ((...args: any[]) => void)[]
+  > = {
+    "apply": [],
+    "construct": [],
+    "defineProperty": [],
+    "deleteProperty": [],
+    "get": [],
+    "getOwnPropertyDescriptor": [],
+    "getPrototypeOf": [],
+    "has": [],
+    "isExtensible": [],
+    "ownKeys": [],
+    "preventExtensions": [],
+    "set": [],
+    "setPrototypeOf": [],
+  };
+
+  constructor(object: T) {
+    super(object);
+    const sources: Map<string | symbol, State<any>> = new Map();
+    const callbacks = this.callbacks;
+
+    return new Proxy(this, {
+      defineProperty(target, property, descriptor) {
+        effect(() => {
+          untrack(() => {
+            for (const callback of callbacks["defineProperty"]) {
+              callback(target, property, descriptor);
+            }
+          });
+        });
+        return Reflect.defineProperty(target, property, descriptor);
+      },
+      deleteProperty(target, property) {
+        effect(() => {
+          untrack(() => {
+            for (const callback of callbacks["deleteProperty"]) {
+              callback(target, property);
+            }
+          });
+        });
+        sources.delete(property);
+        return Reflect.deleteProperty(target, property);
+      },
+      get(target, property, receiver) {
+        const source = sources.get(property);
+
+        if (source) {
+          return source.value;
+        }
+
+        if (
+          typeof property === "string" &&
+          Object.hasOwn(target, property)
+        ) {
+          const value = Reflect.get(target, property, receiver);
+          sources.set(property, state(value));
+          return value;
+        }
+
+        return Reflect.get(target, property, receiver);
+      },
+      set(target, property, newValue, receiver) {
+        const source = sources.get(property);
+
+        // When setting the length directly, remove all sources above the new length
+        if (property === "length" && newValue < source?.value) {
+          for (let index = newValue; index < source?.value; index++) {
+            sources.delete(String(index));
+          }
+        }
+
+        if (source) {
+          source.value = newValue;
+        } else if (
+          typeof property === "string" &&
+          Object.hasOwn(target, property)
+        ) {
+          sources.set(property, state(newValue));
+        }
+
+        return Reflect.set(target, property, newValue, receiver);
+      },
+    });
+  }
+
+  on<E extends keyof ProxyHandler<ArrayLike<T>>>(
+    event: E,
+    callback: (
+      ...args: Parameters<NonNullable<ProxyHandler<ArrayLike<T>>[E]>>
+    ) => void,
+  ): void {
+    this.callbacks[event].push(callback);
+  }
+}
+
+const o = new ReactiveObject({ a: 1 });
+
+export const reactiveProxy = <T extends Record<string, any>>(o: T) => {
+  const callbacks: Record<keyof ProxyHandler<T>, ((...args: any[]) => void)[]> =
+    {
+      "apply": [],
+      "construct": [],
+      "defineProperty": [],
+      "deleteProperty": [],
+      "get": [],
+      "getOwnPropertyDescriptor": [],
+      "getPrototypeOf": [],
+      "has": [],
+      "isExtensible": [],
+      "ownKeys": [],
+      "preventExtensions": [],
+      "set": [],
+      "setPrototypeOf": [],
+    };
+
+  const sources: Map<string | symbol, State<any>> = new Map();
+
+  return new Proxy(o, {
+    defineProperty(target, property, descriptor) {
+      effect(() => {
+        untrack(() => {
+          for (const callback of callbacks["defineProperty"]) {
+            callback(target, property, descriptor);
+          }
+        });
+      });
+      return Reflect.defineProperty(target, property, descriptor);
+    },
+    deleteProperty(target, property) {
+      effect(() => {
+        untrack(() => {
+          for (const callback of callbacks["deleteProperty"]) {
+            callback(target, property);
+          }
+        });
+      });
+      sources.delete(property);
+      return Reflect.deleteProperty(target, property);
+    },
+    get(target, property, receiver) {
+      const source = sources.get(property);
+
+      if (source) {
+        return source.value;
+      }
+
+      if (
+        typeof property === "string" &&
+        Object.hasOwn(target, property)
+      ) {
+        const value = Reflect.get(target, property, receiver);
+        sources.set(property, state(value));
+        return value;
+      }
+
+      return Reflect.get(target, property, receiver);
+    },
+    set(target, property, newValue, receiver) {
+      const source = sources.get(property);
+
+      // When setting the length directly, remove all sources above the new length
+      if (property === "length" && newValue < source?.value) {
+        for (let index = newValue; index < source?.value; index++) {
+          sources.delete(String(index));
+        }
+      }
+
+      if (source) {
+        source.value = newValue;
+      } else if (
+        typeof property === "string" &&
+        Object.hasOwn(target, property)
+      ) {
+        sources.set(property, state(newValue));
+      }
+
+      return Reflect.set(target, property, newValue, receiver);
+    },
+  });
+};
