@@ -1,7 +1,7 @@
 import { assert, assertExists } from "./assert.ts";
 import { addListener, isLeafValue, target } from "./reactivity/reactive.ts";
-import { effect, isSignal, ReactiveArray } from "./reactivity/signals.ts";
-import { isArraySink, isUnsafeHTML } from "./sinks.ts";
+import { effect, ReactiveArray } from "./reactivity/signals.ts";
+import { isArraySink, isTextSink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
 
@@ -116,6 +116,44 @@ export class Boundary<T = any> {
         end.before(boundary.end);
         boundary.render();
       }
+
+      addListener(values, (e) => {
+        if (typeof e.path !== "string") return;
+        const index = e.path.split(".")[1];
+        if (!index || !/^\d+$/.test(index)) return;
+
+        switch (e.type) {
+          case "delete": {
+            const boundary = boundaries[+index];
+            boundary?.deleteContents();
+            boundary?.end.remove();
+            boundary?.start.remove();
+            boundaries.splice(+index, 1);
+            break;
+          }
+
+          default:
+            break;
+        }
+      });
+    } else if (isTextSink(data)) {
+      const content = data.data;
+      let key = data.key;
+      this.#end.before(String(content[key] ?? ""));
+
+      addListener(data, (e) => {
+        if (e.type !== "update") return;
+        const path = e.path;
+
+        if (path === ".key") {
+          key = e.newValue;
+          this.deleteContents();
+          this.#end.before(String(content[key] ?? ""));
+        } else if (path !== `.data.${key}`) return;
+
+        this.deleteContents();
+        this.#end.before(String(e.newValue ?? ""));
+      });
     } else if (!isUnsafeHTML(data)) {
       const content = isLeafValue(data) ? data.value : data;
 

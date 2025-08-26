@@ -163,6 +163,31 @@ export const isStyleSink = (
     Object.hasOwn(value, STYLE_SINK);
 };
 
+// text
+
+const TEXT_SINK = Symbol.for("text sink");
+
+export interface TextSink {
+  data: Record<string, any>;
+  key: string;
+  [TEXT_SINK]?: true;
+}
+
+export const text = <T extends Record<string, any>>(
+  node: T,
+  key: keyof T & string = "value",
+): TextSink => {
+  const textSink = reactive({ data: node, key });
+  Object.defineProperty(textSink, TEXT_SINK, { value: true });
+  return textSink;
+};
+
+export const isTextSink = (value: unknown): value is TextSink => {
+  return value !== null &&
+    typeof value === "object" &&
+    Object.hasOwn(value, TEXT_SINK);
+};
+
 // unsafe
 
 const UNSAFE_SINK = Symbol.for("unsafe sink");

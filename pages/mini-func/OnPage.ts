@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
 import { addListener, equals, reactive } from "$client/reactivity/reactive.ts";
-import { type On, on } from "$client/sinks.ts";
+import { type On, on, text } from "$client/sinks.ts";
 
 export const OnPage = () => {
   const increment = () => {
@@ -56,10 +56,6 @@ export const OnPage = () => {
         },
       })}>
     </p>
-    <div>${reactive({
-      get value() {
-        return state.input;
-      },
-    })}</div>
+    <div>${text(state, "input")}</div>
   `;
 };
