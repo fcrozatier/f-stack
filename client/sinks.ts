@@ -101,9 +101,9 @@ export const isArraySink = (value: unknown): value is ArraySink => {
 const ATTR_SINK = Symbol.for("attr sink");
 
 type Primitive = string | number | boolean | null | undefined;
-type ReactiveValue<T = Primitive> = { value: T };
+type ReactiveLeaf<T = Primitive> = { value: T };
 
-export interface AttrSink extends Record<string, Primitive | ReactiveValue> {
+export interface AttrSink extends Record<string, Primitive | ReactiveLeaf> {
   [ATTR_SINK]?: true;
 }
 
@@ -122,13 +122,13 @@ export const isAttrSink = (value: unknown): value is AttrSink => {
 
 const CLASS_SINK = Symbol.for("class sink");
 
-export interface ClassSink extends Record<string, Primitive | ReactiveValue> {
+export interface ClassSink extends Record<string, Primitive | ReactiveLeaf> {
   [CLASS_SINK]?: true;
 }
 
 export type ClassListValue = Record<
   string,
-  boolean | null | undefined | ReactiveValue
+  boolean | null | undefined | ReactiveLeaf
 >;
 
 export const classList = (classes: ClassListValue) => {
