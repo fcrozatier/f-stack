@@ -1,4 +1,4 @@
-import { reactive } from "./reactivity/reactive.ts";
+import { isLeafValue, reactive } from "./reactivity/reactive.ts";
 
 // attach
 
@@ -171,8 +171,12 @@ interface UnsafeHTML extends ReactiveLeaf<string> {
   [UNSAFE_SINK]?: true;
 }
 
-export const unsafeHTML = (unsafe: ReactiveLeaf<string>): UnsafeHTML => {
-  const unsafeSink = reactive(unsafe);
+export const unsafeHTML = (
+  unsafe: string | ReactiveLeaf<string>,
+): UnsafeHTML => {
+  const unsafeSink = typeof unsafe === "string" || !isLeafValue(unsafe)
+    ? reactive({ value: unsafe })
+    : unsafe;
   Object.defineProperty(unsafeSink, UNSAFE_SINK, { value: true });
   return unsafeSink;
 };

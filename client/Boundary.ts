@@ -145,17 +145,16 @@ export class Boundary<T = any> {
         }
       });
     } else {
-      const unsafeData = data.unsafe;
       const template = document.createElement("template");
 
-      effect(() => {
-        template.innerHTML = isSignal(unsafeData)
-          ? unsafeData.value
-          : unsafeData;
-
-        // unsafe strings are inserted as-is
+      addListener(data, (e) => {
+        switch (e.type) {
+          case "update":
+            this.deleteContents();
+            template.innerHTML = e.newValue;
         this.#end.before(template.content);
-        return () => this.deleteContents();
+            break;
+        }
       });
     }
   }
