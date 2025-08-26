@@ -10,7 +10,9 @@ import {
   isAttachment,
   isAttrSink,
   isClassSink,
+  isOnSink,
   isStyleSink,
+  type On,
   type ReactiveStyles,
 } from "./sinks.ts";
 import { nanoId } from "./utils.ts";
@@ -20,6 +22,7 @@ export const html: TemplateTag = (strings, ...values) => {
 
   const boundaries = new Map<number, Boundary>();
   const attachments = new Map<string, Attachment>();
+  const listeners = new Map<string, On>();
   const attributes = new Map<string, AttrSink>();
   const classLists = new Map<string, ClassListValue>();
   const styles = new Map<string, ReactiveStyles>();
@@ -35,6 +38,10 @@ export const html: TemplateTag = (strings, ...values) => {
       attributes.set(id, data);
 
       innerHTML += ` attr-${id} `;
+    } else if (isOnSink(data)) {
+      listeners.set(id, data);
+
+      innerHTML += ` on-${id} `;
     } else if (isClassSink(data)) {
       classLists.set(id, data);
 
@@ -84,6 +91,7 @@ export const html: TemplateTag = (strings, ...values) => {
     boundary.render();
   }
 
+  // Attachements
   for (const [id, attachment] of attachments.entries()) {
     const element = content.querySelector(`[attachment-${id}]`);
     assertExists(element, `No element found with attachement id ${id}`);
@@ -94,6 +102,83 @@ export const html: TemplateTag = (strings, ...values) => {
     });
   }
 
+  // Listeners
+  for (const [id, maybeReactive] of listeners.entries()) {
+    const element = content.querySelector(`[on-${id}]`);
+    assertExists(element, `No element found with attribute on-${id}`);
+    assert(
+      element instanceof HTMLElement,
+      `No element found with attribute on-${id}`,
+    );
+
+    element.removeAttribute(`on-${id}`);
+
+    for (const [key, val] of Object.entries(maybeReactive)) {
+      if (Array.isArray(val)) {
+        const [listener, options] = val;
+        // @ts-ignore
+        element.addEventListener(key, listener, options);
+      } else {
+        // @ts-ignore
+        element.addEventListener(key, val);
+      }
+    }
+
+    if (isReactive(maybeReactive)) {
+      addListener(maybeReactive, (e) => {
+        if (!(typeof e.path === "string")) return;
+        const key = e.path.split(".")[1];
+        assertExists(key);
+
+        switch (e.type) {
+          case "create": {
+            const newValue = e.newValue;
+
+            if (Array.isArray(newValue)) {
+              const [listener, options] = newValue;
+              element.addEventListener(key, listener, options);
+            } else {
+              element.addEventListener(key, newValue);
+            }
+            break;
+          }
+          case "update": {
+            const oldValue = e.oldValue;
+            const newValue = e.newValue;
+
+            if (Array.isArray(oldValue)) {
+              const [listener, options] = oldValue;
+              element.removeEventListener(key, listener, options);
+            } else {
+              element.removeEventListener(key, oldValue);
+            }
+
+            if (Array.isArray(newValue)) {
+              const [listener, options] = newValue;
+              element.addEventListener(key, listener, options);
+            } else {
+              element.addEventListener(key, newValue);
+            }
+
+            break;
+          }
+          case "delete": {
+            const oldValue = e.oldValue;
+
+            if (Array.isArray(oldValue)) {
+              const [listener, options] = oldValue;
+              element.removeEventListener(key, listener, options);
+            } else {
+              element.removeEventListener(key, oldValue);
+            }
+            break;
+          }
+        }
+      });
+    }
+  }
+
+  // Attributes
   for (const [id, attribute] of attributes.entries()) {
     const element = content.querySelector(`[attr-${id}]`);
     assertExists(element, `No element found with attribute attr-${id}`);
@@ -122,7 +207,7 @@ export const html: TemplateTag = (strings, ...values) => {
       switch (e.type) {
         case "create":
         case "update": {
-          const value = e.value;
+          const value = e.newValue;
           if (booleanAttributes.includes(key)) {
             if (value) {
               element.setAttribute(key, "");
@@ -141,6 +226,7 @@ export const html: TemplateTag = (strings, ...values) => {
     });
   }
 
+  // ClassList
   for (const [id, classList] of classLists.entries()) {
     const element = content.querySelector(`[class-${id}]`);
     assertExists(element, `No element found with attribute class-${id}`);
@@ -168,7 +254,7 @@ export const html: TemplateTag = (strings, ...values) => {
       switch (e.type) {
         case "create":
         case "update": {
-          const value = e.value;
+          const value = e.newValue;
 
           if (value) {
             element.classList.add(...classes);
@@ -185,6 +271,7 @@ export const html: TemplateTag = (strings, ...values) => {
     });
   }
 
+  // Style
   for (const [id, style] of styles.entries()) {
     const element = content.querySelector(`[style-${id}]`);
     assert(
@@ -211,7 +298,7 @@ export const html: TemplateTag = (strings, ...values) => {
       switch (e.type) {
         case "create":
         case "update": {
-          element.style.setProperty(key, e.value);
+          element.style.setProperty(key, e.newValue);
           break;
         }
         case "delete":
