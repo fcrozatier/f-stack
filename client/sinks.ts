@@ -1,6 +1,8 @@
-import { type Signal } from "./reactivity/signals.ts";
+import { reactive } from "./reactivity/reactive.ts";
 
-const ATTACHMENT_SINK = Symbol();
+// attach
+
+const ATTACHMENT_SINK = Symbol.for("attachment sink");
 
 export interface Attachment<T extends Node = Element> {
   (element: T): void | (() => void);
@@ -16,7 +18,9 @@ export const isAttachment = (value: unknown): value is Attachment => {
   return typeof value === "function" && Object.hasOwn(value, ATTACHMENT_SINK);
 };
 
-const ON_SINK = Symbol();
+// on
+
+const ON_SINK = Symbol.for("on sink");
 
 /**
  * @template U, V
@@ -44,7 +48,9 @@ export const isOnSink = (value: unknown): value is On => {
     Object.hasOwn(value, ON_SINK);
 };
 
-const UNSAFE_SINK = Symbol();
+// unsafe
+
+const UNSAFE_SINK = Symbol.for("unsafe sink");
 
 type UnsafeHTML = {
   unsafe: string | Signal<string>;
@@ -64,7 +70,9 @@ export const isUnsafeHTML = (value: unknown): value is UnsafeHTML => {
     Object.hasOwn(value, UNSAFE_SINK);
 };
 
-const ARRAY_SINK = Symbol();
+// map
+
+const ARRAY_SINK = Symbol.for("map sink");
 
 type ArraySink<T = any> = {
   arrayLike: ArrayLike<T>;
@@ -88,7 +96,7 @@ export const isArraySink = (value: unknown): value is ArraySink => {
     Object.hasOwn(value, ARRAY_SINK);
 };
 
-// Attr
+// attr
 
 const ATTR_SINK = Symbol.for("attr sink");
 
