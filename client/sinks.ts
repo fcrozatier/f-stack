@@ -127,7 +127,7 @@ export const isOnSink = (value: unknown): value is On => {
 // style
 
 /**
- * CSS Typed Object Model is not implemented on Firefox
+ * CSS Typed Object Model is not implemented in Firefox
  * https://bugzilla.mozilla.org/show_bug.cgi?id=1278697
  */
 
