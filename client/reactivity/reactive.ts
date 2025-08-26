@@ -497,7 +497,10 @@ export const isLeafValue = (data: unknown): data is { value: any } => {
  *
  * Does nothing if the node is not reactive
  */
-export const addListener = (node: any, callback: ReactiveEventCallback) => {
+export const addListener = <T extends Record<PropertyKey, any>>(
+  node: T,
+  callback: ReactiveEventCallback,
+) => {
   if (isReactive(node)) {
     get(node, ns.ADD_LISTENER)?.(callback);
   }
