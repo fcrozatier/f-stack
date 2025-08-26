@@ -149,19 +149,20 @@ export type CamelToKebab<T extends string> = T extends
   : `${Lowercase<First>}${CamelToKebab<Rest>}`
   : T;
 
-export interface StyleSink extends Record<string, Primitive | ReactiveValue> {
+export interface StyleSink extends Record<string, Primitive | ReactiveLeaf> {
   [STYLE_SINK]?: true;
 }
 
 export type ReactiveStyles = {
   [
     K in CamelToKebab<keyof CSSStyleDeclaration & string> | `--${string}`
-  ]?: string | number | ReactiveValue<string | number>;
+  ]?: string | number | ReactiveLeaf<string | number>;
 };
 
 export const style = (styles: ReactiveStyles) => {
-  Object.defineProperty(styles, STYLE_SINK, { value: true });
-  return styles;
+  const styleSink = reactive(styles);
+  Object.defineProperty(styleSink, STYLE_SINK, { value: true });
+  return styleSink;
 };
 
 export const isStyleSink = (

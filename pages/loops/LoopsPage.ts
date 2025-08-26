@@ -12,12 +12,10 @@ export const LoopsPage = () => {
     "indigo",
     "violet",
   ];
-  const selected = state("red");
+  const selected = reactive({ value: "red" });
 
   return html`
-    <h1 ${attach((button: HTMLElement) => {
-      button.style.color = selected.value;
-    })}>Pick a color</h1>
+    <h1 ${style({ "color": selected })}>Pick a color</h1>
 
     <div>
       ${map(colors, (color, i) =>
