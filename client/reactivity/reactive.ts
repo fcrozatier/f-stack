@@ -472,12 +472,10 @@ const get = (proxy: Record<string, any>, symbol: symbol) => {
 };
 
 export const equals = (a: unknown, b: unknown): boolean => {
-  const first = isReactive(a) ? get(a, ns.TARGET) : a;
-  const second = isReactive(b) ? get(b, ns.TARGET) : b;
-  return first === second;
+  return target(a) === target(b);
 };
 
-export const target = (p: object) => {
+export const target = (p: unknown) => {
   return isReactive(p) ? get(p, ns.TARGET) : p;
 };
 
@@ -489,10 +487,18 @@ export const isReactive = (
     (typeof value === "function" && ns.IS_REACTIVE in value);
 };
 
-export const addListener = (node: any, callback: ReactiveEventCallback) => {
-  if (!isReactive(node)) {
-    throw new Error("Can't add a listener on a non reactive node");
-  }
+export const isLeafValue = (data: unknown): data is { value: any } => {
+  return (data !== null && typeof data === "object" &&
+    ns.IS_REACTIVE in data && "value" in data);
+};
 
-  get(node, ns.ADD_LISTENER)?.(callback);
+/**
+ * Adds a listener to a reactive graph node
+ *
+ * Does nothing if the node is not reactive
+ */
+export const addListener = (node: any, callback: ReactiveEventCallback) => {
+  if (isReactive(node)) {
+    get(node, ns.ADD_LISTENER)?.(callback);
+  }
 };
