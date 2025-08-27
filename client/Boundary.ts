@@ -1,6 +1,11 @@
-import { assert, assertExists } from "./assert.ts";
-import { addListener, isLeafValue, target } from "./reactivity/reactive.ts";
-import { effect, ReactiveArray } from "./reactivity/signals.ts";
+import { assert } from "./assert.ts";
+import {
+  addListener,
+  isLeafValue,
+  reactive,
+  target,
+} from "./reactivity/reactive.ts";
+import { effect } from "./reactivity/signals.ts";
 import { isArraySink, isTextSink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
@@ -49,6 +54,12 @@ export class Boundary<T = any> {
     this.range.deleteContents();
   }
 
+  delete() {
+    this.range.setStartBefore(this.#start);
+    this.range.setEndAfter(this.#end);
+    this.range.deleteContents();
+  }
+
   render() {
     const data = this.data;
 
@@ -70,70 +81,80 @@ export class Boundary<T = any> {
       });
     } else if (isArraySink(data)) {
       const values = data.arrayLike;
-      const boundaries = Array.from({ length: values.length })
-        .map((_, i) => new Boundary(data.mapper(values[i], i)));
+      const boundaries: Boundary[] = reactive([]);
 
-      const end = this.#end;
+      const spliceBoundaries = (
+        start: number,
+        deleteCount = 0,
+        ...values: any[]
+      ) => {
+        for (
+          const boundary of boundaries
+            .slice(start, start + deleteCount)
+        ) boundary.delete();
+
+        const newBoundaries: Boundary[] = [];
+
+        for (const value of values) {
+          const args = reactive({ index: start + newBoundaries.length, value });
+          const newBoundary = new Boundary(data.mapper(args));
+          newBoundaries.push(newBoundary);
+
+          addListener(boundaries, (e) => {
+            if (e.path === ".findIndex") return;
+
+            const newIndex = boundaries.findIndex((b) => b === newBoundary);
+            if (args.index !== newIndex) {
+              args.index = newIndex;
+            }
+          });
+        }
+
+        const next = boundaries[start + deleteCount]?.start ?? this.end;
+        boundaries.splice(start, deleteCount, ...newBoundaries);
+
+        for (const boundary of newBoundaries) {
+          next.before(boundary.start);
+          next.before(boundary.end);
+          boundary.render();
+        }
+      };
+
+      // insert initial values
+      spliceBoundaries(boundaries.length, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
-      // With each boundary receiving fine grained listeners
-      // So updating the values surgically updates the fragments
-      if (values instanceof ReactiveArray) {
-        values.on("deleteProperty", (_target, property) => {
-          if (typeof property === "string" && /^\d+$/.test(property)) {
-            const boundary = boundaries[+property];
-            boundary?.deleteContents();
-            boundary?.end.remove();
-            boundary?.start.remove();
-            boundaries.splice(+property, 1);
-          }
-        });
-
-        values.on("defineProperty", (_target, property, attributes) => {
-          if (typeof property === "string" && /^\d+$/.test(property)) {
-            if (+property >= boundaries.length) {
-              const newBoundary = new Boundary(
-                data.mapper(attributes.value, +property),
-              );
-              boundaries[+property] = newBoundary;
-              end.before(newBoundary.start);
-              end.before(newBoundary.end);
-              newBoundary.render();
-            } else {
-              const boundary = boundaries[+property];
-              assertExists(boundary);
-              boundary.data = data.mapper(attributes.value, +property);
-              boundary.deleteContents();
-              boundary.render();
-            }
-          }
-        });
-      }
-
-      // Add initial values
-      for (const boundary of boundaries) {
-        end.before(boundary.start);
-        end.before(boundary.end);
-        boundary.render();
-      }
-
       addListener(values, (e) => {
+        console.log(e);
         if (typeof e.path !== "string") return;
-        const index = e.path.split(".")[1];
-        if (!index || !/^\d+$/.test(index)) return;
 
         switch (e.type) {
-          case "delete": {
-            const boundary = boundaries[+index];
-            boundary?.deleteContents();
-            boundary?.end.remove();
-            boundary?.start.remove();
-            boundaries.splice(+index, 1);
-            break;
-          }
+          case "apply": {
+            switch (e.path) {
+              case ".push":
+                spliceBoundaries(boundaries.length, 0, ...e.args);
+                break;
+              case ".unshift":
+                spliceBoundaries(0, 0, ...e.args);
+                break;
+              case ".concat":
+                spliceBoundaries(boundaries.length, 0, ...e.args[0]);
+                break;
 
-          default:
-            break;
+              case ".pop":
+                spliceBoundaries(boundaries.length - 1, 1);
+                break;
+              case ".shift":
+                spliceBoundaries(0, 1);
+                break;
+
+              case ".splice": {
+                const [start, deleteCount, ...values] = e.args;
+                spliceBoundaries(start, deleteCount, ...values);
+                break;
+              }
+            }
+          }
         }
       });
     } else if (isTextSink(data)) {
@@ -190,7 +211,7 @@ export class Boundary<T = any> {
           case "update":
             this.deleteContents();
             template.innerHTML = e.newValue;
-        this.#end.before(template.content);
+            this.#end.before(template.content);
             break;
         }
       });
