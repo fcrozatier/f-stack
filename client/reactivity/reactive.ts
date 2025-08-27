@@ -70,10 +70,7 @@ let pending = false;
 const scheduler = new Scheduler(() => {
   if (!pending) {
     pending = true;
-
-    queueMicrotask(() => {
-      flushSync();
-    });
+    queueMicrotask(flushSync);
   }
 });
 
