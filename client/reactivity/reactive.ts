@@ -72,14 +72,14 @@ const scheduler = new Scheduler(() => {
     pending = true;
 
     queueMicrotask(() => {
-      pending = false;
-
       flushSync();
     });
   }
 });
 
 export const flushSync = () => {
+  pending = false;
+
   // topological dequeuing
   const scheduled = [...scheduler.getPending().entries()];
   scheduled.sort(([p1], [p2]) => get(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
