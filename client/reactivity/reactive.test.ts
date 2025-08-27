@@ -151,7 +151,7 @@ Deno.test("events collapse", () => {
   assertEquals(events, []);
 });
 
-Deno.test("optimization: only dependencies trigger events", () => {
+Deno.test("only dependencies trigger events", () => {
   const r: Record<string, any> = reactive({ a: 1, b: 2 });
   const s = reactive({
     get v() {
@@ -257,7 +257,7 @@ Deno.test("preserve correct 'this' binding in getters/setters", () => {
   assertEquals(derived.value, 456); // not 123
 });
 
-Deno.test("preserve `this` bindings in reactive functions", () => {
+Deno.test("preserve `this` binding in reactive functions", () => {
   const r = reactive({
     _x: 42,
     getX() {
@@ -312,6 +312,41 @@ Deno.test("identity can be tested", () => {
 
   assert(rg.g !== g);
   assert(equals(rg.g, g));
+});
+
+Deno.test("destructuring object maintains reactivity", () => {
+  const r = reactive({ first: { a: true }, second: 2 });
+  const { first } = r;
+
+  const firstEvents: ReactiveEvent[] = [];
+  addListener(first, (e) => firstEvents.push(e));
+
+  const rEvents: ReactiveEvent[] = [];
+  addListener(r, (e) => rEvents.push(e));
+
+  // updating `r` triggers the update event on `first`
+  r.first.a = false;
+  flushSync();
+
+  assertEquals(firstEvents.length, 1);
+  assertEquals(firstEvents[0]!, {
+    type: "update",
+    path: ".a",
+    newValue: false,
+    oldValue: true,
+  });
+
+  // updating `first` triggers the update event on `r`
+  first.a = true;
+  flushSync();
+
+  assertEquals(rEvents.length, 2);
+  assertEquals(rEvents[1]!, {
+    type: "update",
+    path: ".first.a",
+    newValue: true,
+    oldValue: false,
+  });
 });
 
 // Derived values
