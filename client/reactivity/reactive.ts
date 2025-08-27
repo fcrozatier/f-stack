@@ -116,16 +116,13 @@ type Root = {
 
 let root: Root | undefined;
 
-export const reactive = <T extends object>(
-  object: T,
-  { roots }: {
-    roots: Map<
-      Record<PropertyKey, any>,
-      Map<string, Omit<Root, "parent">>
-    >;
-  } = { roots: new Map() },
-) => {
+export const reactive = <T extends object>(object: T) => {
   if (isReactive(object)) return object;
+
+  const roots: Map<
+    Record<PropertyKey, any>,
+    Map<string, Omit<Root, "parent">>
+  > = new Map();
 
   const ownProperties = new Map<string | symbol, PropertyDescriptor>();
   const graph = new WeakMap();
@@ -277,23 +274,15 @@ export const reactive = <T extends object>(
         let proxiedValue = graph.get(value);
         if (proxiedValue) return proxiedValue;
 
-        // avoid double-proxying
-        if (!isReactive(value)) {
-          proxiedValue = reactive(value, {
-            roots: new Map([[
-              proxy,
-              new Map([[path, { rootPath: path, isDerived: false }]]),
-            ]]),
-          });
-        } else {
-          proxiedValue = value;
-          // adopt
-          (get(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
-            parent: proxy,
-            rootPath: path,
-            isDerived: false,
-          });
-        }
+        // avoids double-proxying
+        proxiedValue = reactive(value);
+
+        // adopt
+        (get(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
+          parent: proxy,
+          rootPath: path,
+          isDerived: false,
+        });
 
         graph.set(value, proxiedValue);
 
@@ -306,12 +295,14 @@ export const reactive = <T extends object>(
 
         // @ts-ignore value is a function
         const bound = value.bind(object);
-        proxiedMethod = reactive(bound, {
-          roots: new Map([[
-            proxy,
-            new Map([[path, { rootPath: path, isDerived: false }]]),
-          ]]),
+        proxiedMethod = reactive(bound);
+
+        (get(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+          parent: proxy,
+          rootPath: path,
+          isDerived: false,
         });
+
         Object.defineProperty(proxiedMethod, ns.TARGET, {
           value,
           configurable: true,
