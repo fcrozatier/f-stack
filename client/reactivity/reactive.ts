@@ -13,7 +13,7 @@ export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
 export class Scheduler {
   #callback: () => void;
-  // idempotent insertion collapses events
+  // idempotent insertion structure collapsing events
   #pending: Map<
     Record<PropertyKey, any>,
     Map<ReactiveEventCallback, ReactiveEvent[]>
@@ -47,10 +47,10 @@ export class Scheduler {
         const index = callbackLevel?.findIndex((e) =>
           e.type === event.type && e.path === event.path
         );
-        // collapsing rules:
+        // collapsing:
         // only the first enqueued event contains the correct old value in general since derived values are cleared afterwards
         // the correct new value is read when dequeuing
-        // we don't collapse "apply" events
+        // we can't collapse "apply" events in general without composites
         if (index === -1) {
           callbackLevel?.push(event);
         } else if (event.type === "apply") {
@@ -230,7 +230,7 @@ export const reactive = <T extends object>(object: T) => {
         addParent({ ...root, dep: path });
       }
 
-      // if its a derived value, check if it's cached first
+      // if it's a derived value, check if it's cached first
       if (descriptor?.get && derived.has(path)) {
         return derived.get(path);
       } else {
