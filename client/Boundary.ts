@@ -1,4 +1,4 @@
-import { assert } from "./assert.ts";
+import { assert, assertExists } from "./assert.ts";
 import {
   addListener,
   isLeafValue,
@@ -160,6 +160,20 @@ export class Boundary<T = any> {
                 const [value, start, end] = e.args;
                 for (const [args] of boundaries.slice(start, end)) {
                   args.value = value;
+                }
+                break;
+              }
+              case ".copyWithin": {
+                const [target, start, end] = e.args;
+
+                for (let index = 0; index < end - start; index++) {
+                  const targetBoundary = boundaries[target + index];
+                  const sourceBoundary = boundaries[start + index];
+
+                  assertExists(targetBoundary);
+                  assertExists(sourceBoundary);
+
+                  targetBoundary[0].value = sourceBoundary[0].value;
                 }
                 break;
               }
