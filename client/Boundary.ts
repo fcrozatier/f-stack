@@ -80,8 +80,10 @@ export class Boundary<T = any> {
         return () => this.deleteContents();
       });
     } else if (isArraySink(data)) {
-      const values = data.arrayLike;
-      const boundaries: Boundary[] = reactive([]);
+      const values = data.iterable;
+      const boundaries: [{ index: number; value: any }, Boundary][] = reactive(
+        [],
+      );
 
       const spliceBoundaries = (
         start: number,
@@ -89,31 +91,27 @@ export class Boundary<T = any> {
         ...values: any[]
       ) => {
         for (
-          const boundary of boundaries
+          const [_, boundary] of boundaries
             .slice(start, start + deleteCount)
         ) boundary.delete();
 
-        const newBoundaries: Boundary[] = [];
+        const newBoundaries: [{ index: number; value: any }, Boundary][] = [];
 
         for (const value of values) {
           const args = reactive({ index: start + newBoundaries.length, value });
           const newBoundary = new Boundary(data.mapper(args));
-          newBoundaries.push(newBoundary);
-
-          addListener(boundaries, (e) => {
-            if (e.path === ".findIndex") return;
-
-            const newIndex = boundaries.findIndex((b) => b === newBoundary);
-            if (args.index !== newIndex) {
-              args.index = newIndex;
-            }
-          });
+          newBoundaries.push([args, newBoundary]);
         }
 
-        const next = boundaries[start + deleteCount]?.start ?? this.end;
+        const next = boundaries[start + deleteCount]?.[1]?.start ?? this.end;
+
+        for (const [args] of boundaries.slice(start + deleteCount)) {
+          args.index += newBoundaries.length - deleteCount;
+        }
+
         boundaries.splice(start, deleteCount, ...newBoundaries);
 
-        for (const boundary of newBoundaries) {
+        for (const [_, boundary] of newBoundaries) {
           next.before(boundary.start);
           next.before(boundary.end);
           boundary.render();
@@ -121,11 +119,10 @@ export class Boundary<T = any> {
       };
 
       // insert initial values
-      spliceBoundaries(boundaries.length, 0, ...values);
+      spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
       addListener(values, (e) => {
-        console.log(e);
         if (typeof e.path !== "string") return;
 
         switch (e.type) {
