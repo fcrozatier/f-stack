@@ -18,7 +18,7 @@ export const LoopsPage = () => {
     <h1 ${style({ "color": selected })}>Pick a color</h1>
 
     <div>
-      ${map(colors, (color, i) =>
+      ${map(colors, ({ value: color, index: i }) =>
         html`
           <button
             ${attr({
