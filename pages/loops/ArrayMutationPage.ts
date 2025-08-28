@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { effect, ReactiveArray } from "$client/reactivity/signals.ts";
-import { attach, map } from "$client/sinks.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { map, on } from "$client/sinks.ts";
 
 const emojis = {
   apple: "🍎",
@@ -22,33 +22,22 @@ const Thing = (props: { name: Name }) => {
 };
 
 export const ArrayMutationPage = () => {
-  const things: ReactiveArray<{
-    id: number;
-    name: Name;
-  }> = new ReactiveArray(
+  const things = reactive([
     { id: 1, name: "apple" },
     { id: 2, name: "banana" },
     { id: 3, name: "carrot" },
     { id: 4, name: "doughnut" },
     { id: 5, name: "egg" },
-  );
-
-  effect(() => {
-    console.log("things have changed");
-    console.log(...things);
-  });
+  ]);
 
   return html`
-    <button ${attach((button) => {
-      button.addEventListener("click", () => {
-        things.shift();
-        console.log("shifted", things);
-      });
+    <button ${on({
+      click: () => things.shift(),
     })}>Remove the first thing</button>
 
-    ${map(things, (thing) =>
+    ${map(things, ({ value: thing }) =>
       html`
-        ${Thing({ name: thing.name })}
+        ${Thing({ name: thing.name as Name })}
       `)}
   `;
 };
