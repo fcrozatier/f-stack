@@ -126,6 +126,12 @@ export class Boundary<T = any> {
         if (typeof e.path !== "string") return;
 
         switch (e.type) {
+          case "update": {
+            const index = Number(e.path.split(".")[1]);
+            const [args] = boundaries[index]!;
+            args.value = e.newValue;
+            break;
+          }
           case "apply": {
             switch (e.path) {
               case ".push":
@@ -148,6 +154,17 @@ export class Boundary<T = any> {
               case ".splice": {
                 const [start, deleteCount, ...values] = e.args;
                 spliceBoundaries(start, deleteCount, ...values);
+                break;
+              }
+              case ".fill": {
+                const [value, start, end] = e.args;
+                for (const [args] of boundaries.slice(start, end)) {
+                  args.value = value;
+                }
+                break;
+              }
+              case ".reverse": {
+                boundaries.reverse();
                 break;
               }
             }
