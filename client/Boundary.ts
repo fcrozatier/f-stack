@@ -90,6 +90,8 @@ export class Boundary<T = any> {
         deleteCount = 0,
         ...values: any[]
       ) => {
+        // We could also update the values instead of deleting them
+        // or use Element.replaceWith
         for (
           const [_, boundary] of boundaries
             .slice(start, start + deleteCount)
@@ -177,10 +179,9 @@ export class Boundary<T = any> {
                 }
                 break;
               }
-              case ".reverse": {
-                boundaries.reverse();
-                break;
-              }
+              case ".reverse":
+              case ".sort":
+                throw new Error(`Unimplemented method ${e.path}`);
             }
           }
         }
