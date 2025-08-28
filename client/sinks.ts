@@ -69,28 +69,28 @@ export const isClassSink = (value: unknown): value is ClassListValue => {
 
 // map
 
-const ARRAY_SINK = Symbol.for("map sink");
+const MAP_SINK = Symbol.for("map sink");
 
-type ArraySink<T = any> = {
-  arrayLike: ArrayLike<T>;
-  mapper: (value: T, index: number, array?: T[]) => DocumentFragment;
-  [ARRAY_SINK]?: true;
+type MapSink<T = any> = {
+  iterable: Iterable<T>;
+  mapper: (reactive: { value: T; index: number }) => DocumentFragment;
+  [MAP_SINK]?: true;
 };
 
 export const map = <T>(
-  arrayLike: ArrayLike<T>,
-  mapper: (value: T, index: number) => DocumentFragment,
-): ArraySink<T> => {
+  iterable: Iterable<T>,
+  mapper: (reactive: { value: T; index: number }) => DocumentFragment,
+): MapSink<T> => {
   return {
-    arrayLike,
+    iterable,
     mapper,
-    [ARRAY_SINK]: true,
+    [MAP_SINK]: true,
   };
 };
 
-export const isArraySink = (value: unknown): value is ArraySink => {
+export const isArraySink = (value: unknown): value is MapSink => {
   return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, ARRAY_SINK);
+    Object.hasOwn(value, MAP_SINK);
 };
 
 // on
