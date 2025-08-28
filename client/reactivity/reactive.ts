@@ -38,6 +38,7 @@ export class Scheduler {
     callback: ReactiveEventCallback,
     event: ReactiveEvent,
   ) {
+    // composites make this better
     const proxyLevel = this.#pending.get(proxy);
     if (proxyLevel) {
       const callbackLevel = proxyLevel.get(callback);
@@ -50,7 +51,7 @@ export class Scheduler {
         // collapsing:
         // only the first enqueued event contains the correct old value in general since derived values are cleared afterwards
         // the correct new value is read when dequeuing
-        // we can't collapse "apply" events in general without composites
+        // we don't collapse "apply" events
         if (index === -1) {
           callbackLevel?.push(event);
         } else if (event.type === "apply") {
