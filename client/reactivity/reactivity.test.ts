@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { effect, flushSync, ReactiveArray } from "./signals.ts";
+import { assertExists } from "../assert.ts";
+import { effect, flushSync, ReactiveArray, reactiveProxy } from "./signals.ts";
 
 Deno.test("reactive array.push", () => {
   const original = [1, 2, 3];
@@ -159,6 +160,97 @@ Deno.test("reactive array length mutation", () => {
 //   assertEquals(a.value, "b");
 //   assertEquals(calls, 2);
 // });
+
+Deno.test("mutates the original object", () => {
+  const original = { x: 1 };
+  const state = reactiveProxy(original);
+
+  state.x = 2;
+
+  assertEquals(original.x, 2);
+  assertEquals(state.x, 2);
+});
+
+Deno.test("preserves getters", () => {
+  let count = 0;
+
+  const original = {
+    count: 0,
+    get x() {
+      this.count += 1;
+      count += 1;
+      return 42;
+    },
+  };
+
+  const state = reactiveProxy(original);
+
+  state.x;
+  state.x;
+
+  assertEquals(original.count, 2);
+  assertEquals(count, 2);
+  assertEquals(state.count, 2);
+});
+
+Deno.test("defines a property", () => {
+  const original: { x?: number; y: number } = { y: 0 };
+  const state = reactiveProxy(original);
+
+  Object.defineProperty(state, "x", {
+    configurable: true,
+    writable: true,
+    value: 1,
+    enumerable: true,
+  });
+
+  Object.defineProperty(state, "y", {
+    value: 1,
+  });
+
+  assertEquals(state.x, 1);
+  assertEquals(Object.getOwnPropertyDescriptor(state, "x"), {
+    configurable: true,
+    writable: true,
+    value: 1,
+    enumerable: true,
+  });
+
+  assertExists(!("x" in original));
+  assertEquals(Object.getOwnPropertyDescriptor(original, "y"), {
+    configurable: true,
+    writable: true,
+    value: 1,
+    enumerable: true,
+  });
+});
+
+Deno.test("does not re-proxy proxies", () => {
+  const inner = reactiveProxy({ count: 0 });
+  const outer = reactiveProxy({ inner });
+
+  assertEquals(inner.count, 0);
+  assertEquals(outer.inner.count, 0);
+
+  inner.count += 1;
+
+  assertEquals(inner.count, 1);
+  assertEquals(outer.inner.count, 1);
+});
+
+Deno.test("deletes a property", () => {
+  const state: { a?: number; b?: number; c?: number } = reactiveProxy({
+    a: 1,
+    b: 2,
+  });
+
+  delete state.a;
+  assertEquals(JSON.stringify(state), '{"b":2}');
+  delete state.a;
+
+  // deleting a non-existent property should succeed
+  delete state.c;
+});
 
 // Deno.test("deep reactive objects", () => {
 //   const obj = reactive({ deeply: { nested: { value: 1 } } });
