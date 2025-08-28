@@ -168,7 +168,9 @@ export const reactive = <T extends object>(object: T) => {
 
   const readPath = (path: string) => {
     return path.split(".").slice(1).reduce(
-      (acc, curr) => (acc[curr]),
+      (acc, curr) => {
+        return acc instanceof Map ? acc.get(curr) : acc[curr];
+      },
       proxy as Record<string, any>,
     );
   };
@@ -229,6 +231,80 @@ export const reactive = <T extends object>(object: T) => {
 
       if (root && root.parent !== proxy) {
         addParent({ ...root, dep: path });
+      }
+
+      if (property === Symbol.iterator) {
+        // @ts-ignore is object iterable
+        const iterator = object?.[Symbol.iterator]?.();
+        if (
+          typeof iterator === "object" &&
+          typeof iterator?.["next"] === "function"
+        ) {
+          // @ts-ignore object is iterable
+          const entries = object.entries();
+
+          return () => ({
+            next() {
+              const { done, value: item } = entries.next();
+
+              if (done || !item || !Array.isArray(item)) {
+                return { done: true };
+              }
+
+              let [key, value] = item;
+
+              if (typeof value === "object") {
+                let proxiedValue = graph.get(value);
+
+                if (!proxiedValue) {
+                  proxiedValue = reactive(value);
+
+                  (get(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
+                    parent: proxy,
+                    rootPath: "." + key,
+                    isDerived: false,
+                  });
+
+                  graph.set(value, proxiedValue);
+                }
+                value = proxiedValue;
+              } else if (typeof value === "function") {
+                let proxiedMethod = graph.get(value);
+
+                if (!proxiedMethod) {
+                  // @ts-ignore value is a function
+                  const bound = value.bind(object);
+                  proxiedMethod = reactive(bound);
+
+                  (get(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+                    parent: proxy,
+                    rootPath: "." + key,
+                    isDerived: false,
+                  });
+
+                  Object.defineProperty(proxiedMethod, ns.TARGET, {
+                    value,
+                    configurable: true,
+                  });
+
+                  graph.set(value, proxiedMethod);
+                }
+                value = proxiedMethod;
+              }
+
+              return {
+                done,
+                value: (object as any) instanceof Map ? [key, value] : value,
+              };
+            },
+            return(value: any) {
+              return { done: true, value };
+            },
+            throw(value: any) {
+              return iterator.throw(value);
+            },
+          });
+        }
       }
 
       // if it's a derived value, check if it's cached first

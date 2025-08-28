@@ -349,6 +349,48 @@ Deno.test("destructuring object maintains reactivity", () => {
   });
 });
 
+Deno.test("reactive iterables can be mutated during iteration", () => {
+  // Array
+  const arr = reactive([{ a: 1 }]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(arr, (e) => events.push(e));
+
+  // returns a proxied iterator
+  for (const element of arr) {
+    element.a += 1;
+  }
+
+  flushSync();
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".0.a", // tracks updated key
+    oldValue: 1,
+    newValue: 2,
+  });
+
+  // Map
+  const map = reactive(new Map([["a", { value: true }]]));
+
+  addListener(map, (e) => events.push(e));
+
+  // we can destructure iterated items
+  for (const [_k, item] of map) {
+    item.value = false;
+  }
+
+  flushSync();
+  assertEquals(events.length, 2);
+  assertEquals(events[1], {
+    type: "update",
+    path: ".a.value", // tracks updated key
+    oldValue: true,
+    newValue: false,
+  });
+  assertEquals(map.get("a")?.value, false);
+});
+
 // Derived values
 
 Deno.test("derivation", () => {
