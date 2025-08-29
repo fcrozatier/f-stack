@@ -1,92 +1,121 @@
 import { html } from "$client/html.ts";
-import { attach, map } from "$client/sinks.ts";
-import {
-  computed,
-  ReactiveArray,
-  reactiveProxy,
-  state,
-} from "$client/reactivity/signals.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { attach, attr, map, on } from "$client/sinks.ts";
 
 type Item = { name: string; price: number; quantity: number };
 
 export const ObjectPage = () => {
-  const newItem: Item = reactiveProxy({ name: "", price: 0, quantity: 0 });
-  const items: Item[] = new ReactiveArray();
+  const newItem: Item = reactive({ name: "", price: 0, quantity: 0 });
+  const items: Item[] = reactive([]);
 
   return html`
     <section>
       <h2>New Item</h2>
       <form>
-        <label>Name <input type="text" ${attach((i: HTMLInputElement) => {
+        <label>Name <input type="text" ${on<HTMLInputElement>({
+          input: function () {
+            newItem.name = this.value;
+          },
+        })} ${attach((i: HTMLInputElement) => {
           i.defaultValue = "";
-          i.addEventListener("input", () => {
-            newItem.name = i.value;
-          });
-        })}></label>
-        <label>Price <input type="number" ${attach((i: HTMLInputElement) => {
+        })}>
+        </label>
+        <label>Price <input type="number" ${on<HTMLInputElement>({
+          input: function () {
+            newItem.price = this.valueAsNumber;
+          },
+        })} ${attach((i: HTMLInputElement) => {
           i.defaultValue = "0";
-          i.addEventListener("input", () => {
-            newItem.price = i.valueAsNumber;
-          });
-        })}></label>
-        <label>Quantity <input type="number" ${attach((i: HTMLInputElement) => {
+        })}>
+        </label>
+        <label>Quantity <input type="number" ${on<HTMLInputElement>({
+          input: function () {
+            newItem.quantity = this.valueAsNumber;
+          },
+        })} ${attach((i: HTMLInputElement) => {
           i.defaultValue = "0";
-          i.addEventListener("input", () => {
-            newItem.quantity = i.valueAsNumber;
-          });
-        })}></label>
-        <button type="reset" ${attach((b) => {
-          b.addEventListener("click", () => {
-            items.push({...newItem});
-          });
+        })}>
+        </label>
+        <button type="reset" ${on({
+          click: () => {
+            items.push({ ...newItem });
+          },
         })}>Add item</button>
-
+      </form>
     </section>
 
     <section>
       <ul>
-      ${map(items, (item, i) => {
-        const editing = state(false);
+        ${map(items, (item) => {
+          const state = reactive({ editing: false });
 
           return html`
             <li>
-              <h3>Item ${i + 1}</h3>
+              <h3>Item ${reactive({
+                get value() {
+                  return item.index + 1;
+                },
+              })}</h3>
               <ul>
-                <li>Name: ${computed(() =>
-                  editing.value
-                    ? html`
-                      <input type="text" ${attach((input: HTMLInputElement)=>{
-                        input.value = item.name
-                        input.addEventListener("input", ()=>{
-                          item.name = input.value
-                        })
-                      })}>
-                    `
-                    : item.name
-                )}</li>
-                <li>Price: ${computed(()=> editing.value ? html`
-                    <input type="number" ${attach((input: HTMLInputElement)=>{
-                      input.valueAsNumber = item.price
-                      input.addEventListener("input", ()=>{
-                        item.price = input.valueAsNumber
-                      })
-                    })}>
-                    ` : item.price) }</li>
-                <li>Quantity: ${computed(()=> editing.value ? html`
-                    <input type="number" ${attach((input: HTMLInputElement)=>{
-                      input.valueAsNumber = item.quantity
-                      input.addEventListener("input", ()=>{
-                        item.quantity = input.valueAsNumber
-                      })
-                    })}>
-                    ` : item.quantity) }</li>
+                <li>Name: ${reactive({
+                  get value() {
+                    return state.editing
+                      ? html`
+                        <input type="text" ${attr({
+                          value: item.value.name,
+                        })} ${on<HTMLInputElement>({
+                          input: function () {
+                            item.value.name = this.value;
+                          },
+                        })}>
+                      `
+                      : item.value.name;
+                  },
+                })}</li>
+                <li>Price: ${reactive({
+                  get value() {
+                    return state.editing
+                      ? html`
+                        <input type="number" ${attach((i: HTMLInputElement) => {
+                          if (!state.editing) {
+                            i.valueAsNumber = item.value.price;
+                          }
+                        })} ${on<HTMLInputElement>({
+                          change: function () {
+                            item.value.price = this.valueAsNumber;
+                          },
+                        })}>
+                      `
+                      : item.value.price;
+                  },
+                })}</li>
+                <li>Quantity: ${reactive({
+                  get value() {
+                    return state.editing
+                      ? html`
+                        <input type="number" ${attach(
+                          (input: HTMLInputElement) => {
+                            input.valueAsNumber = item.value.quantity;
+                            input.addEventListener("input", () => {
+                              item.value.quantity = input.valueAsNumber;
+                            });
+                          },
+                        )}>
+                      `
+                      : item.value.quantity;
+                  },
+                })}</li>
               </ul>
-              <button ${attach((b) => {
-                b.addEventListener("click", () => {
-                  editing.value = !editing.value;
-                });
+              <button ${on({
+                click: () => {
+                  state.editing = !state.editing;
+                },
               })}>
-                ${computed(() => editing.value ? "Save" : "Update")}
+                ${reactive({
+                  get value() {
+                    return state.editing ? "Save" : "Update";
+                  },
+                })}
               </button>
             </li>
           `;
