@@ -5,6 +5,14 @@ import { attr, map, on, text } from "$client/sinks.ts";
 export const DeepStatePage = () => {
   const numbers = reactive([1, 2, 3]);
   const indices = reactive({ update: 0, insert: 0 });
+  const derived = reactive({
+    get sumString() {
+      return numbers.join(" + ");
+    },
+    get sumValue() {
+      return numbers.reduce((a, b) => a + b, 0);
+    },
+  });
 
   return html`
     <div>
@@ -68,14 +76,6 @@ export const DeepStatePage = () => {
         `)}
     </ul>
 
-    <p>${reactive({
-      get value() {
-        return numbers.join(" + ");
-      },
-    })} = ${reactive({
-      get value() {
-        return numbers.reduce((a, b) => a + b, 0);
-      },
-    })}</p>
+    <p>${text(derived, "sumString")} = ${text(derived, "sumValue")}</p>
   `;
 };
