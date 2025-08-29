@@ -1,75 +1,81 @@
 import { html } from "$client/html.ts";
-import { computed, ReactiveArray, state } from "$client/reactivity/signals.ts";
-import { attach, map } from "$client/sinks.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { attr, map, on, text } from "$client/sinks.ts";
 
 export const DeepStatePage = () => {
-  const numbers = new ReactiveArray(1, 2, 3);
-  const join = computed(() => numbers.join(" + "));
-  const total = computed(() => numbers.reduce((a, b) => a + b, 0));
-  const size = computed(() => numbers.length + 1);
-
-  const updateIndex = state(0);
-  const insertIndex = state(0);
+  const numbers = reactive([1, 2, 3]);
+  const indices = reactive({ update: 0, insert: 0 });
 
   return html`
     <div>
-      <button ${attach((b: HTMLButtonElement) => {
-        b.addEventListener("click", () => numbers.push(numbers.length + 1));
-      })}>
-        Push ${size}
+      <button ${on({ click: () => numbers.push(numbers.length + 1) })}>
+        Push ${reactive({
+          get value() {
+            return numbers.length + 1;
+          },
+        })}
       </button>
-      <button ${attach((b: HTMLButtonElement) => {
-        // b.addEventListener("click", () => numbers.pop());
-        b.addEventListener(
-          "click",
-          () => numbers.splice(numbers.length - 1, 1),
-        );
-      })}>
+      <button ${on({ click: () => numbers.pop() })}>
         Pop
       </button>
       <div>
-        <label>Insert index <input type="number" ${attach(
-          (i: HTMLInputElement) => {
-            i.valueAsNumber = insertIndex.value;
-            i.addEventListener("input", () => {
-              insertIndex.value = i.valueAsNumber;
-            });
+        <label>Insert index <input type="number" ${attr({
+          value: indices.insert,
+        })} ${on<HTMLInputElement>({
+          input: function () {
+            indices.insert = this.valueAsNumber;
           },
-        )}></label>
-        <button ${attach((b: HTMLButtonElement) => {
-          b.addEventListener(
-            "click",
-            () => numbers.splice(insertIndex.value, 0, 10),
-          );
+        })}></label>
+        <button ${on({
+          click: () => numbers.splice(indices.insert, 0, 10),
         })}>Insert 10</button>
       </div>
       <div>
-        <label>Update index <input type="number" ${attach(
-          (i: HTMLInputElement) => {
-            i.valueAsNumber = updateIndex.value;
-            i.addEventListener("input", () => {
-              updateIndex.value = i.valueAsNumber;
-            });
-          },
-        )}></label>
-        <label>New value <input type="number" ${attach(
-          (i: HTMLInputElement) => {
-            i.valueAsNumber = numbers[updateIndex.value]!;
-            i.addEventListener("input", () => {
-              numbers[updateIndex.value] = i.valueAsNumber;
-            });
-          },
-        )}></label>
+        <label>Update index
+          <input type="number" ${attr({ value: indices.update })} ${on<
+            HTMLInputElement
+          >({
+            input: function () {
+              indices.update = this.valueAsNumber;
+            },
+          })}></label>
+        <label>New value
+          <input
+            type="number"
+            ${attr({
+              get value() {
+                return numbers[indices.update]!;
+              },
+            })}
+            ${on<HTMLInputElement>({
+              input: function () {
+                numbers[indices.update] = this.valueAsNumber;
+              },
+            })}
+          >
+        </label>
       </div>
     </div>
 
     <p>Sum:</p>
     <ul>
-      ${map(numbers, (n, i) =>
+      ${map(numbers, (item) =>
         html`
-          <li><span>${i}th value:</span> ${n}</li>
+          <li>
+            <span>${text(item, "index")}th value:</span>
+            ${text(item, "value")}
+          </li>
         `)}
     </ul>
-    <p>${join} = ${total}</p>
+
+    <p>${reactive({
+      get value() {
+        return numbers.join(" + ");
+      },
+    })} = ${reactive({
+      get value() {
+        return numbers.reduce((a, b) => a + b, 0);
+      },
+    })}</p>
   `;
 };
