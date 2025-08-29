@@ -135,17 +135,25 @@ export const reactive = <T extends object>(object: T) => {
   };
 
   const notify = (e: ReactiveEvent) => {
+    let { type, path } = e;
     if (
-      (e.type === "update" || e.type === "delete") &&
-      typeof e.path === "string" && derived.has(e.path)
+      (type === "update" || type === "delete" || type === "apply") &&
+      typeof path === "string" && derived.has(path)
     ) {
-      e.oldValue = derived.get(e.path);
+      if (e.type === "apply") {
+        // @ts-ignore a derived apply becomes an update
+        delete e.args;
+        type = "update";
+      }
+      // @ts-ignore a derived apply becomes an update
+      e.oldValue = derived.get(path);
       // invalidate the cache
-      derived.delete(e.path);
+      derived.delete(path);
     }
 
     for (const callback of callbacks) {
-      scheduler.schedule(proxy, callback, e);
+      // @ts-ignore we're good
+      scheduler.schedule(proxy, callback, { ...e, type });
     }
 
     // topological scheduling
@@ -154,13 +162,13 @@ export const reactive = <T extends object>(object: T) => {
 
     for (const [parent, map] of parents) {
       for (const [rootPath, { isDerived, deps }] of map.entries()) {
-        const path = isDerived ? rootPath : rootPath + stringifyKey(e.path);
+        const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
 
         if (
           !isDerived ||
-          isDerived && typeof e.path === "string" && deps?.has(e.path)
+          isDerived && typeof path === "string" && deps?.has(path)
         ) {
-          get(parent, ns.NOTIFY)({ ...e, path });
+          get(parent, ns.NOTIFY)({ ...e, type, path: reroute });
         }
       }
     }
@@ -187,9 +195,10 @@ export const reactive = <T extends object>(object: T) => {
   };
 
   const addParent = (
-    options: Omit<Root, "deps"> & { dep?: string | undefined },
+    options: Omit<Root, "deps"> & { dep?: string[] | string | undefined },
   ) => {
     const { parent, rootPath, isDerived, dep } = options;
+    const dependencies = Array.isArray(dep) ? dep : (dep ? [dep] : []);
 
     // idempotent inserts: only one entry for a given (parent, path) pair
     const parentEntry = roots.get(parent);
@@ -197,15 +206,17 @@ export const reactive = <T extends object>(object: T) => {
       const pathEntry = parentEntry.get(rootPath);
       if (pathEntry && dep) {
         if (pathEntry.deps) {
-          pathEntry.deps.add(dep);
+          for (const d of dependencies) {
+            pathEntry.deps.add(d);
+          }
         } else {
-          pathEntry.deps = new Set([dep]);
+          pathEntry.deps = new Set(dependencies);
         }
       } else {
         parentEntry.set(rootPath, {
           rootPath,
           isDerived,
-          deps: dep ? new Set([dep]) : undefined,
+          deps: new Set(dependencies),
         });
       }
     } else {
@@ -214,7 +225,7 @@ export const reactive = <T extends object>(object: T) => {
         new Map([[rootPath, {
           rootPath,
           isDerived,
-          deps: dep ? new Set([dep]) : undefined,
+          deps: new Set(dependencies),
         }]]),
       );
     }
@@ -230,7 +241,11 @@ export const reactive = <T extends object>(object: T) => {
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
 
       if (root && root.parent !== proxy) {
-        addParent({ ...root, dep: path });
+        if (Array.isArray(target)) {
+          addParent({ ...root, dep: mutationMethods.get(Array) });
+        } else {
+          addParent({ ...root, dep: path });
+        }
       }
 
       if (property === Symbol.iterator) {
@@ -530,6 +545,55 @@ export const reactive = <T extends object>(object: T) => {
 
   return proxy;
 };
+
+const readMethods = new Map([[
+  Array,
+  [
+    ".at",
+    ".entries",
+    ".every",
+    ".filter",
+    ".find",
+    ".findIndex",
+    ".findLast",
+    ".findLastIndex",
+    ".flat",
+    ".flatMap",
+    ".forEach",
+    ".includes",
+    ".indexOf",
+    ".join",
+    ".keys",
+    ".lastIndexOf",
+    ".map",
+    ".reduce",
+    ".reduceRight",
+    ".slice",
+    ".some",
+    ".toLocalString",
+    ".toReversed",
+    ".toSorted",
+    ".toSpliced",
+    ".toString",
+    ".values",
+    ".with",
+  ],
+]]);
+
+const mutationMethods = new Map([
+  [Array, [
+    ".concat",
+    ".copyWithin",
+    ".fill",
+    ".pop",
+    ".push",
+    ".reverse",
+    ".shift",
+    ".sort",
+    ".splice",
+    ".unshift",
+  ]],
+]);
 
 // we grab the proxy's virtual properties by [[GetOwnProperty]] semantics instead of [[Get]] to avoid having to add logic to the main get trap that would have to be executed for every property access of the target
 const get = (proxy: Record<string, any>, symbol: symbol) => {

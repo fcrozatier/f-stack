@@ -856,6 +856,32 @@ Deno.test("array functoriality", () => {
   assertEquals(mirror, [4, 1, 2]);
 });
 
+Deno.test("array-derived values", () => {
+  const r = reactive([1, 2, 3]);
+  const derived = reactive({
+    get sum() {
+      return r.reduce((a, b) => a + b);
+    },
+  });
+
+  const events: ReactiveEvent[] = [];
+  addListener(derived, (e) => events.push(e));
+
+  assertEquals(derived.sum, 6);
+
+  r.push(4);
+  flushSync();
+
+  assertEquals(derived.sum, 10);
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".sum",
+    oldValue: 6,
+    newValue: 10,
+  });
+});
+
 Deno.test("Map functoriality", () => {
   const r = reactive(new Map());
   const mirror = {};
