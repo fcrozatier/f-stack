@@ -1,3 +1,5 @@
+export type AnyConstructor = new (...args: any[]) => any;
+
 export type ReactiveEventType = "create" | "update" | "delete" | "apply";
 export type ReactiveEvent =
   | {
@@ -241,8 +243,10 @@ export const reactive = <T extends object>(object: T) => {
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
 
       if (root && root.parent !== proxy) {
-        if (Array.isArray(target)) {
-          addParent({ ...root, dep: mutationMethods.get(Array) });
+        // @ts-ignore all non-null objects have this on the prototype
+        const constructor = target.constructor;
+        if (mutationMethods.has(constructor)) {
+          addParent({ ...root, dep: mutationMethods.get(constructor) });
         } else {
           addParent({ ...root, dep: path });
         }
@@ -580,7 +584,7 @@ const readMethods = new Map([[
   ],
 ]]);
 
-const mutationMethods = new Map([
+const mutationMethods = new Map<AnyConstructor, string[]>([
   [Array, [
     ".concat",
     ".copyWithin",
@@ -592,6 +596,11 @@ const mutationMethods = new Map([
     ".sort",
     ".splice",
     ".unshift",
+  ]],
+  [Map, [
+    ".clear",
+    ".delete",
+    ".set",
   ]],
 ]);
 

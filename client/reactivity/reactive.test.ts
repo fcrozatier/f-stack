@@ -944,3 +944,29 @@ Deno.test("Map functoriality", () => {
   assertEquals(r.size, 0);
   assertEquals(mirror, {});
 });
+
+Deno.test("map-derived values", () => {
+  const r = reactive(new Map([["a", 1], ["b", 2], ["c", 3]]));
+  const derived = reactive({
+    get sum() {
+      return r.values().reduce((a, b) => a + b);
+    },
+  });
+
+  const events: ReactiveEvent[] = [];
+  addListener(derived, (e) => events.push(e));
+
+  assertEquals(derived.sum, 6);
+
+  r.set("a", 4);
+  flushSync();
+
+  assertEquals(derived.sum, 9);
+  assertEquals(events.length, 1);
+  assertEquals(events[0], {
+    type: "update",
+    path: ".sum",
+    oldValue: 6,
+    newValue: 9,
+  });
+});
