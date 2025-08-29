@@ -70,8 +70,7 @@ export const DeepStatePage = () => {
       ${map(numbers, (item) =>
         html`
           <li>
-            <span>${text(item, "index")}th value:</span>
-            ${text(item, "value")}
+            value ${text(item, "index")}: ${text(item, "value")}
           </li>
         `)}
     </ul>
