@@ -151,7 +151,7 @@ export const TodosPage = () => {
       border-radius: 1em;
       background-color: peachpuff;
       width: 10rem;
-      view-transition-name: auto;
+      view-transition-name: match-element;
       view-transition-class: any-li;
 
       & div {
@@ -163,7 +163,7 @@ export const TodosPage = () => {
     }
     #sum {
       text-align: center;
-      view-transition-name: auto;
+      view-transition-name: match-element;
     }
     </style>
   `;
