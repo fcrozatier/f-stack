@@ -230,6 +230,14 @@ export const html: TemplateTag = (strings, ...values) => {
             } else {
               element.removeAttribute(key);
             }
+            if (
+              nonReflectedAttributes
+                // @ts-ignore element has the constructor property
+                .get(element.constructor)?.includes(key)
+            ) {
+              // @ts-ignore element has property [key]
+              element[key] = Boolean(value);
+            }
           } else {
             element.setAttribute(key, String(value));
 
