@@ -2,20 +2,31 @@ import { html } from "$client/html.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
 import { attr, map, on, text } from "$client/sinks.ts";
 
+type Todo = {
+  id: number;
+  value: string;
+};
+
 export const TodosPage = () => {
-  const todos = reactive([{id:1, value:"cook"}, {id:2,value:"eat"}, {id:3,value:"coffee"}]);
+  const todos: Todo[] = reactive([
+    { id: 1, value: "cook" },
+    { id: 2, value: "eat" },
+    { id: 3, value: "coffee" },
+  ]);
   const indices = reactive({ update: 0, insert: 0 });
 
   return html`
     <div>
-      <button ${on({ click: () => todos.push({id:todos.length + 1, value:"sleep"}) })}>
-        Push "sleep"
+      <button ${on({
+        click: () => todos.push({ id: todos.length + 1, value: "sleep" }),
+      })}>
+        Push
       </button>
       <button ${on({ click: () => todos.pop() })}>
         Pop
       </button>
       <div>
-        <label>Insert "sleep" index <input type="number" ${attr({
+        <label>Insert index <input type="number" ${attr({
           value: indices.insert,
         })} ${on<HTMLInputElement>({
           input: function () {
@@ -23,12 +34,18 @@ export const TodosPage = () => {
           },
         })}></label>
         <button ${on({
-          click: () => todos.splice(indices.insert, 0, {id:10, value: "sleep"}),
-        })}>Insert 10</button>
+          click: () =>
+            todos.splice(indices.insert, 0, {
+              id: todos.length + 1,
+              value: "sleep",
+            }),
+        })}>Insert</button>
       </div>
       <div>
         <label>Update index
-          <input type="number" ${attr({ value: indices.update})} ${on<HTMLInputElement>({
+          <input type="number" ${attr({ value: indices.update })} ${on<
+            HTMLInputElement
+          >({
             input: function () {
               indices.update = this.valueAsNumber;
             },
@@ -52,26 +69,25 @@ export const TodosPage = () => {
     </div>
 
     <div>
-      <ul id="todo">
-        ${map(todos, (item) =>
+      <ul>
+        ${map(todos, (todo) =>
           html`
-            <li>
-              <h3>Todo ${text(item, "index")}</h3>
-              <p>${text(item.value, "value")}</p>
+            <li ${attr({ id: todo.value.id })}>
+              <h3>Todo ${text(todo, "index")}</h3>
+              <p>${text(todo.value, "value")}</p>
               <div>
-                <button class="action">✅</button>
                 <button class="action" ${on({
-                  click: () => todos.splice(item.index, 1),
+                  click: function () {
+                    todos.splice(todo.index, 1);
+                  },
                 })}>🗑️</button>
               </div>
             </li>
           `)}
       </ul>
-      <ul id="done">
-      <ul>
     </div>
 
-    <p id="sum">${text(todos, "length")} todos</p>
+    <p id="sum">${text(todos, "length")} remaining todos</p>
     <style>
     ::view-transition-group(*) {
       animation-duration: 200ms;
@@ -123,9 +139,9 @@ export const TodosPage = () => {
       margin-bottom: 0;
     }
     ul {
-      display: inline-grid;
-      gap: 1em;
+      display:grid;
       justify-content: center;
+      gap: 1em;
     }
     li {
       list-style-type: none;
@@ -144,6 +160,7 @@ export const TodosPage = () => {
       }
     }
     #sum {
+      text-align: center;
       view-transition-name: auto;
     }
     </style>
