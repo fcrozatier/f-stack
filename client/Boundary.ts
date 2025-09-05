@@ -90,34 +90,41 @@ export class Boundary<T = any> {
         deleteCount = 0,
         ...values: any[]
       ) => {
-        // We could also update the values instead of deleting them
-        // or use Element.replaceWith
-        for (
-          const [_, boundary] of boundaries
-            .slice(start, start + deleteCount)
-        ) boundary.delete();
+        const update = () => {
+          // We could also update the values instead of deleting them
+          // or use Element.replaceWith
+          for (
+            const [_, boundary] of boundaries
+              .slice(start, start + deleteCount)
+          ) boundary.delete();
 
-        const newBoundaries: [{ index: number; value: any }, Boundary][] = [];
+          const newBoundaries: [{ index: number; value: any }, Boundary][] = [];
 
-        for (const value of values) {
-          const args = reactive({ index: start + newBoundaries.length, value });
-          const newBoundary = new Boundary(data.mapper(args));
-          newBoundaries.push([args, newBoundary]);
-        }
+          for (const value of values) {
+            const args = reactive({
+              index: start + newBoundaries.length,
+              value,
+            });
+            const newBoundary = new Boundary(data.mapper(args));
+            newBoundaries.push([args, newBoundary]);
+          }
 
-        const next = boundaries[start + deleteCount]?.[1]?.start ?? this.end;
+          const next = boundaries[start + deleteCount]?.[1]?.start ?? this.end;
 
-        for (const [args] of boundaries.slice(start + deleteCount)) {
-          args.index += newBoundaries.length - deleteCount;
-        }
+          for (const [args] of boundaries.slice(start + deleteCount)) {
+            args.index += newBoundaries.length - deleteCount;
+          }
 
-        boundaries.splice(start, deleteCount, ...newBoundaries);
+          boundaries.splice(start, deleteCount, ...newBoundaries);
 
-        for (const [_, boundary] of newBoundaries) {
-          next.before(boundary.start);
-          next.before(boundary.end);
-          boundary.render();
-        }
+          for (const [_, boundary] of newBoundaries) {
+            next.before(boundary.start);
+            next.before(boundary.end);
+            boundary.render();
+          }
+        };
+
+        maybeViewTransition(update);
       };
 
       // insert initial values
@@ -129,6 +136,8 @@ export class Boundary<T = any> {
 
         switch (e.type) {
           case "update": {
+            // Ignore derived updates of the length property
+            if (e.path === ".length") return;
             const index = Number(e.path.split(".")[1]);
             const [args] = boundaries[index]!;
             args.value = e.newValue;
@@ -247,3 +256,28 @@ export class Boundary<T = any> {
     }
   }
 }
+
+type UpdateCallback = undefined | (() => void | Promise<void>);
+type StartViewTransitionOptions = {
+  types?: string[];
+  update?: UpdateCallback;
+};
+
+const maybeViewTransition = (
+  param: StartViewTransitionOptions | UpdateCallback,
+) => {
+  if (
+    matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    !document.startViewTransition
+  ) {
+    console.log("reduce");
+    if (typeof param === "function") {
+      param();
+    } else if (typeof param === "object") {
+      param?.update?.();
+    }
+  } else {
+    // @ts-ignore Document types are not up to date
+    document.startViewTransition(param);
+  }
+};
