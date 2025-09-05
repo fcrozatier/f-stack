@@ -232,6 +232,15 @@ export const html: TemplateTag = (strings, ...values) => {
             }
           } else {
             element.setAttribute(key, String(value));
+
+            if (
+              nonReflectedAttributes
+                // @ts-ignore element has the constructor property
+                .get(element.constructor)?.includes(key)
+            ) {
+              // @ts-ignore element has property [key]
+              element[key] = value;
+            }
           }
           break;
         }
@@ -356,3 +365,7 @@ export const booleanAttributes = [
   "reversed", // on <ol>
   "selected", // on <option>
 ];
+
+const nonReflectedAttributes = new Map([
+  [HTMLInputElement, ["value", "checked"]],
+]);
