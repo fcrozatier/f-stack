@@ -43,9 +43,11 @@ export const TodosPage = () => {
       </div>
       <div>
         <label>Update index
-          <input type="number" ${attr({ value: indices.update })} ${on<
-            HTMLInputElement
-          >({
+          <input type="number" ${attr({
+            get value() {
+              return indices.update;
+            },
+          })} ${on<HTMLInputElement>({
             input: function () {
               indices.update = this.valueAsNumber;
             },
@@ -55,7 +57,7 @@ export const TodosPage = () => {
             type="text"
             ${attr({
               get value() {
-                return todos[indices.update]!.value;
+                return todos[indices.update]?.value;
               },
             })}
             ${on<HTMLInputElement>({
