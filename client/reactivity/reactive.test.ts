@@ -800,7 +800,11 @@ Deno.test("array functoriality", () => {
 
     switch (e.type) {
       case "create":
+        // @ts-ignore
+        mirror[path] = e.newValue;
+        break;
       case "update":
+        if (path === "length") return;
         // @ts-ignore
         mirror[path] = e.newValue;
         break;
@@ -810,7 +814,8 @@ Deno.test("array functoriality", () => {
         break;
       case "apply": {
         // @ts-ignore
-        mirror[path](...e.args);
+        Array.prototype[path].call(mirror, ...e.args);
+        // mirror[path](...e.args);
       }
     }
   });
@@ -856,11 +861,53 @@ Deno.test("array functoriality", () => {
   assertEquals(mirror, [4, 1, 2]);
 });
 
+Deno.test("array length property", () => {
+  const r = reactive([1, 2, 3]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(events.length, 0);
+  assertEquals(r.length, 3);
+
+  r.push(4);
+  flushSync();
+  assertEquals(r.length, 4);
+  assertEquals(events.length, 2);
+  assertEquals(events, [
+    { type: "update", path: ".length", oldValue: 3, newValue: 4 },
+    { type: "apply", path: ".push", args: [4] },
+  ]);
+
+  r.pop();
+  flushSync();
+  assertEquals(r.length, 3);
+  assertEquals(events.length, 4);
+  assertEquals(events.slice(2), [
+    { type: "update", path: ".length", oldValue: 4, newValue: 3 },
+    { type: "apply", path: ".pop", args: [] },
+  ]);
+
+  r.length = 0;
+  flushSync();
+  assertEquals(r.length, 0);
+  assertEquals(events.length, 5);
+  assertEquals(events[4], {
+    type: "create",
+    path: ".length",
+    newValue: 0,
+    oldValue: 3,
+  });
+});
+
 Deno.test("array-derived values", () => {
   const r = reactive([1, 2, 3]);
   const derived = reactive({
     get sum() {
       return r.reduce((a, b) => a + b);
+    },
+    get len() {
+      return r.length;
     },
   });
 
@@ -868,18 +915,25 @@ Deno.test("array-derived values", () => {
   addListener(derived, (e) => events.push(e));
 
   assertEquals(derived.sum, 6);
+  assertEquals(derived.len, 3);
 
   r.push(4);
   flushSync();
 
   assertEquals(derived.sum, 10);
-  assertEquals(events.length, 1);
-  assertEquals(events[0], {
+  assertEquals(derived.len, 4);
+  assertEquals(events.length, 2);
+  assertEquals(events, [{
     type: "update",
     path: ".sum",
     oldValue: 6,
     newValue: 10,
-  });
+  }, {
+    type: "update",
+    path: ".len",
+    oldValue: 3,
+    newValue: 4,
+  }]);
 });
 
 Deno.test("Map functoriality", () => {

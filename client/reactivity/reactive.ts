@@ -6,6 +6,8 @@ export type ReactiveEvent =
     type: "create";
     path: string | symbol;
     newValue: any;
+    // A writable derived set manually can have an old value
+    oldValue?: any;
   }
   | { type: "update"; path: string | symbol; newValue: any; oldValue?: any }
   | { type: "delete"; path: string | symbol; oldValue: any }
@@ -151,6 +153,20 @@ export const reactive = <T extends object>(object: T) => {
       e.oldValue = derived.get(path);
       // invalidate the cache
       derived.delete(path);
+    }
+
+    if (
+      type === "apply" &&
+      Array.isArray(object) && typeof path === "string" &&
+      mutationMethods.get(Array)?.includes(path)
+    ) {
+      notify({
+        type: "update",
+        path: ".length",
+        // @ts-ignore object is an array
+        oldValue: object.length,
+        newValue: undefined,
+      });
     }
 
     for (const callback of callbacks) {
@@ -426,11 +442,12 @@ export const reactive = <T extends object>(object: T) => {
         oldValue !== newValue
       ) return false;
 
+      const isArray = Array.isArray(target) && property === "length";
       if (
         descriptor?.configurable === false &&
         descriptor?.set === undefined &&
         // exception: the `length` property of arrays can actually be set
-        !(Array.isArray(target) && property === "length")
+        !isArray
       ) return false;
 
       const path = "." + stringifyKey(property);
@@ -438,7 +455,10 @@ export const reactive = <T extends object>(object: T) => {
         // optional fancy equality check here
         if (newValue !== oldValue) {
           Reflect.set(target, property, newValue, receiver);
-          notify({ type: "update", path, newValue, oldValue });
+
+          // For Arrays we distinguish setting the length directly (it's a writable derived)
+          const type = isArray ? "create" : "update";
+          notify({ type, path, newValue, oldValue });
         }
       } else {
         Reflect.set(target, property, newValue, receiver);
