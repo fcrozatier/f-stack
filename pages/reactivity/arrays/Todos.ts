@@ -3,22 +3,21 @@ import { reactive } from "$client/reactivity/reactive.ts";
 import { attr, map, on, text } from "$client/sinks.ts";
 
 type Todo = {
-  id: number;
-  value: string;
+  description: string;
 };
 
 export const TodosPage = () => {
   const todos: Todo[] = reactive([
-    { id: 1, value: "cook" },
-    { id: 2, value: "eat" },
-    { id: 3, value: "coffee" },
+    { description: "cook" },
+    { description: "eat" },
+    { description: "coffee" },
   ]);
   const indices = reactive({ update: 0, insert: 0 });
 
   return html`
     <div>
       <button ${on({
-        click: () => todos.push({ id: todos.length + 1, value: "sleep" }),
+        click: () => todos.push({ description: "sleep" }),
       })}>
         Push
       </button>
@@ -36,8 +35,7 @@ export const TodosPage = () => {
         <button ${on({
           click: () =>
             todos.splice(indices.insert, 0, {
-              id: todos.length + 1,
-              value: "sleep",
+              description: "sleep",
             }),
         })}>Insert</button>
       </div>
@@ -57,12 +55,17 @@ export const TodosPage = () => {
             type="text"
             ${attr({
               get value() {
-                return todos[indices.update]?.value;
+                return todos[indices.update]?.description ?? "";
               },
             })}
             ${on<HTMLInputElement>({
               input: function () {
-                todos[indices.update]!.value = this.value;
+                const todo = todos[indices.update];
+                if (todo) {
+                  todo.description = this.value;
+                } else {
+                  console.log("todo not found");
+                }
               },
             })}
           >
@@ -74,14 +77,12 @@ export const TodosPage = () => {
       <ul>
         ${map(todos, (todo) =>
           html`
-            <li ${attr({ id: todo.value.id })}>
+            <li>
               <h3>Todo ${text(todo, "index")}</h3>
-              <p>${text(todo.value, "value")}</p>
+              <p>${text(todo.value, "description")}</p>
               <div>
                 <button class="action" ${on({
-                  click: function () {
-                    todos.splice(todo.index, 1);
-                  },
+                  click: () => todos.splice(todo.index, 1),
                 })}>🗑️</button>
               </div>
             </li>
