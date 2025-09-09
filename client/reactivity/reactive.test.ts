@@ -391,6 +391,25 @@ Deno.test("reactive iterables can be mutated during iteration", () => {
   assertEquals(map.get("a")?.value, false);
 });
 
+Deno.test("auto prunes relations", () => {
+  const r = reactive([{ value: "a" }]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  const a = r[0]!;
+  assertEquals(a?.value, "a");
+
+  // breaks the link
+  delete r[0];
+  flushSync();
+
+  a.value = "b";
+  flushSync();
+  assertEquals(r, []);
+  assertEquals(a.value, "b");
+});
+
 // Derived values
 
 Deno.test("derivation", () => {
@@ -870,6 +889,13 @@ Deno.test("array length property", () => {
   assertEquals(events.length, 0);
   assertEquals(r.length, 3);
 
+  // No .length event is emitted is the length doesn't change
+  // r.push();
+  // flushSync();
+  // assertEquals(r.length, 3);
+  // assertEquals(events.length, 1);
+  // assertEquals(events[0]?.path, ".push");
+
   r.push(4);
   flushSync();
   assertEquals(r.length, 4);
@@ -898,6 +924,24 @@ Deno.test("array length property", () => {
     newValue: 0,
     oldValue: 3,
   });
+});
+
+Deno.test("array moving indices", () => {
+  const r = reactive([{ value: "a" }, { value: "b" }]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(events.length, 0);
+  assertEquals(r[1]?.value, "b");
+
+  r.shift();
+  flushSync();
+  assertEquals(r[0]?.value, "b");
+
+  r[0]!.value = "c";
+  flushSync();
+  assertEquals(r[0]?.value, "c");
 });
 
 Deno.test("array-derived values", () => {

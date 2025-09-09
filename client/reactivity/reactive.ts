@@ -105,6 +105,7 @@ export const flushSync = () => {
 const ns = {
   ADD_LISTENER: Symbol.for("add listener"),
   ADD_PARENT: Symbol.for("add parent"),
+  REMOVE_PARENT: Symbol.for("remove parent"),
   HAS_PARENT: Symbol.for("has parent"),
   IS_REACTIVE: Symbol.for("is reactive"),
   NOTIFY: Symbol.for("notify"),
@@ -130,9 +131,9 @@ export const reactive = <T extends object>(object: T) => {
   > = new Map();
 
   const ownProperties = new Map<string | symbol, PropertyDescriptor>();
-  const graph = new WeakMap();
   const callbacks: ReactiveEventCallback[] = [];
   const derived: Map<string, any> = new Map();
+  let graph = new WeakMap();
 
   const stringifyKey = (key: string | symbol) => {
     return typeof key === "symbol" ? key.description ?? String(key) : key;
@@ -167,6 +168,9 @@ export const reactive = <T extends object>(object: T) => {
         oldValue: object.length,
         newValue: undefined,
       });
+
+      // prune all old entries as indices are updated
+      graph = new WeakMap();
     }
 
     for (const callback of callbacks) {
@@ -199,13 +203,6 @@ export const reactive = <T extends object>(object: T) => {
       },
       proxy as Record<string, any>,
     );
-  };
-
-  const hasParent = (p: Record<PropertyKey, any>): boolean => {
-    for (const [root] of roots.entries()) {
-      if (root === p || get(root, ns.HAS_PARENT)(p)) return true;
-    }
-    return false;
   };
 
   const addListener = (callback: ReactiveEventCallback) => {
@@ -247,6 +244,17 @@ export const reactive = <T extends object>(object: T) => {
         }]]),
       );
     }
+  };
+
+  const hasParent = (p: Record<PropertyKey, any>): boolean => {
+    for (const [root] of roots.entries()) {
+      if (root === p || get(root, ns.HAS_PARENT)(p)) return true;
+    }
+    return false;
+  };
+
+  const removeParent = (p: Record<PropertyKey, any>) => {
+    roots.delete(p);
   };
 
   const proxy = new Proxy(object, {
@@ -454,15 +462,15 @@ export const reactive = <T extends object>(object: T) => {
       if (property in target) {
         // optional fancy equality check here
         if (newValue !== oldValue) {
-          Reflect.set(target, property, newValue, receiver);
-
           // For Arrays we distinguish setting the length directly (it's a writable derived)
           const type = isArray ? "create" : "update";
+
           notify({ type, path, newValue, oldValue });
+          Reflect.set(target, property, newValue, receiver);
         }
       } else {
-        Reflect.set(target, property, newValue, receiver);
         notify({ type: "create", path, newValue });
+        Reflect.set(target, property, newValue, receiver);
       }
 
       return true;
@@ -481,6 +489,14 @@ export const reactive = <T extends object>(object: T) => {
       if (property in target) {
         const oldValue = proxy[property];
         notify({ type: "delete", path, oldValue });
+
+        // prune graph
+        if (isReactive(oldValue)) {
+          const oldTarget = get(oldValue, ns.TARGET);
+          graph.delete(oldTarget);
+
+          get(oldValue, ns.REMOVE_PARENT)(proxy);
+        }
       }
 
       derived.delete(path);
@@ -528,6 +544,13 @@ export const reactive = <T extends object>(object: T) => {
   if (!(ns.ADD_PARENT in proxy)) {
     Object.defineProperty(proxy, ns.ADD_PARENT, {
       value: addParent,
+      configurable: true,
+    });
+  }
+
+  if (!(ns.REMOVE_PARENT in proxy)) {
+    Object.defineProperty(proxy, ns.REMOVE_PARENT, {
+      value: removeParent,
       configurable: true,
     });
   }
