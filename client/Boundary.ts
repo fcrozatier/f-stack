@@ -126,12 +126,17 @@ export class Boundary<T = any> {
         maybeViewTransition(update);
       };
 
+      // track all values for relabels
+      for (let index = 0; index < values.length; index++) {
+        values[index];
+      }
+
       // insert initial values
       spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
       addListener(values, (e) => {
-        if (typeof e.path !== "string") return;
+        if (e.type === "relabel" || typeof e.path !== "string") return;
 
         switch (e.type) {
           case "update": {
