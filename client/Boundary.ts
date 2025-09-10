@@ -80,7 +80,7 @@ export class Boundary<T = any> {
         return () => this.deleteContents();
       });
     } else if (isArraySink(data)) {
-      const values = data.iterable;
+      const values = data.values;
       const boundaries: [{ index: number; value: any }, Boundary][] = reactive(
         [],
       );

@@ -72,17 +72,17 @@ export const isClassSink = (value: unknown): value is ClassListValue => {
 const MAP_SINK = Symbol.for("map sink");
 
 type MapSink<T = any> = {
-  iterable: Iterable<T>;
+  values: T[];
   mapper: (reactive: { value: T; index: number }) => DocumentFragment;
   [MAP_SINK]?: true;
 };
 
 export const map = <T>(
-  iterable: Iterable<T>,
+  values: T[],
   mapper: (reactive: { value: T; index: number }) => DocumentFragment,
 ): MapSink<T> => {
   return {
-    iterable,
+    values,
     mapper,
     [MAP_SINK]: true,
   };
