@@ -264,11 +264,14 @@ export const reactive = <T extends object>(object: T) => {
     const data = dynamicLabels.get(oldLabel);
 
     if (!data && oldPath.length > 1) {
+      const maybeReactive = proxy[oldLabel];
+      if (!isReactive(maybeReactive)) return null;
+
       newPath += oldLabel;
-      const rest = getOwn(proxy[oldLabel], ns.UPDATE_LABEL)(oldPath.slice(1));
+      const rest = getOwn(maybeReactive, ns.UPDATE_LABEL)(oldPath.slice(1));
       if (!rest) return null;
-      newPath += rest;
-      return newPath;
+
+      return newPath + rest;
     }
 
     if (!data) return null;
