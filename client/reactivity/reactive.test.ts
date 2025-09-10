@@ -133,13 +133,13 @@ Deno.test("relabelling", () => {
   assertEquals(r[0]?.value, "b");
   assertEquals(events.length, 3);
 
-  // Only one relabelling happened as 0 was just removed
+  // Only one relabelling happened as .0 was just removed
   assertEquals(
     events.map((e) => e.type).filter((t) => t === "relabel").length,
     1,
   );
 
-  // 1 was relabelled
+  // .1 was relabelled
   assertEquals(events[1], {
     type: "relabel",
     oldPath: ".1",

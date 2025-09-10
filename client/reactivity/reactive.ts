@@ -271,7 +271,8 @@ export const reactive = <T extends object>(object: T) => {
       const rest = getOwn(maybeReactive, ns.UPDATE_LABEL)(oldPath.slice(1));
       if (!rest) return null;
 
-      return newPath + rest;
+      newPath += rest;
+      return newPath === "." + oldPath.join(".") ? null : newPath;
     }
 
     if (!data) return null;
@@ -310,7 +311,7 @@ export const reactive = <T extends object>(object: T) => {
       newPath += rest;
     }
 
-    return newPath;
+    return newPath === "." + oldPath.join(".") ? null : newPath;
   };
 
   const addListener = (callback: ReactiveEventCallback) => {
@@ -640,12 +641,12 @@ export const reactive = <T extends object>(object: T) => {
         typeof property === "symbol" &&
         Object.values(ns).includes(property)
       ) {
-        // don't pollute the original object with the proxy properties
+        // don't pollute the original object with the proxy's own properties
         proxyOwnProperties.set(property, descriptor);
-      } else {
-        Reflect.defineProperty(target, property, descriptor);
+        return true;
       }
 
+      Reflect.defineProperty(target, property, descriptor);
       return true;
     },
     has(target, property) {
