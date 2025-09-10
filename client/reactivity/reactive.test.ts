@@ -117,6 +117,76 @@ Deno.test("function listeners", () => {
   assertEquals(events[3], { type: "delete", path: ".a", oldValue });
 });
 
+Deno.test("relabelling", () => {
+  const r = reactive([{ value: "a" }, { value: "b" }]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(events.length, 0);
+  assertEquals(r[0]?.value, "a");
+  assertEquals(r[1]?.value, "b");
+
+  r.shift();
+  flushSync();
+
+  assertEquals(r[0]?.value, "b");
+  assertEquals(events.length, 3);
+
+  // Only one relabelling happened as 0 was just removed
+  assertEquals(
+    events.map((e) => e.type).filter((t) => t === "relabel").length,
+    1,
+  );
+
+  // 1 was relabelled
+  assertEquals(events[1], {
+    type: "relabel",
+    oldPath: ".1",
+    newPath: ".0",
+  });
+
+  // parents were updated
+  r[0]!.value = "c";
+  flushSync();
+  assertEquals(r[0]?.value, "c");
+});
+
+Deno.test("nested relabelling", () => {
+  const r = reactive({ values: [{ value: "a" }, { value: "b" }] });
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(events.length, 0);
+  assertEquals(r.values[0]!.value, "a");
+  assertEquals(r.values[1]!.value, "b");
+
+  r.values.shift();
+  flushSync();
+
+  assertEquals(r.values[0]!.value, "b");
+  assertEquals(events.length, 3);
+
+  // Only one relabelling happened as 0 was just removed
+  assertEquals(
+    events.map((e) => e.type).filter((t) => t === "relabel").length,
+    1,
+  );
+
+  // 1 was relabelled
+  assertEquals(events[1], {
+    type: "relabel",
+    oldPath: ".values.1",
+    newPath: ".values.0",
+  });
+
+  // parents were updated
+  r.values[0]!.value = "c";
+  flushSync();
+  assertEquals(r.values[0]?.value, "c");
+});
+
 // Properties
 
 Deno.test("events collapse", () => {
@@ -696,7 +766,7 @@ Deno.test("object functoriality", () => {
 
   addListener(r, (e) => {
     const root = ".";
-    if (typeof e.path !== "string") return;
+    if (e.type === "relabel" || typeof e.path !== "string") return;
 
     const paths = e.path.split(root).slice(1);
     assertEquals(paths.length, 1);
@@ -751,7 +821,7 @@ Deno.test("deep object functoriality", () => {
   const mirror = {};
 
   addListener(ref, (e) => {
-    if (typeof e.path !== "string") return;
+    if (e.type === "relabel" || typeof e.path !== "string") return;
 
     const paths = e.path.split(".").slice(1);
 
@@ -809,7 +879,7 @@ Deno.test("array functoriality", () => {
 
   addListener(r, (e) => {
     const root = ".";
-    if (typeof e.path !== "string") return;
+    if (e.type === "relabel" || typeof e.path !== "string") return;
 
     const paths = e.path.split(root).slice(1);
 
@@ -838,6 +908,9 @@ Deno.test("array functoriality", () => {
       }
     }
   });
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
 
   // we can transport operations
 
@@ -924,24 +997,6 @@ Deno.test("array length property", () => {
     newValue: 0,
     oldValue: 3,
   });
-});
-
-Deno.test("array moving indices", () => {
-  const r = reactive([{ value: "a" }, { value: "b" }]);
-
-  const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
-
-  assertEquals(events.length, 0);
-  assertEquals(r[1]?.value, "b");
-
-  r.shift();
-  flushSync();
-  assertEquals(r[0]?.value, "b");
-
-  r[0]!.value = "c";
-  flushSync();
-  assertEquals(r[0]?.value, "c");
 });
 
 Deno.test("array-derived values", () => {

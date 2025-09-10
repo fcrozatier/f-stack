@@ -91,8 +91,7 @@ export class Boundary<T = any> {
         ...values: any[]
       ) => {
         const update = () => {
-          // We could also update the values instead of deleting them
-          // or use Element.replaceWith
+          // We delete values to trigger the right transition
           for (
             const [_, boundary] of boundaries
               .slice(start, start + deleteCount)

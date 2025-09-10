@@ -1,6 +1,14 @@
+import { assertExists } from "../assert.ts";
+
 export type AnyConstructor = new (...args: any[]) => any;
 
-export type ReactiveEventType = "create" | "update" | "delete" | "apply";
+export type ReactiveEventType =
+  | "create"
+  | "update"
+  | "delete"
+  | "apply"
+  | "relabel";
+
 export type ReactiveEvent =
   | {
     type: "create";
@@ -11,7 +19,8 @@ export type ReactiveEvent =
   }
   | { type: "update"; path: string | symbol; newValue: any; oldValue?: any }
   | { type: "delete"; path: string | symbol; oldValue: any }
-  | { type: "apply"; path: string | symbol; args: any[] };
+  | { type: "apply"; path: string | symbol; args: any[] }
+  | { type: "relabel"; oldPath: string; newPath: string | null };
 
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
@@ -49,11 +58,20 @@ export class Scheduler {
       if (!callbackLevel) {
         proxyLevel.set(callback, [event]);
       } else {
-        const index = callbackLevel?.findIndex((e) =>
-          e.type === event.type && e.path === event.path
-        );
+        const index = callbackLevel?.findIndex((e) => {
+          if (e.type !== event.type) return false;
+
+          if (e.type === "relabel" && event.type === "relabel") {
+            return e.oldPath === event.oldPath;
+          }
+
+          if (e.type !== "relabel" && event.type !== "relabel") {
+            return e.path === event.path;
+          }
+        });
+
         // collapsing:
-        // only the first enqueued event contains the correct old value in general since derived values are cleared afterwards
+        // only the first enqueued event contains the correct old value in all generality since derived values are cleared afterwards
         // the correct new value is read when dequeuing
         // we don't collapse "apply" events
         if (index === -1) {
@@ -84,7 +102,7 @@ export const flushSync = () => {
 
   // topological dequeuing
   const scheduled = [...scheduler.getPending().entries()];
-  scheduled.sort(([p1], [p2]) => get(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
+  scheduled.sort(([p1], [p2]) => getOwn(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
 
   for (const [proxy, map] of scheduled) {
     for (const [callback, events] of map?.entries()) {
@@ -94,9 +112,20 @@ export const flushSync = () => {
           typeof e.path === "string"
         ) {
           // get the latest value and recache the derived values
-          e.newValue = get(proxy, ns.READ_PATH)(e.path);
+          e.newValue = getOwn(proxy, ns.READ_PATH)(e.path);
+          callback(e);
+        } else if (e.type === "relabel") {
+          e.newPath = getOwn(proxy, ns.UPDATE_LABEL)(
+            e.oldPath.split(".").slice(1),
+          );
+
+          // a relabelling happened
+          if (e.newPath !== null) {
+            callback(e);
+          }
+        } else {
+          callback(e);
         }
-        callback(e);
       }
     }
   }
@@ -106,10 +135,12 @@ const ns = {
   ADD_LISTENER: Symbol.for("add listener"),
   ADD_PARENT: Symbol.for("add parent"),
   REMOVE_PARENT: Symbol.for("remove parent"),
+  UPDATE_PARENT: Symbol.for("update parent"),
   HAS_PARENT: Symbol.for("has parent"),
   IS_REACTIVE: Symbol.for("is reactive"),
   NOTIFY: Symbol.for("notify"),
   READ_PATH: Symbol.for("read path"),
+  UPDATE_LABEL: Symbol.for("update label"),
   TARGET: Symbol.for("target"),
 };
 
@@ -130,17 +161,20 @@ export const reactive = <T extends object>(object: T) => {
     Map<string, Omit<Root, "parent">>
   > = new Map();
 
-  const ownProperties = new Map<string | symbol, PropertyDescriptor>();
-  const callbacks: ReactiveEventCallback[] = [];
+  const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
+  const graph = new WeakMap();
   const derived: Map<string, any> = new Map();
-  let graph = new WeakMap();
+  const callbacks: ReactiveEventCallback[] = [];
+  const dynamicLabels = new Map<string, any>();
 
   const stringifyKey = (key: string | symbol) => {
     return typeof key === "symbol" ? key.description ?? String(key) : key;
   };
 
   const notify = (e: ReactiveEvent) => {
-    let { type, path } = e;
+    let type = e.type;
+    const path = "path" in e ? e.path : "";
+
     if (
       (type === "update" || type === "delete" || type === "apply") &&
       typeof path === "string" && derived.has(path)
@@ -169,8 +203,14 @@ export const reactive = <T extends object>(object: T) => {
         newValue: undefined,
       });
 
-      // prune all old entries as indices are updated
-      graph = new WeakMap();
+      // notify relabelling of tracked labels
+      for (const oldPath of dynamicLabels.keys()) {
+        notify({
+          type: "relabel",
+          oldPath: "." + oldPath,
+          newPath: "",
+        });
+      }
     }
 
     for (const callback of callbacks) {
@@ -180,17 +220,24 @@ export const reactive = <T extends object>(object: T) => {
 
     // topological scheduling
     const parents = [...roots.entries()];
-    parents.sort(([p1], [p2]) => get(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
+    parents.sort(([p1], [p2]) => getOwn(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
 
     for (const [parent, map] of parents) {
       for (const [rootPath, { isDerived, deps }] of map.entries()) {
-        const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
+        if (type !== "relabel") {
+          const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
 
-        if (
-          !isDerived ||
-          isDerived && typeof path === "string" && deps?.has(path)
-        ) {
-          get(parent, ns.NOTIFY)({ ...e, type, path: reroute });
+          if (
+            !isDerived ||
+            isDerived && typeof path === "string" && deps?.has(path)
+          ) {
+            getOwn(parent, ns.NOTIFY)({ ...e, type, path: reroute });
+          }
+        } else if (e.type === "relabel") {
+          getOwn(parent, ns.NOTIFY)({
+            ...e,
+            oldPath: rootPath + stringifyKey(e.oldPath),
+          });
         }
       }
     }
@@ -205,6 +252,64 @@ export const reactive = <T extends object>(object: T) => {
     );
   };
 
+  const updateLabel = (
+    oldPath: string[],
+  ): string | null => {
+    const oldLabel = oldPath[0];
+    assertExists(oldLabel);
+
+    let newPath = ".";
+    let newLabel = "";
+
+    const data = dynamicLabels.get(oldLabel);
+
+    if (!data && oldPath.length > 1) {
+      newPath += oldLabel;
+      const rest = getOwn(proxy[oldLabel], ns.UPDATE_LABEL)(oldPath.slice(1));
+      if (!rest) return null;
+      newPath += rest;
+      return newPath;
+    }
+
+    if (!data) return null;
+
+    dynamicLabels.delete(oldLabel);
+
+    if (Array.isArray(object)) {
+      newLabel = String(Array.prototype.indexOf.call(object, data));
+      if (newLabel === "-1") return null;
+    } else {
+      newLabel = Object.entries(object).find(([_, v]) => v === data)?.[0] ?? "";
+    }
+
+    if (!newLabel) return null;
+
+    // update labels
+    if (newLabel !== oldLabel) {
+      dynamicLabels.set(newLabel, data);
+    }
+
+    newPath += newLabel;
+
+    // update roots
+    const maybeReactive = proxy[newLabel];
+    if (isReactive(maybeReactive)) {
+      (getOwn(maybeReactive, ns.UPDATE_PARENT) as typeof updateParent)(
+        proxy,
+        "." + oldLabel,
+        "." + newLabel,
+      );
+    }
+
+    if (oldPath.length > 1) {
+      const rest = getOwn(maybeReactive, ns.UPDATE_LABEL)(oldPath.slice(1));
+      if (!rest) return null;
+      newPath += rest;
+    }
+
+    return newPath;
+  };
+
   const addListener = (callback: ReactiveEventCallback) => {
     callbacks.push(callback);
   };
@@ -216,19 +321,19 @@ export const reactive = <T extends object>(object: T) => {
     const dependencies = Array.isArray(dep) ? dep : (dep ? [dep] : []);
 
     // idempotent inserts: only one entry for a given (parent, path) pair
-    const parentEntry = roots.get(parent);
-    if (parentEntry) {
-      const pathEntry = parentEntry.get(rootPath);
-      if (pathEntry && dep) {
-        if (pathEntry.deps) {
+    const parentLevel = roots.get(parent);
+    if (parentLevel) {
+      const pathLevel = parentLevel.get(rootPath);
+      if (pathLevel && dep) {
+        if (pathLevel.deps) {
           for (const d of dependencies) {
-            pathEntry.deps.add(d);
+            pathLevel.deps.add(d);
           }
         } else {
-          pathEntry.deps = new Set(dependencies);
+          pathLevel.deps = new Set(dependencies);
         }
       } else {
-        parentEntry.set(rootPath, {
+        parentLevel.set(rootPath, {
           rootPath,
           isDerived,
           deps: new Set(dependencies),
@@ -248,13 +353,28 @@ export const reactive = <T extends object>(object: T) => {
 
   const hasParent = (p: Record<PropertyKey, any>): boolean => {
     for (const [root] of roots.entries()) {
-      if (root === p || get(root, ns.HAS_PARENT)(p)) return true;
+      if (root === p || getOwn(root, ns.HAS_PARENT)(p)) return true;
     }
     return false;
   };
 
   const removeParent = (p: Record<PropertyKey, any>) => {
     roots.delete(p);
+  };
+
+  const updateParent = (
+    parent: Record<PropertyKey, any>,
+    oldPath: string,
+    newPath: string,
+  ) => {
+    const parentEntry = roots.get(parent);
+    assertExists(parentEntry);
+
+    const pathLevel = parentEntry.get(oldPath);
+    assertExists(pathLevel);
+
+    parentEntry.delete(oldPath);
+    parentEntry.set(newPath, { ...pathLevel, rootPath: newPath });
   };
 
   const proxy = new Proxy(object, {
@@ -265,10 +385,10 @@ export const reactive = <T extends object>(object: T) => {
     get(target, property, receiver) {
       const path = "." + stringifyKey(property);
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+      // @ts-ignore all non-null objects have this on the prototype
+      const constructor = target.constructor;
 
       if (root && root.parent !== proxy) {
-        // @ts-ignore all non-null objects have this on the prototype
-        const constructor = target.constructor;
         if (mutationMethods.has(constructor)) {
           addParent({ ...root, dep: mutationMethods.get(constructor) });
         } else {
@@ -302,7 +422,7 @@ export const reactive = <T extends object>(object: T) => {
                 if (!proxiedValue) {
                   proxiedValue = reactive(value);
 
-                  (get(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
+                  (getOwn(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
                     parent: proxy,
                     rootPath: "." + key,
                     isDerived: false,
@@ -319,7 +439,7 @@ export const reactive = <T extends object>(object: T) => {
                   const bound = value.bind(object);
                   proxiedMethod = reactive(bound);
 
-                  (get(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+                  (getOwn(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
                     parent: proxy,
                     rootPath: "." + key,
                     isDerived: false,
@@ -390,6 +510,15 @@ export const reactive = <T extends object>(object: T) => {
         return undefined;
       }
 
+      // track dynamic labels
+      if (
+        typeof property === "string" &&
+        dynamicLabelMap.get(constructor)?.test(property) &&
+        !dynamicLabels.has(property)
+      ) {
+        dynamicLabels.set(property, value);
+      }
+
       if (value !== null && typeof value === "object") {
         let proxiedValue = graph.get(value);
         if (proxiedValue) return proxiedValue;
@@ -398,7 +527,7 @@ export const reactive = <T extends object>(object: T) => {
         proxiedValue = reactive(value);
 
         // adopt
-        (get(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
+        (getOwn(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
           parent: proxy,
           rootPath: path,
           isDerived: false,
@@ -417,7 +546,7 @@ export const reactive = <T extends object>(object: T) => {
         const bound = value.bind(object);
         proxiedMethod = reactive(bound);
 
-        (get(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+        (getOwn(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
           parent: proxy,
           rootPath: path,
           isDerived: false,
@@ -492,10 +621,10 @@ export const reactive = <T extends object>(object: T) => {
 
         // prune graph
         if (isReactive(oldValue)) {
-          const oldTarget = get(oldValue, ns.TARGET);
+          const oldTarget = getOwn(oldValue, ns.TARGET);
           graph.delete(oldTarget);
 
-          get(oldValue, ns.REMOVE_PARENT)(proxy);
+          getOwn(oldValue, ns.REMOVE_PARENT)(proxy);
         }
       }
 
@@ -509,7 +638,7 @@ export const reactive = <T extends object>(object: T) => {
         Object.values(ns).includes(property)
       ) {
         // don't pollute the original object with the proxy properties
-        ownProperties.set(property, descriptor);
+        proxyOwnProperties.set(property, descriptor);
       } else {
         Reflect.defineProperty(target, property, descriptor);
       }
@@ -520,7 +649,7 @@ export const reactive = <T extends object>(object: T) => {
       if (
         typeof property === "symbol" && Object.values(ns).includes(property)
       ) {
-        return ownProperties.has(property);
+        return proxyOwnProperties.has(property);
       }
       return Reflect.has(target, property);
     },
@@ -528,66 +657,27 @@ export const reactive = <T extends object>(object: T) => {
       if (
         typeof property === "symbol" && Object.values(ns).includes(property)
       ) {
-        return ownProperties.get(property);
+        return proxyOwnProperties.get(property);
       }
       return Reflect.getOwnPropertyDescriptor(target, property);
     },
   });
 
-  if (!(ns.ADD_LISTENER in proxy)) {
-    Object.defineProperty(proxy, ns.ADD_LISTENER, {
-      value: addListener,
-      configurable: true,
-    });
-  }
+  const proxyOwnPropertiesMap = new Map<symbol, any>([
+    [ns.ADD_LISTENER, addListener],
+    [ns.ADD_PARENT, addParent],
+    [ns.REMOVE_PARENT, removeParent],
+    [ns.UPDATE_PARENT, updateParent],
+    [ns.HAS_PARENT, hasParent],
+    [ns.NOTIFY, notify],
+    [ns.READ_PATH, readPath],
+    [ns.UPDATE_LABEL, updateLabel],
+    [ns.IS_REACTIVE, true],
+    [ns.TARGET, object],
+  ]);
 
-  if (!(ns.ADD_PARENT in proxy)) {
-    Object.defineProperty(proxy, ns.ADD_PARENT, {
-      value: addParent,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.REMOVE_PARENT in proxy)) {
-    Object.defineProperty(proxy, ns.REMOVE_PARENT, {
-      value: removeParent,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.HAS_PARENT in proxy)) {
-    Object.defineProperty(proxy, ns.HAS_PARENT, {
-      value: hasParent,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.NOTIFY in proxy)) {
-    Object.defineProperty(proxy, ns.NOTIFY, {
-      value: notify,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.READ_PATH in proxy)) {
-    Object.defineProperty(proxy, ns.READ_PATH, {
-      value: readPath,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.IS_REACTIVE in proxy)) {
-    Object.defineProperty(proxy, ns.IS_REACTIVE, {
-      value: true,
-      configurable: true,
-    });
-  }
-
-  if (!(ns.TARGET in proxy)) {
-    Object.defineProperty(proxy, ns.TARGET, {
-      value: object,
-      configurable: true,
-    });
+  for (const [key, value] of proxyOwnPropertiesMap.entries()) {
+    Object.defineProperty(proxy, key, { value, configurable: true });
   }
 
   return proxy;
@@ -627,6 +717,8 @@ const readMethods = new Map([[
   ],
 ]]);
 
+const dynamicLabelMap = new Map<AnyConstructor, RegExp>([[Array, /\d+/]]);
+
 const mutationMethods = new Map<AnyConstructor, string[]>([
   [Array, [
     ".concat",
@@ -648,7 +740,7 @@ const mutationMethods = new Map<AnyConstructor, string[]>([
 ]);
 
 // we grab the proxy's virtual properties by [[GetOwnProperty]] semantics instead of [[Get]] to avoid having to add logic to the main get trap that would have to be executed for every property access of the target
-const get = (proxy: Record<string, any>, symbol: symbol) => {
+const getOwn = (proxy: Record<string, any>, symbol: symbol): any => {
   return Object.getOwnPropertyDescriptor(proxy, symbol)?.value;
 };
 
@@ -657,7 +749,7 @@ export const equals = (a: unknown, b: unknown): boolean => {
 };
 
 export const target = (p: unknown) => {
-  return isReactive(p) ? get(p, ns.TARGET) : p;
+  return isReactive(p) ? getOwn(p, ns.TARGET) : p;
 };
 
 export const isReactive = (
@@ -683,6 +775,6 @@ export const addListener = <T extends Record<PropertyKey, any>>(
   callback: ReactiveEventCallback,
 ) => {
   if (isReactive(node)) {
-    get(node, ns.ADD_LISTENER)?.(callback);
+    getOwn(node, ns.ADD_LISTENER)(callback);
   }
 };
