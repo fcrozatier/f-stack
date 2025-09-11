@@ -126,11 +126,6 @@ export class Boundary<T = any> {
         maybeViewTransition(update);
       };
 
-      // track all values for relabels
-      for (let index = 0; index < values.length; index++) {
-        values[index];
-      }
-
       // insert initial values
       spliceBoundaries(0, 0, ...values);
 
