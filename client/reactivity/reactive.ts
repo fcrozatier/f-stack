@@ -131,6 +131,9 @@ export const flushSync = () => {
   }
 };
 
+// gives guaranties on identities
+const reactiveCache = new WeakMap();
+
 const ns = {
   ADD_LISTENER: Symbol.for("add listener"),
   ADD_PARENT: Symbol.for("add parent"),
@@ -153,8 +156,12 @@ type Root = {
 
 let root: Root | undefined;
 
-export const reactive = <T extends object>(object: T) => {
+export const reactive = <T extends object>(object: T): T => {
+  // avoids double proxying
   if (isReactive(object)) return object;
+
+  // only creates one proxy per object reference
+  if (reactiveCache.has(object)) return reactiveCache.get(object);
 
   const roots: Map<
     Record<PropertyKey, any>,
@@ -683,6 +690,8 @@ export const reactive = <T extends object>(object: T) => {
   for (const [key, value] of proxyOwnPropertiesMap.entries()) {
     Object.defineProperty(proxy, key, { value, configurable: true });
   }
+
+  reactiveCache.set(object, proxy);
 
   return proxy;
 };

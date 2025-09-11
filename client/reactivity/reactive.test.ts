@@ -384,6 +384,16 @@ Deno.test("identity can be tested", () => {
   assert(equals(rg.g, g));
 });
 
+Deno.test("preserve reactive identity", () => {
+  const array: [] = [];
+  const r1 = reactive(array);
+  const r2 = reactive(array);
+
+  assertEquals(r1 === r2, true);
+  assertEquals(r1 === array, false);
+  assertEquals(r2 === array, false);
+});
+
 Deno.test("destructuring object maintains reactivity", () => {
   const r = reactive({ first: { a: true }, second: 2 });
   const { first } = r;
