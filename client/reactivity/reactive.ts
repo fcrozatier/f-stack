@@ -150,8 +150,8 @@ const ns = {
 type Path = `.${string}`;
 
 /**
- * All data structures are faithfully representable as labelled directed acyclic multigraphs.
- * We model the labelled multigraph capability of this topos by storing data on edges
+ * All data structures are faithfully representable as labelled directed multigraphs.
+ * We model the labelled multigraph capability of this topos by storing data on the edges
  */
 type Edge = {
   label: Path;
@@ -184,7 +184,6 @@ export const reactive = <T extends object>(object: T): T => {
   > = new Map();
 
   const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
-  const graph = new WeakMap();
   const derived: Map<string, any> = new Map();
   const callbacks: ReactiveEventCallback[] = [];
   const dynamicLabels = new Map<string, any>();
@@ -323,11 +322,7 @@ export const reactive = <T extends object>(object: T): T => {
         (getOwn(
           maybeReactive,
           ns.UPDATE_SUBSCRIBER,
-        ) as typeof updateSubscriber)(
-          proxy,
-          "." + oldLabel,
-          "." + newLabel,
-        );
+        ) as typeof updateSubscriber)(proxy, "." + oldLabel, "." + newLabel);
       }
     }
 
@@ -385,9 +380,11 @@ export const reactive = <T extends object>(object: T): T => {
     }
   };
 
-  const hasParent = (p: Record<PropertyKey, any>): boolean => {
-    for (const [root] of subscribers.entries()) {
-      if (root === p || getOwn(root, ns.HAS_SUBSCRIBER)(p)) return true;
+  const hasSubscriber = (subscriber: Record<PropertyKey, any>): boolean => {
+    for (const [other] of subscribers.entries()) {
+      if (
+        other === subscriber || getOwn(other, ns.HAS_SUBSCRIBER)(subscriber)
+      ) return true;
     }
     return false;
   };
@@ -452,49 +449,38 @@ export const reactive = <T extends object>(object: T): T => {
               let [key, value] = item;
 
               if (typeof value === "object") {
-                let proxiedValue = graph.get(value);
+                const proxiedValue = reactive(value);
 
-                if (!proxiedValue) {
-                  proxiedValue = reactive(value);
-
-                  (getOwn(
-                    proxiedValue,
-                    ns.ADD_SUBSCRIBER,
-                  ) as typeof addSubscriber)(
-                    {
-                      subscriber: proxy,
-                      rootPath: "." + key,
-                      isDerived: false,
-                    },
-                  );
-
-                  graph.set(value, proxiedValue);
-                }
-                value = proxiedValue;
-              } else if (typeof value === "function") {
-                let proxiedMethod = graph.get(value);
-
-                if (!proxiedMethod) {
-                  // @ts-ignore value is a function
-                  const bound = value.bind(object);
-                  proxiedMethod = reactive(bound);
-
-                  (getOwn(
-                    proxiedMethod,
-                    ns.ADD_SUBSCRIBER,
-                  ) as typeof addSubscriber)({
+                (getOwn(
+                  proxiedValue,
+                  ns.ADD_SUBSCRIBER,
+                ) as typeof addSubscriber)(
+                  {
                     subscriber: proxy,
                     rootPath: "." + key,
                     isDerived: false,
-                  });
+                  },
+                );
 
-                  Object.defineProperty(proxiedMethod, ns.TARGET, {
-                    value,
-                    configurable: true,
-                  });
+                value = proxiedValue;
+              } else if (typeof value === "function") {
+                const bound = value.bind(object);
+                const proxiedMethod = reactive(bound);
 
-                  graph.set(value, proxiedMethod);
-                }
+                (getOwn(
+                  proxiedMethod,
+                  ns.ADD_SUBSCRIBER,
+                ) as typeof addSubscriber)({
+                  subscriber: proxy,
+                  rootPath: "." + key,
+                  isDerived: false,
+                });
+
+                Object.defineProperty(proxiedMethod, ns.TARGET, {
+                  value,
+                  configurable: true,
+                });
+
                 value = proxiedMethod;
               }
 
@@ -563,31 +549,22 @@ export const reactive = <T extends object>(object: T): T => {
       }
 
       if (value !== null && typeof value === "object") {
-        let proxiedValue = graph.get(value);
-        if (proxiedValue) return proxiedValue;
+        const proxiedValue = reactive(value);
 
-        // avoids double-proxying
-        proxiedValue = reactive(value);
-
-        // adopt
+        // subscribe
         (getOwn(proxiedValue, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
           subscriber: proxy,
           rootPath: path,
           isDerived: false,
         });
 
-        graph.set(value, proxiedValue);
-
         return proxiedValue;
       }
 
       if (typeof value === "function") {
-        let proxiedMethod = graph.get(value);
-        if (proxiedMethod) return proxiedMethod;
-
         // @ts-ignore value is a function
         const bound = value.bind(object);
-        proxiedMethod = reactive(bound);
+        const proxiedMethod = reactive(bound);
 
         (getOwn(proxiedMethod, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
           subscriber: proxy,
@@ -599,8 +576,6 @@ export const reactive = <T extends object>(object: T): T => {
           value,
           configurable: true,
         });
-
-        graph.set(value, proxiedMethod);
 
         return proxiedMethod;
       }
@@ -664,9 +639,6 @@ export const reactive = <T extends object>(object: T): T => {
 
         // prune graph
         if (isReactive(oldValue)) {
-          const oldTarget = getOwn(oldValue, ns.TARGET);
-          graph.delete(oldTarget);
-
           getOwn(oldValue, ns.REMOVE_SUBSCRIBER)(proxy);
         }
       }
@@ -711,7 +683,7 @@ export const reactive = <T extends object>(object: T): T => {
     [ns.ADD_SUBSCRIBER, addSubscriber],
     [ns.REMOVE_SUBSCRIBER, removeSubscriber],
     [ns.UPDATE_SUBSCRIBER, updateSubscriber],
-    [ns.HAS_SUBSCRIBER, hasParent],
+    [ns.HAS_SUBSCRIBER, hasSubscriber],
     [ns.NOTIFY, notify],
     [ns.READ_PATH, readPath],
     [ns.UPDATE_LABEL, updateLabel],
