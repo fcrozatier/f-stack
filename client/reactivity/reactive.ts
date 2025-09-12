@@ -296,21 +296,25 @@ export const reactive = <T extends object>(object: T): T => {
 
     if (!newLabel) return null;
 
+    newPath += newLabel;
+
+    const maybeReactive = proxy[newLabel];
+
     // update labels
     if (newLabel !== oldLabel) {
       dynamicLabels.set(newLabel, data);
-    }
 
-    newPath += newLabel;
-
-    // update roots
-    const maybeReactive = proxy[newLabel];
-    if (isReactive(maybeReactive)) {
-      (getOwn(maybeReactive, ns.UPDATE_SUBSCRIBER) as typeof updateSubscriber)(
-        proxy,
-        "." + oldLabel,
-        "." + newLabel,
-      );
+      // update subscribers
+      if (isReactive(maybeReactive)) {
+        (getOwn(
+          maybeReactive,
+          ns.UPDATE_SUBSCRIBER,
+        ) as typeof updateSubscriber)(
+          proxy,
+          "." + oldLabel,
+          "." + newLabel,
+        );
+      }
     }
 
     if (oldPath.length > 1) {
@@ -378,15 +382,14 @@ export const reactive = <T extends object>(object: T): T => {
 
   // relabels a parent path
   const updateSubscriber = (
-    parent: Record<PropertyKey, any>,
+    subscriber: Record<PropertyKey, any>,
     oldPath: string,
     newPath: string,
   ) => {
-    const parentEntry = subscribers.get(parent);
+    const parentEntry = subscribers.get(subscriber);
     assertExists(parentEntry);
 
     const pathLevel = parentEntry.get(oldPath);
-    assertExists(pathLevel);
     if (!pathLevel) return;
 
     parentEntry.delete(oldPath);
