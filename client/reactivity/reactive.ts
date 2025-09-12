@@ -147,12 +147,14 @@ const ns = {
   TARGET: Symbol.for("target"),
 };
 
+type Path = `.${string}`;
+
 /**
  * All data structures are faithfully representable as labelled directed acyclic multigraphs.
  * We model the labelled multigraph capability of this topos by storing data on edges
  */
 type Edge = {
-  label: string;
+  label: Path;
   isDerivedLabel?: boolean | undefined;
   isDerivedValue?: boolean | undefined;
   isWritableDerivedValue?: boolean | undefined;
@@ -242,7 +244,7 @@ export const reactive = <T extends object>(object: T): T => {
     const entries = [...subscribers.entries()];
     entries.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
 
-    for (const [parent, map] of entries) {
+    for (const [subscriber, map] of entries) {
       for (const [rootPath, { isDerived, deps }] of map.entries()) {
         if (type !== "relabel") {
           const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
@@ -251,10 +253,10 @@ export const reactive = <T extends object>(object: T): T => {
             !isDerived ||
             isDerived && typeof path === "string" && deps?.includes(path)
           ) {
-            getOwn(parent, ns.NOTIFY)({ ...e, type, path: reroute });
+            getOwn(subscriber, ns.NOTIFY)({ ...e, type, path: reroute });
           }
         } else if (e.type === "relabel") {
-          getOwn(parent, ns.NOTIFY)({
+          getOwn(subscriber, ns.NOTIFY)({
             ...e,
             oldPath: rootPath + stringifyKey(e.oldPath),
           });
@@ -263,7 +265,7 @@ export const reactive = <T extends object>(object: T): T => {
     }
   };
 
-  const readPath = (path: string) => {
+  const readPath = (path: Path) => {
     return path.split(".").slice(1).reduce(
       (acc, curr) => {
         return acc instanceof Map ? acc.get(curr) : acc[curr];
@@ -347,25 +349,25 @@ export const reactive = <T extends object>(object: T): T => {
       dep?: string[] | undefined;
     },
   ) => {
-    const { subscriber: parent, rootPath, isDerived, dep } = options;
+    const { subscriber, rootPath, isDerived, dep } = options;
     const dependencies = dep ?? [];
 
-    // idempotent inserts: only one entry for a given (parent, path) pair
-    const parentLevel = subscribers.get(parent);
-    if (parentLevel) {
-      const pathLevel = parentLevel.get(rootPath);
-      if (pathLevel && dep) {
-        if (pathLevel.deps) {
+    // idempotent inserts: only one subscriber for a given edge label
+    const edges = subscribers.get(subscriber);
+    if (edges) {
+      const edge = edges.get(rootPath);
+      if (edge && dep) {
+        if (edge.deps) {
           for (const d of dependencies) {
-            if (!pathLevel.deps.includes(d)) {
-              pathLevel.deps.push(d);
+            if (!edge.deps.includes(d)) {
+              edge.deps.push(d);
             }
           }
         } else {
-          pathLevel.deps = dependencies;
+          edge.deps = dependencies;
         }
       } else {
-        parentLevel.set(rootPath, {
+        edges.set(rootPath, {
           rootPath,
           isDerived,
           deps: dependencies,
@@ -373,7 +375,7 @@ export const reactive = <T extends object>(object: T): T => {
       }
     } else {
       subscribers.set(
-        parent,
+        subscriber,
         new Map([[rootPath, {
           rootPath,
           isDerived,
