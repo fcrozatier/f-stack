@@ -3,21 +3,30 @@ import { reactive } from "$client/reactivity/reactive.ts";
 import { attr, map, on, text } from "$client/sinks.ts";
 
 type Todo = {
-  description: string;
+  description: number;
+};
+
+const rand = () => {
+  return Math.floor(Math.random() * 100);
 };
 
 export const TodosPage = () => {
   const todos: Todo[] = reactive([
-    { description: "cook" },
-    { description: "eat" },
-    { description: "coffee" },
+    { description: rand() },
+    { description: rand() },
+    { description: rand() },
   ]);
   const indices = reactive({ update: 0, insert: 0 });
 
   return html`
     <div>
       <button ${on({
-        click: () => todos.push({ description: "sleep" }),
+        click: () => todos.unshift({ description: rand() }),
+      })}>
+        Unshift
+      </button>
+      <button ${on({
+        click: () => todos.push({ description: rand() }),
       })}>
         Push
       </button>
@@ -35,7 +44,7 @@ export const TodosPage = () => {
         <button ${on({
           click: () =>
             todos.splice(indices.insert, 0, {
-              description: "sleep",
+              description: rand(),
             }),
         })}>Insert</button>
       </div>
@@ -52,7 +61,7 @@ export const TodosPage = () => {
           })}></label>
         <label>New value
           <input
-            type="text"
+            type="number"
             ${attr({
               get value() {
                 return todos[indices.update]?.description ?? "";
@@ -62,7 +71,7 @@ export const TodosPage = () => {
               input: function () {
                 const todo = todos[indices.update];
                 if (todo) {
-                  todo.description = this.value;
+                  todo.description = this.valueAsNumber;
                 } else {
                   console.log("todo not found");
                 }
@@ -78,7 +87,7 @@ export const TodosPage = () => {
         ${map(todos, (todo) =>
           html`
             <li>
-              <h3>Todo ${text(todo, "index")}</h3>
+              <h3>Number ${text(todo, "index")}</h3>
               <p>${text(todo.value, "description")}</p>
               <div>
                 <button class="action" ${on({
