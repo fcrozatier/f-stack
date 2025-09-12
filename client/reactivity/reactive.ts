@@ -147,14 +147,26 @@ const ns = {
   TARGET: Symbol.for("target"),
 };
 
-type EventSource = {
-  parent: Record<PropertyKey, any>;
-  rootPath: string;
-  isDerived: boolean;
-  deps?: Set<string> | undefined;
+/**
+ * All data structures are faithfully representable as labelled directed acyclic multigraphs.
+ * We model the labelled multigraph capability of this topos by storing data on edges
+ */
+type Edge = {
+  label: string;
+  isDerivedLabel?: boolean | undefined;
+  isDerivedValue?: boolean | undefined;
+  isWritableDerivedValue?: boolean | undefined;
+  updateChannels?: string[] | undefined;
 };
 
-let root: EventSource | undefined;
+type NotificationTarget = {
+  subscriber: Record<PropertyKey, any>;
+  rootPath: string;
+  isDerived: boolean;
+  deps?: string[] | undefined;
+};
+
+let current: NotificationTarget | undefined;
 
 export const reactive = <T extends object>(object: T): T => {
   // avoids double proxying
@@ -166,7 +178,7 @@ export const reactive = <T extends object>(object: T): T => {
   // will be notified of updates
   const subscribers: Map<
     Record<PropertyKey, any>,
-    Map<string, Omit<EventSource, "parent">>
+    Map<string, Omit<NotificationTarget, "subscriber">>
   > = new Map();
 
   const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
@@ -237,7 +249,7 @@ export const reactive = <T extends object>(object: T): T => {
 
           if (
             !isDerived ||
-            isDerived && typeof path === "string" && deps?.has(path)
+            isDerived && typeof path === "string" && deps?.includes(path)
           ) {
             getOwn(parent, ns.NOTIFY)({ ...e, type, path: reroute });
           }
@@ -331,12 +343,12 @@ export const reactive = <T extends object>(object: T): T => {
   };
 
   const addSubscriber = (
-    options: Omit<EventSource, "deps"> & {
-      dep?: string[] | string | undefined;
+    options: Omit<NotificationTarget, "deps"> & {
+      dep?: string[] | undefined;
     },
   ) => {
-    const { parent, rootPath, isDerived, dep } = options;
-    const dependencies = Array.isArray(dep) ? dep : (dep ? [dep] : []);
+    const { subscriber: parent, rootPath, isDerived, dep } = options;
+    const dependencies = dep ?? [];
 
     // idempotent inserts: only one entry for a given (parent, path) pair
     const parentLevel = subscribers.get(parent);
@@ -345,16 +357,18 @@ export const reactive = <T extends object>(object: T): T => {
       if (pathLevel && dep) {
         if (pathLevel.deps) {
           for (const d of dependencies) {
-            pathLevel.deps.add(d);
+            if (!pathLevel.deps.includes(d)) {
+              pathLevel.deps.push(d);
+            }
           }
         } else {
-          pathLevel.deps = new Set(dependencies);
+          pathLevel.deps = dependencies;
         }
       } else {
         parentLevel.set(rootPath, {
           rootPath,
           isDerived,
-          deps: new Set(dependencies),
+          deps: dependencies,
         });
       }
     } else {
@@ -363,7 +377,7 @@ export const reactive = <T extends object>(object: T): T => {
         new Map([[rootPath, {
           rootPath,
           isDerived,
-          deps: new Set(dependencies),
+          deps: dependencies,
         }]]),
       );
     }
@@ -407,11 +421,11 @@ export const reactive = <T extends object>(object: T): T => {
       // @ts-ignore all non-null objects have this on the prototype
       const constructor = target.constructor;
 
-      if (root && root.parent !== proxy) {
+      if (current && current.subscriber !== proxy) {
         if (mutationMethods.has(constructor)) {
-          addSubscriber({ ...root, dep: mutationMethods.get(constructor) });
+          addSubscriber({ ...current, dep: mutationMethods.get(constructor) });
         } else {
-          addSubscriber({ ...root, dep: path });
+          addSubscriber({ ...current, dep: [path] });
         }
       }
 
@@ -446,7 +460,7 @@ export const reactive = <T extends object>(object: T): T => {
                     ns.ADD_SUBSCRIBER,
                   ) as typeof addSubscriber)(
                     {
-                      parent: proxy,
+                      subscriber: proxy,
                       rootPath: "." + key,
                       isDerived: false,
                     },
@@ -467,7 +481,7 @@ export const reactive = <T extends object>(object: T): T => {
                     proxiedMethod,
                     ns.ADD_SUBSCRIBER,
                   ) as typeof addSubscriber)({
-                    parent: proxy,
+                    subscriber: proxy,
                     rootPath: "." + key,
                     isDerived: false,
                   });
@@ -502,9 +516,9 @@ export const reactive = <T extends object>(object: T): T => {
         return derived.get(path);
       } else {
         try {
-          var prevParent = root;
-          root = {
-            parent: proxy,
+          var prevParent = current;
+          current = {
+            subscriber: proxy,
             rootPath: path,
             isDerived: !!descriptor?.get,
           };
@@ -517,7 +531,7 @@ export const reactive = <T extends object>(object: T): T => {
             throw e;
           }
         } finally {
-          root = prevParent;
+          current = prevParent;
         }
       }
 
@@ -555,7 +569,7 @@ export const reactive = <T extends object>(object: T): T => {
 
         // adopt
         (getOwn(proxiedValue, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
-          parent: proxy,
+          subscriber: proxy,
           rootPath: path,
           isDerived: false,
         });
@@ -574,7 +588,7 @@ export const reactive = <T extends object>(object: T): T => {
         proxiedMethod = reactive(bound);
 
         (getOwn(proxiedMethod, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
-          parent: proxy,
+          subscriber: proxy,
           rootPath: path,
           isDerived: false,
         });
