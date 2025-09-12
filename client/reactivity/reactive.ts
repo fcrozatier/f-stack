@@ -593,12 +593,13 @@ export const reactive = <T extends object>(object: T): T => {
         oldValue !== newValue
       ) return false;
 
-      const isArray = Array.isArray(target) && property === "length";
+      const isArrayLengthProperty = Array.isArray(target) &&
+        property === "length";
       if (
         descriptor?.configurable === false &&
         descriptor?.set === undefined &&
         // exception: the `length` property of arrays can actually be set
-        !isArray
+        !isArrayLengthProperty
       ) return false;
 
       const path = "." + stringifyKey(property);
@@ -606,7 +607,7 @@ export const reactive = <T extends object>(object: T): T => {
         // optional fancy equality check here
         if (newValue !== oldValue) {
           // For Arrays we distinguish setting the length directly (it's a writable derived)
-          const type = isArray ? "create" : "update";
+          const type = isArrayLengthProperty ? "create" : "update";
 
           notify({ type, path, newValue, oldValue });
           Reflect.set(target, property, newValue, receiver);
