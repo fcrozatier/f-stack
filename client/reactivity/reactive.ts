@@ -102,7 +102,7 @@ export const flushSync = () => {
 
   // topological dequeuing
   const scheduled = [...scheduler.getPending().entries()];
-  scheduled.sort(([p1], [p2]) => getOwn(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
+  scheduled.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
 
   for (const [proxy, map] of scheduled) {
     for (const [callback, events] of map?.entries()) {
@@ -136,10 +136,10 @@ const reactiveCache = new WeakMap();
 
 const ns = {
   ADD_LISTENER: Symbol.for("add listener"),
-  ADD_PARENT: Symbol.for("add parent"),
-  REMOVE_PARENT: Symbol.for("remove parent"),
-  UPDATE_PARENT: Symbol.for("update parent"),
-  HAS_PARENT: Symbol.for("has parent"),
+  ADD_SUBSCRIBER: Symbol.for("add subscriber"),
+  REMOVE_SUBSCRIBER: Symbol.for("remove subscriber"),
+  UPDATE_SUBSCRIBER: Symbol.for("update subscriber"),
+  HAS_SUBSCRIBER: Symbol.for("has subscriber"),
   IS_REACTIVE: Symbol.for("is reactive"),
   NOTIFY: Symbol.for("notify"),
   READ_PATH: Symbol.for("read path"),
@@ -147,14 +147,14 @@ const ns = {
   TARGET: Symbol.for("target"),
 };
 
-type Root = {
+type EventSource = {
   parent: Record<PropertyKey, any>;
   rootPath: string;
   isDerived: boolean;
   deps?: Set<string> | undefined;
 };
 
-let root: Root | undefined;
+let root: EventSource | undefined;
 
 export const reactive = <T extends object>(object: T): T => {
   // avoids double proxying
@@ -163,9 +163,10 @@ export const reactive = <T extends object>(object: T): T => {
   // only creates one proxy per object reference
   if (reactiveCache.has(object)) return reactiveCache.get(object);
 
-  const roots: Map<
+  // will be notified of updates
+  const subscribers: Map<
     Record<PropertyKey, any>,
-    Map<string, Omit<Root, "parent">>
+    Map<string, Omit<EventSource, "parent">>
   > = new Map();
 
   const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
@@ -226,10 +227,10 @@ export const reactive = <T extends object>(object: T): T => {
     }
 
     // topological scheduling
-    const parents = [...roots.entries()];
-    parents.sort(([p1], [p2]) => getOwn(p1, ns.HAS_PARENT)(p2) ? -1 : 1);
+    const entries = [...subscribers.entries()];
+    entries.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
 
-    for (const [parent, map] of parents) {
+    for (const [parent, map] of entries) {
       for (const [rootPath, { isDerived, deps }] of map.entries()) {
         if (type !== "relabel") {
           const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
@@ -305,7 +306,7 @@ export const reactive = <T extends object>(object: T): T => {
     // update roots
     const maybeReactive = proxy[newLabel];
     if (isReactive(maybeReactive)) {
-      (getOwn(maybeReactive, ns.UPDATE_PARENT) as typeof updateParent)(
+      (getOwn(maybeReactive, ns.UPDATE_SUBSCRIBER) as typeof updateSubscriber)(
         proxy,
         "." + oldLabel,
         "." + newLabel,
@@ -325,14 +326,16 @@ export const reactive = <T extends object>(object: T): T => {
     callbacks.push(callback);
   };
 
-  const addParent = (
-    options: Omit<Root, "deps"> & { dep?: string[] | string | undefined },
+  const addSubscriber = (
+    options: Omit<EventSource, "deps"> & {
+      dep?: string[] | string | undefined;
+    },
   ) => {
     const { parent, rootPath, isDerived, dep } = options;
     const dependencies = Array.isArray(dep) ? dep : (dep ? [dep] : []);
 
     // idempotent inserts: only one entry for a given (parent, path) pair
-    const parentLevel = roots.get(parent);
+    const parentLevel = subscribers.get(parent);
     if (parentLevel) {
       const pathLevel = parentLevel.get(rootPath);
       if (pathLevel && dep) {
@@ -351,7 +354,7 @@ export const reactive = <T extends object>(object: T): T => {
         });
       }
     } else {
-      roots.set(
+      subscribers.set(
         parent,
         new Map([[rootPath, {
           rootPath,
@@ -363,26 +366,28 @@ export const reactive = <T extends object>(object: T): T => {
   };
 
   const hasParent = (p: Record<PropertyKey, any>): boolean => {
-    for (const [root] of roots.entries()) {
-      if (root === p || getOwn(root, ns.HAS_PARENT)(p)) return true;
+    for (const [root] of subscribers.entries()) {
+      if (root === p || getOwn(root, ns.HAS_SUBSCRIBER)(p)) return true;
     }
     return false;
   };
 
-  const removeParent = (p: Record<PropertyKey, any>) => {
-    roots.delete(p);
+  const removeSubscriber = (subscriber: Record<PropertyKey, any>) => {
+    subscribers.delete(subscriber);
   };
 
-  const updateParent = (
+  // relabels a parent path
+  const updateSubscriber = (
     parent: Record<PropertyKey, any>,
     oldPath: string,
     newPath: string,
   ) => {
-    const parentEntry = roots.get(parent);
+    const parentEntry = subscribers.get(parent);
     assertExists(parentEntry);
 
     const pathLevel = parentEntry.get(oldPath);
     assertExists(pathLevel);
+    if (!pathLevel) return;
 
     parentEntry.delete(oldPath);
     parentEntry.set(newPath, { ...pathLevel, rootPath: newPath });
@@ -401,9 +406,9 @@ export const reactive = <T extends object>(object: T): T => {
 
       if (root && root.parent !== proxy) {
         if (mutationMethods.has(constructor)) {
-          addParent({ ...root, dep: mutationMethods.get(constructor) });
+          addSubscriber({ ...root, dep: mutationMethods.get(constructor) });
         } else {
-          addParent({ ...root, dep: path });
+          addSubscriber({ ...root, dep: path });
         }
       }
 
@@ -433,11 +438,16 @@ export const reactive = <T extends object>(object: T): T => {
                 if (!proxiedValue) {
                   proxiedValue = reactive(value);
 
-                  (getOwn(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
-                    parent: proxy,
-                    rootPath: "." + key,
-                    isDerived: false,
-                  });
+                  (getOwn(
+                    proxiedValue,
+                    ns.ADD_SUBSCRIBER,
+                  ) as typeof addSubscriber)(
+                    {
+                      parent: proxy,
+                      rootPath: "." + key,
+                      isDerived: false,
+                    },
+                  );
 
                   graph.set(value, proxiedValue);
                 }
@@ -450,7 +460,10 @@ export const reactive = <T extends object>(object: T): T => {
                   const bound = value.bind(object);
                   proxiedMethod = reactive(bound);
 
-                  (getOwn(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+                  (getOwn(
+                    proxiedMethod,
+                    ns.ADD_SUBSCRIBER,
+                  ) as typeof addSubscriber)({
                     parent: proxy,
                     rootPath: "." + key,
                     isDerived: false,
@@ -538,7 +551,7 @@ export const reactive = <T extends object>(object: T): T => {
         proxiedValue = reactive(value);
 
         // adopt
-        (getOwn(proxiedValue, ns.ADD_PARENT) as typeof addParent)({
+        (getOwn(proxiedValue, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
           parent: proxy,
           rootPath: path,
           isDerived: false,
@@ -557,7 +570,7 @@ export const reactive = <T extends object>(object: T): T => {
         const bound = value.bind(object);
         proxiedMethod = reactive(bound);
 
-        (getOwn(proxiedMethod, ns.ADD_PARENT) as typeof addParent)({
+        (getOwn(proxiedMethod, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
           parent: proxy,
           rootPath: path,
           isDerived: false,
@@ -635,7 +648,7 @@ export const reactive = <T extends object>(object: T): T => {
           const oldTarget = getOwn(oldValue, ns.TARGET);
           graph.delete(oldTarget);
 
-          getOwn(oldValue, ns.REMOVE_PARENT)(proxy);
+          getOwn(oldValue, ns.REMOVE_SUBSCRIBER)(proxy);
         }
       }
 
@@ -676,10 +689,10 @@ export const reactive = <T extends object>(object: T): T => {
 
   const proxyOwnPropertiesMap = new Map<symbol, any>([
     [ns.ADD_LISTENER, addListener],
-    [ns.ADD_PARENT, addParent],
-    [ns.REMOVE_PARENT, removeParent],
-    [ns.UPDATE_PARENT, updateParent],
-    [ns.HAS_PARENT, hasParent],
+    [ns.ADD_SUBSCRIBER, addSubscriber],
+    [ns.REMOVE_SUBSCRIBER, removeSubscriber],
+    [ns.UPDATE_SUBSCRIBER, updateSubscriber],
+    [ns.HAS_SUBSCRIBER, hasParent],
     [ns.NOTIFY, notify],
     [ns.READ_PATH, readPath],
     [ns.UPDATE_LABEL, updateLabel],
@@ -688,7 +701,10 @@ export const reactive = <T extends object>(object: T): T => {
   ]);
 
   for (const [key, value] of proxyOwnPropertiesMap.entries()) {
-    Object.defineProperty(proxy, key, { value, configurable: true });
+    Object.defineProperty(proxy, key, {
+      value,
+      configurable: true, // respects `getOwnPropertyDescriptor` invariant
+    });
   }
 
   reactiveCache.set(object, proxy);
