@@ -101,13 +101,15 @@ export const TodosPage = () => {
 
     <p id="sum">${text(todos, "length")} remaining todos</p>
     <style>
-    // 1. participate in hit-testing by not capturing :root in vt
-    // 2. let pointer events fall through to maintain button interactivity during vt
+    /*
+      1. participate in hit-testing by not capturing :root in vt
+      2. let pointer events fall through to maintain button interactivity during vt
+    */
     :root {
-      view-transition-name: none; // 1
+      view-transition-name: none; /* 1 */
     }
     ::view-transition {
-      pointer-events: none; // 2
+      pointer-events: none; /* 2 */
     }
     ::view-transition-group(*) {
       animation-duration: 200ms;
