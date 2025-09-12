@@ -119,7 +119,7 @@ export const flushSync = () => {
             e.oldPath.split(".").slice(1),
           );
 
-          // a relabelling happened
+          // only if a relabelling actually happened
           if (e.newPath !== null) {
             callback(e);
           }
@@ -187,10 +187,6 @@ export const reactive = <T extends object>(object: T): T => {
   const derived: Map<string, any> = new Map();
   const callbacks: ReactiveEventCallback[] = [];
   const dynamicLabels = new Map<string, any>();
-
-  const stringifyKey = (key: string | symbol) => {
-    return typeof key === "symbol" ? key.description ?? String(key) : key;
-  };
 
   const notify = (e: ReactiveEvent) => {
     let type = e.type;
@@ -701,6 +697,10 @@ export const reactive = <T extends object>(object: T): T => {
   reactiveCache.set(object, proxy);
 
   return proxy;
+};
+
+const stringifyKey = (key: string | symbol) => {
+  return typeof key === "symbol" ? key.description ?? String(key) : key;
 };
 
 const readMethods = new Map([[
