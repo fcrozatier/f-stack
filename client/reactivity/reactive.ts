@@ -147,14 +147,12 @@ const ns = {
   TARGET: Symbol.for("target"),
 };
 
-type Path = `.${string}`;
-
 /**
  * All data structures are faithfully representable as labelled directed multigraphs.
- * We model the labelled multigraph capability of this topos by storing data on the edges
+ * We model the labelled multigraph capability of this topos by storing data on the edges.
  */
 type Edge = {
-  label: Path;
+  label: string;
   isDerivedLabel?: boolean | undefined;
   isDerivedValue?: boolean | undefined;
   isWritableDerivedValue?: boolean | undefined;
@@ -184,9 +182,9 @@ export const reactive = <T extends object>(object: T): T => {
   > = new Map();
 
   const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
-  const derived: Map<string, any> = new Map();
+  const derivedValues = new Map<string, any>();
+  const derivedLabels = new Map<string, any>();
   const callbacks: ReactiveEventCallback[] = [];
-  const dynamicLabels = new Map<string, any>();
 
   const notify = (e: ReactiveEvent) => {
     let type = e.type;
@@ -194,7 +192,7 @@ export const reactive = <T extends object>(object: T): T => {
 
     if (
       (type === "update" || type === "delete" || type === "apply") &&
-      typeof path === "string" && derived.has(path)
+      typeof path === "string" && derivedValues.has(path)
     ) {
       if (e.type === "apply") {
         // @ts-ignore a derived apply becomes an update
@@ -202,9 +200,9 @@ export const reactive = <T extends object>(object: T): T => {
         type = "update";
       }
       // @ts-ignore a derived apply becomes an update
-      e.oldValue = derived.get(path);
+      e.oldValue = derivedValues.get(path);
       // invalidate the cache
-      derived.delete(path);
+      derivedValues.delete(path);
     }
 
     if (
@@ -221,7 +219,7 @@ export const reactive = <T extends object>(object: T): T => {
       });
 
       // notify relabelling of tracked labels
-      for (const oldPath of dynamicLabels.keys()) {
+      for (const oldPath of derivedLabels.keys()) {
         notify({
           type: "relabel",
           oldPath: "." + oldPath,
@@ -260,7 +258,7 @@ export const reactive = <T extends object>(object: T): T => {
     }
   };
 
-  const readPath = (path: Path) => {
+  const readPath = (path: string) => {
     return path.split(".").slice(1).reduce(
       (acc, curr) => {
         return acc instanceof Map ? acc.get(curr) : acc[curr];
@@ -278,7 +276,7 @@ export const reactive = <T extends object>(object: T): T => {
     let newPath = ".";
     let newLabel = "";
 
-    const data = dynamicLabels.get(oldLabel);
+    const data = derivedLabels.get(oldLabel);
 
     if (!data && oldPath.length > 1) {
       const maybeReactive = proxy[oldLabel];
@@ -294,7 +292,7 @@ export const reactive = <T extends object>(object: T): T => {
 
     if (!data) return null;
 
-    dynamicLabels.delete(oldLabel);
+    derivedLabels.delete(oldLabel);
 
     if (Array.isArray(object)) {
       newLabel = String(Array.prototype.indexOf.call(object, data));
@@ -311,7 +309,8 @@ export const reactive = <T extends object>(object: T): T => {
 
     // update labels
     if (newLabel !== oldLabel) {
-      dynamicLabels.set(newLabel, data);
+      // OVERRIDES DATA!!
+      derivedLabels.set(newLabel, data);
 
       // update subscribers
       if (isReactive(maybeReactive)) {
@@ -496,8 +495,8 @@ export const reactive = <T extends object>(object: T): T => {
       }
 
       // if it's a derived value, check if it's cached first
-      if (descriptor?.get && derived.has(path)) {
-        return derived.get(path);
+      if (descriptor?.get && derivedValues.has(path)) {
+        return derivedValues.get(path);
       } else {
         try {
           var prevParent = current;
@@ -539,9 +538,9 @@ export const reactive = <T extends object>(object: T): T => {
       if (
         typeof property === "string" &&
         dynamicLabelMap.get(constructor)?.test(property) &&
-        !dynamicLabels.has(property)
+        !derivedLabels.has(property)
       ) {
-        dynamicLabels.set(property, value);
+        derivedLabels.set(property, value);
       }
 
       if (value !== null && typeof value === "object") {
@@ -577,7 +576,7 @@ export const reactive = <T extends object>(object: T): T => {
       }
 
       if (descriptor?.get) {
-        derived.set(path, value);
+        derivedValues.set(path, value);
       }
 
       return value;
@@ -640,7 +639,7 @@ export const reactive = <T extends object>(object: T): T => {
         }
       }
 
-      derived.delete(path);
+      derivedValues.delete(path);
 
       return Reflect.deleteProperty(target, property);
     },
