@@ -234,8 +234,13 @@ Deno.test("only dependencies trigger events", () => {
 
   // no event is triggered on s when updating something it doesn't depend on
   r.b = 3;
+  flushSync();
+
   r.c = true;
+  flushSync();
+
   delete r.b;
+  flushSync();
 
   assertEquals(events.length, 0);
 });
@@ -280,9 +285,10 @@ Deno.test("glitch free (diamond)", () => {
   assertEquals(seenGlitch, false);
 
   a.a = 2;
+  flushSync();
+
   assertEquals(seenGlitch, false);
 
-  flushSync();
   // The event propagates the latest computed value
   assertEquals(dEvent, {
     type: "update",
@@ -323,6 +329,7 @@ Deno.test("preserve correct 'this' binding in getters/setters", () => {
 
   const derived = Object.create(obj);
   derived._hidden = 456;
+  flushSync();
 
   assertEquals(derived.value, 456); // not 123
 });
