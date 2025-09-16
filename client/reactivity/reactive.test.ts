@@ -384,14 +384,19 @@ Deno.test("identity can be tested", () => {
   assert(equals(rg.g, g));
 });
 
-Deno.test("preserve reactive identity", () => {
+Deno.test("identity guaranty: one proxy per object ref", () => {
   const array: [] = [];
   const r1 = reactive(array);
   const r2 = reactive(array);
 
+  // at most one proxy per object ref
   assertEquals(r1 === r2, true);
   assertEquals(r1 === array, false);
   assertEquals(r2 === array, false);
+
+  // at least one proxy per object ref
+  assertEquals(r1 === reactive([]), false);
+  assertEquals(r2 === reactive([]), false);
 });
 
 Deno.test("destructuring object maintains reactivity", () => {
