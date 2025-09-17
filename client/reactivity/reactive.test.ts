@@ -190,7 +190,8 @@ Deno.test("nested relabelling", () => {
 // Properties
 
 Deno.test("events collapse", () => {
-  const r: Record<string, unknown> = reactive({ a: 1 });
+  const b = {};
+  const r: Record<string, unknown> = reactive({ a: 1, b });
 
   const events: ReactiveEvent[] = [];
   addListener(r, (e) => events.push(e));
@@ -217,6 +218,17 @@ Deno.test("events collapse", () => {
 
   // no update to the same state
   r.a = 4;
+  flushSync();
+  assertEquals(events, []);
+
+  // no updates with same proxied objects
+  const b1 = r.b; // proxied
+  r.b = b1;
+  flushSync();
+  assertEquals(events, []);
+
+  // no updates with same target objects
+  r.b = b;
   flushSync();
   assertEquals(events, []);
 });

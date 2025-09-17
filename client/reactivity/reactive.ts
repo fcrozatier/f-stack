@@ -605,6 +605,11 @@ export const reactive = <T extends object>(object: T): T => {
       if (property in target) {
         // optional fancy equality check here
         if (newValue !== oldValue) {
+          // does the reactive oldValue projects down to the same target
+          if (isReactive(oldValue) && snapshot(oldValue) === newValue) {
+            return true;
+          }
+
           // For Arrays we distinguish setting the length directly (it's a writable derived)
           const type = isArrayLengthProperty ? "create" : "update";
 
