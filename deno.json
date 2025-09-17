@@ -1,7 +1,6 @@
 {
   "tasks": {
     "build": "deno run -A scripts/build.ts",
-    "bundle": "deno bundle bundle/alien-signals.ts -o bundle/alien-signals.js",
     "watch": "deno run -A scripts/watch.ts"
   },
   "compilerOptions": {
@@ -24,7 +23,6 @@
     "@std/assert": "jsr:@std/assert@^1.0.13",
     "@std/async": "jsr:@std/async@^1.0.13",
     "@std/fs": "jsr:@std/fs@^1.0.19",
-    "@std/path": "jsr:@std/path@^1.1.1",
-    "alien-signals": "npm:alien-signals@^2.0.5"
+    "@std/path": "jsr:@std/path@^1.1.1"
   }
 }
