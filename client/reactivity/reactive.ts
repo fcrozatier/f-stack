@@ -95,37 +95,25 @@ const insert = (
   }
 };
 
-const derivedEvents: Map<Record<PropertyKey, any>, ReactiveEvent[]> = new Map();
-
-export const flushSync = () => {
+export function flushSync() {
   pending = false;
   const pendingEvents = scheduler.getPending();
 
-  // bubble events
-  for (const [proxy, events] of pendingEvents) {
-    for (const e of events) {
-      // recompute to ensure the correct newValue in the case of batched updates
-      getOwn(proxy, ns.BUBBLE_EVENT)({ ...e, [RECOMPUTE]: true });
-    }
-  }
-
   // topological dequeuing
-  const scheduled = [...derivedEvents.entries()].sort(([p1], [p2]) =>
+  const scheduled = [...pendingEvents.entries()].sort(([p1], [p2]) =>
     getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1
   );
 
   // for glitch freedom we need to sort events before computing new derived values
   for (const [proxy, events] of scheduled) {
     for (const e of events) {
-      if (RECOMPUTE in e) {
-        getOwn(proxy, ns.RECOMPUTE)(e);
-      }
+      if (e.type === "apply" && !e.path) continue;
+      if (RECOMPUTE in e) getOwn(proxy, ns.RECOMPUTE)(e);
+      if (e.type === "relabel" && !e.labels.length) continue;
       getOwn(proxy, ns.NOTIFY)(e);
     }
   }
-
-  derivedEvents.clear();
-};
+}
 
 // gives guaranties on identities
 const reactiveCache = new WeakMap();
@@ -169,7 +157,7 @@ type NotificationTarget = {
 
 let current: NotificationTarget | undefined;
 
-export const reactive = <T extends object>(object: T): T => {
+export function reactive<T extends object>(object: T): T {
   // avoids double proxying
   if (isReactive(object)) return object;
 
@@ -187,11 +175,87 @@ export const reactive = <T extends object>(object: T): T => {
   const derivedLabels = new Map<string, any>();
   const callbacks: ReactiveEventCallback[] = [];
 
-  const emit = (e: ReactiveEvent) => {
-    scheduler.schedule(proxy, e);
-  };
+  function emit(e: ReactiveEvent) {
+    // recompute to ensure the correct newValue in the case of batched updates
+    bubble({
+      ...e,
+      // @ts-ignore internal
+      [RECOMPUTE]: true,
+    });
+  }
 
-  const recompute = (e: ReactiveEvent) => {
+  function bubble(e: ReactiveEvent) {
+    const type = e.type;
+    const path = "path" in e ? e.path : "";
+
+    if (
+      type === "apply" &&
+      Array.isArray(object) && typeof path === "string" &&
+      mutationMethods.get(Array)?.includes(path)
+    ) {
+      // track labels
+      for (const [key, value] of object.entries()) {
+        derivedLabels.set(`.${key}`, value);
+      }
+
+      // notify relabelling of tracked labels
+      bubble({
+        type: "relabel",
+        labels: [],
+        // @ts-ignore internal
+        [RECOMPUTE]: true,
+      });
+    }
+
+    scheduler.schedule(proxy, e);
+
+    // topological ordering
+    const entries = [...subscribers.entries()];
+    entries.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
+
+    for (const [subscriber, edges] of entries) {
+      for (const [rootPath, { isDerived, deps }] of edges.entries()) {
+        const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
+
+        if (type !== "relabel") {
+          if (!isDerived) {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              ...e,
+              path: reroute,
+              [RECOMPUTE]: e,
+            });
+          } else if (
+            isDerived && typeof path === "string" && deps?.includes(path)
+          ) {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              type: "update",
+              path: reroute,
+              [RECOMPUTE]: true,
+            });
+          }
+        } else if (e.type === "relabel") {
+          if (!isDerived) {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              ...e,
+              // update the rootPath prefix for computing the relabelling
+              [RECOMPUTE]: {
+                // @ts-ignore we're fine
+                rootPath: rootPath + (e?.[RECOMPUTE]?.rootPath ?? ""),
+              },
+            });
+          } else {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              type: "update",
+              path: reroute,
+              [RECOMPUTE]: true,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  function recompute(e: ReactiveEvent) {
     assert(RECOMPUTE in e, "Expected RECOMPUTE property in e");
 
     const type = e.type;
@@ -214,6 +278,13 @@ export const reactive = <T extends object>(object: T): T => {
         (type === "create" || type === "update") && typeof path === "string"
       ) {
         e.newValue = readPath(path);
+      }
+
+      if (type === "relabel") {
+        const newLabels = updateLabels();
+        // e.labels is a shared reference so we mutate it rather than reassign it
+        e.labels.length = 0;
+        e.labels.push(...newLabels);
       }
     } else if (typeof e[RECOMPUTE] === "object" && e[RECOMPUTE] !== null) {
       switch (type) {
@@ -245,124 +316,61 @@ export const reactive = <T extends object>(object: T): T => {
           break;
         case "apply":
           break;
+        case "relabel": {
+          assert(
+            "rootPath" in e[RECOMPUTE],
+            "Expected rootPath property in e[RECOMPUTE]",
+          );
+          // recompute is a covariant prefixing on the relabelling
+          const rootPath = e[RECOMPUTE].rootPath;
+          e.labels = e.labels.map(([o, n]) => [rootPath + o, rootPath + n]);
+          break;
+        }
         default:
           throw new Error("Unimplemented recompute");
       }
     }
 
     delete e[RECOMPUTE];
-  };
+  }
 
-  const bubble = (e: ReactiveEvent) => {
-    const type = e.type;
-    const path = "path" in e ? e.path : "";
-
-    if (
-      type === "apply" &&
-      Array.isArray(object) && typeof path === "string" &&
-      mutationMethods.get(Array)?.includes(path)
-    ) {
-      // notify relabelling of tracked labels
-      bubble({
-        type: "relabel",
-        labels: updateLabels([...derivedLabels.keys()]),
-      });
-    }
-
-    insert(derivedEvents, proxy, e);
-
-    // topological ordering
-    const entries = [...subscribers.entries()];
-    entries.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
-
-    for (const [subscriber, edges] of entries) {
-      for (const [rootPath, { isDerived, deps }] of edges.entries()) {
-        const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
-
-        if (type !== "relabel") {
-          if (!isDerived) {
-            getOwn(subscriber, ns.BUBBLE_EVENT)({
-              ...e,
-              path: reroute,
-              [RECOMPUTE]: e,
-            });
-          } else if (
-            isDerived && typeof path === "string" && deps?.includes(path)
-          ) {
-            getOwn(subscriber, ns.BUBBLE_EVENT)({
-              type: "update",
-              path: reroute,
-              [RECOMPUTE]: true,
-            });
-          }
-        } else if (e.type === "relabel") {
-          if (!isDerived) {
-            // bubbling is the covariant prefixing for relabel
-            getOwn(subscriber, ns.BUBBLE_EVENT)({
-              ...e,
-              labels: e.labels.map((
-                [oldLabel, newLabel],
-              ) => [rootPath + oldLabel, rootPath + newLabel]),
-              [RECOMPUTE]: false,
-            });
-          } else {
-            getOwn(subscriber, ns.BUBBLE_EVENT)({
-              type: "update",
-              path: reroute,
-              [RECOMPUTE]: true,
-            });
-          }
-        }
-      }
-    }
-  };
-
-  const notify = (e: ReactiveEvent) => {
+  function notify(e: ReactiveEvent) {
     for (const callback of callbacks) {
       callback(e);
     }
-  };
+  }
 
-  const readPath = (path: string) => {
+  function readPath(path: string) {
     return path.split(".").slice(1).reduce(
       (acc, curr) => {
         return acc instanceof Map ? acc.get(curr) : acc[curr];
       },
       proxy as Record<string, any>,
     );
-  };
+  }
 
-  const updateLabels = (oldLabels: string[]): [string, string][] => {
-    const newLabels: [string, string][] = [];
-    const updateDerivedLabels = new Map();
+  function updateLabels(): [string, string][] {
+    const labels: [string, string][] = [];
 
-    for (let index = 0; index < oldLabels.length; index++) {
-      const oldLabel = oldLabels[index];
-      assertExists(oldLabel);
-
+    for (const [oldLabel, value] of derivedLabels.entries()) {
       let newLabel = ".";
-
-      const data = derivedLabels.get(oldLabel);
-      if (!data) continue;
 
       derivedLabels.delete(oldLabel);
 
       if (Array.isArray(object)) {
-        const i = Array.prototype.indexOf.call(object, data);
+        const i = Array.prototype.indexOf.call(object, value);
         if (i === -1) continue;
         newLabel += String(i);
       } else {
         // comparing target values (no proxies here)
-        newLabel += Object.entries(object).find(([_, v]) => v === data)?.[0] ??
+        newLabel += Object.entries(object).find(([_, v]) => v === value)?.[0] ??
           "";
         if (newLabel === ".") continue;
       }
 
       if (oldLabel === newLabel) continue;
 
-      // update labels
-      newLabels.push([oldLabel, newLabel]);
-      updateDerivedLabels.set(newLabel, data);
+      labels.push([oldLabel, newLabel]);
 
       const maybeReactive = proxy[newLabel];
       // update subscribers
@@ -374,18 +382,16 @@ export const reactive = <T extends object>(object: T): T => {
       }
     }
 
-    for (const [label, value] of updateDerivedLabels) {
-      derivedLabels.set(label, value);
-    }
+    derivedLabels.clear();
 
-    return newLabels;
-  };
+    return labels;
+  }
 
-  const addListener = (callback: ReactiveEventCallback) => {
+  function addListener(callback: ReactiveEventCallback) {
     callbacks.push(callback);
-  };
+  }
 
-  const addSubscriber = (options: NotificationTarget) => {
+  function addSubscriber(options: NotificationTarget) {
     const { subscriber, rootPath, isDerived, deps } = options;
     const dependencies = deps ?? [];
 
@@ -420,27 +426,27 @@ export const reactive = <T extends object>(object: T): T => {
         }]]),
       );
     }
-  };
+  }
 
-  const hasSubscriber = (subscriber: Record<PropertyKey, any>): boolean => {
+  function hasSubscriber(subscriber: Record<PropertyKey, any>): boolean {
     for (const [other] of subscribers.entries()) {
       if (
         other === subscriber || getOwn(other, ns.HAS_SUBSCRIBER)(subscriber)
       ) return true;
     }
     return false;
-  };
+  }
 
-  const removeSubscriber = (subscriber: Record<PropertyKey, any>) => {
+  function removeSubscriber(subscriber: Record<PropertyKey, any>) {
     subscribers.delete(subscriber);
-  };
+  }
 
   // relabels a parent path
-  const updateSubscriber = (
+  function updateSubscriber(
     subscriber: Record<PropertyKey, any>,
     oldPath: string,
     newPath: string,
-  ) => {
+  ) {
     const parentEntry = subscribers.get(subscriber);
     assertExists(parentEntry);
 
@@ -449,11 +455,12 @@ export const reactive = <T extends object>(object: T): T => {
 
     parentEntry.delete(oldPath);
     parentEntry.set(newPath, { ...pathLevel, rootPath: newPath });
-  };
+  }
 
   const proxy = new Proxy(object, {
     apply(target, thisArg, argArray) {
       emit({ type: "apply", path: "", args: argArray });
+
       return Reflect.apply(target, thisArg, argArray);
     },
     get(target, property, receiver) {
@@ -489,9 +496,18 @@ export const reactive = <T extends object>(object: T): T => {
               }
 
               let [key, value] = item;
+              const itemPath = `.${key}`;
 
               if (typeof value === "object") {
                 const proxiedValue = reactive(value);
+
+                // track dynamic labels
+                if (
+                  dynamicLabelMap.get(constructor)?.test(key) &&
+                  !derivedLabels.has(itemPath) && key in target
+                ) {
+                  derivedLabels.set(itemPath, value);
+                }
 
                 (getOwn(
                   proxiedValue,
@@ -579,15 +595,6 @@ export const reactive = <T extends object>(object: T): T => {
           return value;
         }
         return undefined;
-      }
-
-      // track dynamic labels
-      if (
-        typeof property === "string" &&
-        dynamicLabelMap.get(constructor)?.test(property) &&
-        !derivedLabels.has(property)
-      ) {
-        derivedLabels.set(path, value);
       }
 
       if (value !== null && typeof value === "object") {
@@ -751,7 +758,7 @@ export const reactive = <T extends object>(object: T): T => {
   reactiveCache.set(object, proxy);
 
   return proxy;
-};
+}
 
 const stringifyKey = (key: string | symbol) => {
   return typeof key === "symbol" ? key.description ?? String(key) : key;

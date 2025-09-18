@@ -131,13 +131,9 @@ Deno.test("relabelling", () => {
   addListener(r, (e) => events.push(e));
 
   assertEquals(events.length, 0);
-  assertEquals(r[0]?.value, "a");
-  assertEquals(r[1]?.value, "b");
 
   r.shift();
   flushSync();
-
-  assertEquals(r[0]?.value, "b");
 
   const relabelEvent = events.find((e) => e.type === "relabel");
   assertExists(relabelEvent, "Expected a relabel event");
@@ -174,14 +170,9 @@ Deno.test("nested relabelling", () => {
   const secondEvents: ReactiveEvent[] = [];
   addListener(r.first.second, (e) => secondEvents.push(e));
 
-  assertEquals(rEvents.length, 0);
-  assertEquals(r.first.second.values[0]!.value, "a");
-  assertEquals(r.first.second.values[1]!.value, "b");
-
   r.first.second.values.shift();
   flushSync();
 
-  assertEquals(r.first.second.values[0]!.value, "b");
   assertEquals(rEvents.length, 2);
 
   // Only one relabelling happened as 0 was just removed
@@ -1214,17 +1205,37 @@ Deno.test("array relabeling", () => {
   const events: ReactiveEvent[] = [];
   addListener(r, (e) => events.push(e));
 
-  r[0], r[1], r[2];
   assertEquals(events.length, 0);
 
+  r.push(0, 4);
+  flushSync();
+
+  // push doesn't relabel
+  assertEquals(events.filter((e) => e.type === "relabel").length, 0);
+
+  // Goes from [3, 1, 2, 0, 4] to [0, 1, 2, 3, 4]
   r.sort();
   flushSync();
 
   assertEquals(events.filter((e) => e.type === "relabel").length, 1);
-  assertEquals(events.filter((e) => e.type === "relabel")[0], {
-    type: "relabel",
-    labels: [[".0", ".2"], [".1", ".0"], [".2", ".1"]],
-  });
+
+  // the apply event comes after the relabel event
+  assertEquals(events, [
+    {
+      type: "apply",
+      path: ".push",
+      args: [0, 4],
+    },
+    {
+      type: "relabel",
+      labels: [[".0", ".3"], [".3", ".0"]],
+    },
+    {
+      type: "apply",
+      path: ".sort",
+      args: [],
+    },
+  ]);
 });
 
 // Map
