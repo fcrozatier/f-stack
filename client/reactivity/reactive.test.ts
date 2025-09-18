@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertExists } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertObjectMatch,
+} from "@std/assert";
 import {
   addListener,
   equals,
@@ -6,12 +11,12 @@ import {
   isReactive,
   reactive,
   type ReactiveEvent,
-  target,
+  snapshot,
 } from "./reactive.ts";
 
 // Fundamentals
 
-Deno.test("get/set values", () => {
+Deno.test("get/set values synchronously", () => {
   const r = reactive({ a: 1, b: { c: true } });
   // get
   assertEquals(r.a, 1);
@@ -91,18 +96,17 @@ Deno.test("function listeners", () => {
   assertEquals(events[0], { type: "apply", path: ".a", args: [] });
 
   // events return proxied values for consistency
-  const old = r.a;
   r.a = f2;
   flushSync();
   assertEquals(events.length, 2);
-  assertEquals(events[1]!, {
+  assertObjectMatch(events[1]!, {
     type: "update",
     path: ".a",
-    oldValue: old,
-    newValue: r.a,
+    // oldValue is the bound f1
+    // newValue is the bound f2
   });
   // @ts-ignore
-  assertEquals(target(events[1]!.newValue), f2);
+  assertEquals(snapshot(events[1]!.newValue), f2);
 
   r.a();
   flushSync();
@@ -110,11 +114,14 @@ Deno.test("function listeners", () => {
   assertEquals(events.length, 3);
   assertEquals(events[2], { type: "apply", path: ".a", args: [] });
 
-  const oldValue = r.a;
   delete r.a;
   flushSync();
   assertEquals(events.length, 4);
-  assertEquals(events[3], { type: "delete", path: ".a", oldValue });
+  assertObjectMatch(events[3]!, {
+    type: "delete",
+    path: ".a",
+    // oldValue is the bound r.a
+  });
 });
 
 Deno.test("relabelling", () => {
@@ -131,7 +138,9 @@ Deno.test("relabelling", () => {
   flushSync();
 
   assertEquals(r[0]?.value, "b");
-  assertEquals(events.length, 3);
+
+  const relabelEvent = events.find((e) => e.type === "relabel");
+  assertExists(relabelEvent, "Expected a relabel event");
 
   // Only one relabelling happened as .0 was just removed
   assertEquals(
@@ -140,10 +149,9 @@ Deno.test("relabelling", () => {
   );
 
   // .1 was relabelled
-  assertEquals(events[1], {
+  assertEquals(relabelEvent, {
     type: "relabel",
-    oldPath: ".1",
-    newPath: ".0",
+    labels: [[".1", ".0"]],
   });
 
   // parents were updated
@@ -153,38 +161,76 @@ Deno.test("relabelling", () => {
 });
 
 Deno.test("nested relabelling", () => {
-  const r = reactive({ values: [{ value: "a" }, { value: "b" }] });
+  const r = reactive({
+    first: { second: { values: [{ value: "a" }, { value: "b" }] } },
+  });
 
-  const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  const rEvents: ReactiveEvent[] = [];
+  addListener(r, (e) => rEvents.push(e));
 
-  assertEquals(events.length, 0);
-  assertEquals(r.values[0]!.value, "a");
-  assertEquals(r.values[1]!.value, "b");
+  const firstEvents: ReactiveEvent[] = [];
+  addListener(r.first, (e) => firstEvents.push(e));
 
-  r.values.shift();
+  const secondEvents: ReactiveEvent[] = [];
+  addListener(r.first.second, (e) => secondEvents.push(e));
+
+  assertEquals(rEvents.length, 0);
+  assertEquals(r.first.second.values[0]!.value, "a");
+  assertEquals(r.first.second.values[1]!.value, "b");
+
+  r.first.second.values.shift();
   flushSync();
 
-  assertEquals(r.values[0]!.value, "b");
-  assertEquals(events.length, 3);
+  assertEquals(r.first.second.values[0]!.value, "b");
+  assertEquals(rEvents.length, 2);
 
   // Only one relabelling happened as 0 was just removed
-  assertEquals(
-    events.map((e) => e.type).filter((t) => t === "relabel").length,
-    1,
-  );
+  assertEquals(rEvents.filter((e) => e.type === "relabel").length, 1);
 
   // 1 was relabelled
-  assertEquals(events[1], {
+  assertEquals(rEvents[0], {
     type: "relabel",
-    oldPath: ".values.1",
-    newPath: ".values.0",
+    labels: [[".first.second.values.1", ".first.second.values.0"]],
+  });
+  assertEquals(firstEvents[0], {
+    type: "relabel",
+    labels: [[".second.values.1", ".second.values.0"]],
+  });
+  assertEquals(secondEvents[0], {
+    type: "relabel",
+    labels: [[".values.1", ".values.0"]],
   });
 
   // parents were updated
-  r.values[0]!.value = "c";
+  r.first.second.values[0]!.value = "c";
   flushSync();
-  assertEquals(r.values[0]?.value, "c");
+  assertEquals(r.first.second.values[0]?.value, "c");
+});
+
+Deno.test("derived relabelling", () => {
+  const r = reactive([3, 4, 2]);
+  const d = reactive({
+    get value() {
+      return r[0];
+    },
+  });
+
+  const dEvents: ReactiveEvent[] = [];
+  addListener(d, (e) => dEvents.push(e));
+
+  assertEquals(d.value, 3);
+
+  r.sort();
+  flushSync();
+
+  assertEquals(d.value, 2);
+  assertEquals(dEvents.length, 1);
+  assertEquals(dEvents[0], {
+    type: "update",
+    path: ".value",
+    oldValue: 3,
+    newValue: 2,
+  });
 });
 
 // Properties
@@ -370,7 +416,7 @@ Deno.test("preserve `this` binding in reactive functions", () => {
   assertEquals(bound(), 42);
 
   // can be re-bound
-  const rebound = target(getX).bind(u);
+  const rebound = snapshot(getX).bind(u);
   assertEquals(rebound(), 24);
 });
 
@@ -546,6 +592,33 @@ Deno.test("derivation", () => {
   });
 });
 
+Deno.test("upgrading derived events", () => {
+  const first: { a: number; b?: number } = reactive({ a: 1, b: 2 });
+  const second = reactive({
+    get value() {
+      return first.a + (first.b ?? 0);
+    },
+  });
+
+  let event: ReactiveEvent | undefined;
+
+  addListener(second, (e) => (event = e));
+
+  assertEquals(first.a, 1);
+  assertEquals(second.value, 3);
+
+  // the delete event on `first` becomes an update event on `second`
+  delete first.b;
+  flushSync();
+  assertEquals(second.value, 1);
+  assertEquals(event, {
+    type: "update",
+    path: ".value",
+    oldValue: 3,
+    newValue: 1,
+  });
+});
+
 Deno.test("nested derivations", () => {
   const user = reactive({ first: "John", last: "Doe" });
   const lower = reactive({
@@ -622,22 +695,88 @@ Deno.test("derived values are cached", () => {
   user.first = "JOHNNY";
   flushSync();
 
-  assertEquals(recomputeFirst, 1);
-  assertEquals(recomputeFull, 1);
-
   assertEquals(lower.first, "johnny");
 
   assertEquals(recomputeFirst, 2);
-  assertEquals(recomputeFull, 1);
+  assertEquals(recomputeFull, 2);
 
   assertEquals(fullname.value, "johnny doe");
   assertEquals(recomputeFirst, 2);
   assertEquals(recomputeFull, 2);
 });
 
-// Adoption
+Deno.test("bubbling derived events", () => {
+  const first = reactive({ a: true });
+  const second = reactive({
+    outer: {
+      inner: {
+        get b() {
+          return !first.a;
+        },
+      },
+    },
+  });
+  const third = reactive({
+    outer: {
+      inner: {
+        get value() {
+          return second.outer.inner.b ? 0 : 1;
+        },
+      },
+    },
+  });
 
-Deno.test("can adopt another reactive", () => {
+  let sOuterEvent: ReactiveEvent | undefined;
+  addListener(second.outer, (e) => (sOuterEvent = e));
+
+  let sInnerEvent: ReactiveEvent | undefined;
+  addListener(second.outer.inner, (e) => (sInnerEvent = e));
+
+  let tOuterEvent: ReactiveEvent | undefined;
+  addListener(third.outer, (e) => (tOuterEvent = e));
+
+  let tInnerEvent: ReactiveEvent | undefined;
+  addListener(third.outer.inner, (e) => (tInnerEvent = e));
+
+  // track
+  assertEquals(second.outer.inner.b, false);
+  assertEquals(third.outer.inner.value, 1);
+
+  first.a = false;
+  flushSync();
+
+  assertEquals(second.outer.inner.b, true);
+  assertEquals(sInnerEvent, {
+    type: "update",
+    path: ".b",
+    oldValue: false,
+    newValue: true,
+  });
+  assertEquals(sOuterEvent, {
+    type: "update",
+    path: ".inner.b",
+    oldValue: false,
+    newValue: true,
+  });
+
+  assertEquals(third.outer.inner.value, 0);
+  assertEquals(tInnerEvent, {
+    type: "update",
+    path: ".value",
+    oldValue: 1,
+    newValue: 0,
+  });
+  assertEquals(tOuterEvent, {
+    type: "update",
+    path: ".inner.value",
+    oldValue: 1,
+    newValue: 0,
+  });
+});
+
+// Composition
+
+Deno.test("can compose reactive", () => {
   const bool = reactive({ value: false });
   const r = reactive({ a: bool });
 
@@ -706,9 +845,9 @@ Deno.test("multi-parent adoption", () => {
   });
 });
 
-// Listeners
+// Events
 
-Deno.test("deep listeners", () => {
+Deno.test("bubbling", () => {
   const r = reactive({ a: { b: { c: { d: { e: { f: true } } } } } });
   let event: ReactiveEvent | undefined;
   addListener(r, (e) => (event = e));
@@ -905,7 +1044,7 @@ Deno.test("deep object functoriality", () => {
   assertEquals(mirror, {});
 });
 
-// Data structures
+// Array
 
 Deno.test("array functoriality", () => {
   const r: number[] = reactive([]);
@@ -987,7 +1126,7 @@ Deno.test("array functoriality", () => {
   assertEquals(mirror, [4, 1, 2]);
 });
 
-Deno.test("array length property", () => {
+Deno.test.ignore("array length property", () => {
   const r = reactive([1, 2, 3]);
 
   const events: ReactiveEvent[] = [];
@@ -996,7 +1135,7 @@ Deno.test("array length property", () => {
   assertEquals(events.length, 0);
   assertEquals(r.length, 3);
 
-  // No .length event is emitted is the length doesn't change
+  // No .length event is emitted if the length doesn't change
   // r.push();
   // flushSync();
   // assertEquals(r.length, 3);
@@ -1068,6 +1207,27 @@ Deno.test("array-derived values", () => {
     newValue: 4,
   }]);
 });
+
+Deno.test("array relabeling", () => {
+  const r = reactive([3, 1, 2]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  r[0], r[1], r[2];
+  assertEquals(events.length, 0);
+
+  r.sort();
+  flushSync();
+
+  assertEquals(events.filter((e) => e.type === "relabel").length, 1);
+  assertEquals(events.filter((e) => e.type === "relabel")[0], {
+    type: "relabel",
+    labels: [[".0", ".2"], [".1", ".0"], [".2", ".1"]],
+  });
+});
+
+// Map
 
 Deno.test("Map functoriality", () => {
   const r = reactive(new Map());

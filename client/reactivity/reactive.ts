@@ -1,4 +1,4 @@
-import { assertExists } from "../assert.ts";
+import { assert, assertExists } from "../assert.ts";
 
 export type AnyConstructor = new (...args: any[]) => any;
 
@@ -17,20 +17,25 @@ export type ReactiveEvent =
     // A writable derived set manually can have an old value
     oldValue?: any;
   }
-  | { type: "update"; path: string | symbol; newValue: any; oldValue?: any }
-  | { type: "delete"; path: string | symbol; oldValue: any }
+  | {
+    type: "update";
+    path: string | symbol;
+    newValue: any;
+    oldValue?: any;
+  }
+  | {
+    type: "delete";
+    path: string | symbol;
+    oldValue: any;
+  }
   | { type: "apply"; path: string | symbol; args: any[] }
-  | { type: "relabel"; oldPath: string; newPath: string | null };
+  | { type: "relabel"; labels: [string, string][] };
 
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
 export class Scheduler {
   #callback: () => void;
-  // idempotent insertion structure collapsing events
-  #pending: Map<
-    Record<PropertyKey, any>,
-    Map<ReactiveEventCallback, ReactiveEvent[]>
-  > = new Map();
+  #pending: Map<Record<PropertyKey, any>, ReactiveEvent[]> = new Map();
 
   constructor(callback: () => void) {
     this.#callback = callback;
@@ -42,48 +47,8 @@ export class Scheduler {
     return pending;
   }
 
-  flushSync() {
-    this.#callback();
-  }
-
-  schedule(
-    proxy: Record<PropertyKey, any>,
-    callback: ReactiveEventCallback,
-    event: ReactiveEvent,
-  ) {
-    // composites make this better
-    const proxyLevel = this.#pending.get(proxy);
-    if (proxyLevel) {
-      const callbackLevel = proxyLevel.get(callback);
-      if (!callbackLevel) {
-        proxyLevel.set(callback, [event]);
-      } else {
-        const index = callbackLevel?.findIndex((e) => {
-          if (e.type !== event.type) return false;
-
-          if (e.type === "relabel" && event.type === "relabel") {
-            return e.oldPath === event.oldPath;
-          }
-
-          if (e.type !== "relabel" && event.type !== "relabel") {
-            return e.path === event.path;
-          }
-        });
-
-        // collapsing:
-        // only the first enqueued event contains the correct old value in all generality since derived values are cleared afterwards
-        // the correct new value is read when dequeuing
-        // we don't collapse "apply" events
-        if (index === -1) {
-          callbackLevel?.push(event);
-        } else if (event.type === "apply") {
-          callbackLevel?.push(event);
-        }
-      }
-    } else {
-      this.#pending.set(proxy, new Map([[callback, [event]]]));
-    }
-
+  schedule(proxy: Record<PropertyKey, any>, event: ReactiveEvent) {
+    insert(this.#pending, proxy, event);
     this.#callback();
   }
 }
@@ -97,42 +62,76 @@ const scheduler = new Scheduler(() => {
   }
 });
 
+const insert = (
+  map: Map<Record<PropertyKey, any>, ReactiveEvent[]>,
+  proxy: Record<PropertyKey, any>,
+  event: ReactiveEvent,
+) => {
+  const proxyEvents = map.get(proxy);
+  if (proxyEvents) {
+    const index = proxyEvents.findIndex((e) => {
+      if (e.type !== event.type) return false;
+
+      if (e.type === "relabel" && event.type === "relabel") {
+        return e.labels === event.labels;
+      }
+
+      if (e.type !== "relabel" && event.type !== "relabel") {
+        return e.path === event.path;
+      }
+    });
+
+    // collapsing:
+    // only the first enqueued event contains the correct old value in all generality since derived values are cleared afterwards
+    // the correct new value is read when dequeuing
+    // we don't collapse "apply" events
+    if (index === -1) {
+      proxyEvents.push(event);
+    } else if (event.type === "apply") {
+      proxyEvents.push(event);
+    }
+  } else {
+    map.set(proxy, [event]);
+  }
+};
+
+const derivedEvents: Map<Record<PropertyKey, any>, ReactiveEvent[]> = new Map();
+
 export const flushSync = () => {
   pending = false;
+  const pendingEvents = scheduler.getPending();
 
-  // topological dequeuing
-  const scheduled = [...scheduler.getPending().entries()];
-  scheduled.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
-
-  for (const [proxy, map] of scheduled) {
-    for (const [callback, events] of map?.entries()) {
-      for (const e of events) {
-        if (
-          (e.type === "create" || e.type === "update") &&
-          typeof e.path === "string"
-        ) {
-          // get the latest value and recache the derived values
-          e.newValue = getOwn(proxy, ns.READ_PATH)(e.path);
-          callback(e);
-        } else if (e.type === "relabel") {
-          e.newPath = getOwn(proxy, ns.UPDATE_LABEL)(
-            e.oldPath.split(".").slice(1),
-          );
-
-          // only if a relabelling actually happened
-          if (e.newPath !== null) {
-            callback(e);
-          }
-        } else {
-          callback(e);
-        }
-      }
+  // bubble events
+  for (const [proxy, events] of pendingEvents) {
+    for (const e of events) {
+      // recompute to ensure the correct newValue in the case of batched updates
+      getOwn(proxy, ns.BUBBLE_EVENT)({ ...e, [RECOMPUTE]: true });
     }
   }
+
+  // topological dequeuing
+  const scheduled = [...derivedEvents.entries()].sort(([p1], [p2]) =>
+    getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1
+  );
+
+  // for glitch freedom we need to sort events before computing new derived values
+  for (const [proxy, events] of scheduled) {
+    for (const e of events) {
+      if (RECOMPUTE in e) {
+        getOwn(proxy, ns.RECOMPUTE)(e);
+      }
+      getOwn(proxy, ns.NOTIFY)(e);
+    }
+  }
+
+  derivedEvents.clear();
 };
 
 // gives guaranties on identities
 const reactiveCache = new WeakMap();
+
+// internal property on events
+const RECOMPUTE = Symbol.for("recompute");
 
 const ns = {
   ADD_LISTENER: Symbol.for("add listener"),
@@ -143,7 +142,9 @@ const ns = {
   IS_REACTIVE: Symbol.for("is reactive"),
   NOTIFY: Symbol.for("notify"),
   READ_PATH: Symbol.for("read path"),
-  UPDATE_LABEL: Symbol.for("update label"),
+  BUBBLE_EVENT: Symbol.for("bubble event"),
+  RECOMPUTE: Symbol.for("recompute values"),
+  UPDATE_LABELS: Symbol.for("update labels"),
   TARGET: Symbol.for("target"),
 };
 
@@ -186,75 +187,139 @@ export const reactive = <T extends object>(object: T): T => {
   const derivedLabels = new Map<string, any>();
   const callbacks: ReactiveEventCallback[] = [];
 
-  const notify = (e: ReactiveEvent) => {
-    let type = e.type;
-    const path = "path" in e ? e.path : "";
+  const emit = (e: ReactiveEvent) => {
+    scheduler.schedule(proxy, e);
+  };
 
-    if (
-      (type === "update" || type === "delete" || type === "apply") &&
-      typeof path === "string" && derivedValues.has(path)
-    ) {
-      if (e.type === "apply") {
-        // @ts-ignore a derived apply becomes an update
-        delete e.args;
-        type = "update";
+  const recompute = (e: ReactiveEvent) => {
+    assert(RECOMPUTE in e, "Expected RECOMPUTE property in e");
+
+    const type = e.type;
+
+    if (e[RECOMPUTE] === true) {
+      const path = "path" in e ? e.path : "";
+
+      // recompute derived
+      if (
+        (type === "update" || type === "delete") &&
+        typeof path === "string" && derivedValues.has(path)
+      ) {
+        e.oldValue = derivedValues.get(path);
+        // invalidate the cache
+        derivedValues.delete(path);
       }
-      // @ts-ignore a derived apply becomes an update
-      e.oldValue = derivedValues.get(path);
-      // invalidate the cache
-      derivedValues.delete(path);
+
+      // get the latest values
+      if (
+        (type === "create" || type === "update") && typeof path === "string"
+      ) {
+        e.newValue = readPath(path);
+      }
+    } else if (typeof e[RECOMPUTE] === "object" && e[RECOMPUTE] !== null) {
+      switch (type) {
+        case "delete":
+          assert(
+            "oldValue" in e[RECOMPUTE],
+            "Expected oldValue property in e[RECOMPUTE]",
+          );
+          e.oldValue = e[RECOMPUTE].oldValue;
+          break;
+        case "update":
+          assert(
+            "oldValue" in e[RECOMPUTE],
+            "Expected oldValue property in e[RECOMPUTE]",
+          );
+          assert(
+            "newValue" in e[RECOMPUTE],
+            "Expected newValue property in e[RECOMPUTE]",
+          );
+          e.oldValue = e[RECOMPUTE].oldValue;
+          e.newValue = e[RECOMPUTE].newValue;
+          break;
+        case "create":
+          assert(
+            "newValue" in e[RECOMPUTE],
+            "Expected newValue property in e[RECOMPUTE]",
+          );
+          e.newValue = e[RECOMPUTE].newValue;
+          break;
+        case "apply":
+          break;
+        default:
+          throw new Error("Unimplemented recompute");
+      }
     }
+
+    delete e[RECOMPUTE];
+  };
+
+  const bubble = (e: ReactiveEvent) => {
+    const type = e.type;
+    const path = "path" in e ? e.path : "";
 
     if (
       type === "apply" &&
       Array.isArray(object) && typeof path === "string" &&
       mutationMethods.get(Array)?.includes(path)
     ) {
-      notify({
-        type: "update",
-        path: ".length",
-        // @ts-ignore object is an array
-        oldValue: object.length,
-        newValue: undefined,
-      });
-
       // notify relabelling of tracked labels
-      for (const oldPath of derivedLabels.keys()) {
-        notify({
-          type: "relabel",
-          oldPath: "." + oldPath,
-          newPath: "",
-        });
-      }
+      bubble({
+        type: "relabel",
+        labels: updateLabels([...derivedLabels.keys()]),
+      });
     }
 
-    for (const callback of callbacks) {
-      // @ts-ignore we're good
-      scheduler.schedule(proxy, callback, { ...e, type });
-    }
+    insert(derivedEvents, proxy, e);
 
-    // topological scheduling
+    // topological ordering
     const entries = [...subscribers.entries()];
     entries.sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
 
-    for (const [subscriber, map] of entries) {
-      for (const [rootPath, { isDerived, deps }] of map.entries()) {
-        if (type !== "relabel") {
-          const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
+    for (const [subscriber, edges] of entries) {
+      for (const [rootPath, { isDerived, deps }] of edges.entries()) {
+        const reroute = isDerived ? rootPath : rootPath + stringifyKey(path);
 
-          if (
-            !isDerived ||
+        if (type !== "relabel") {
+          if (!isDerived) {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              ...e,
+              path: reroute,
+              [RECOMPUTE]: e,
+            });
+          } else if (
             isDerived && typeof path === "string" && deps?.includes(path)
           ) {
-            getOwn(subscriber, ns.NOTIFY)({ ...e, type, path: reroute });
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              type: "update",
+              path: reroute,
+              [RECOMPUTE]: true,
+            });
           }
         } else if (e.type === "relabel") {
-          getOwn(subscriber, ns.NOTIFY)({
-            ...e,
-            oldPath: rootPath + stringifyKey(e.oldPath),
-          });
+          if (!isDerived) {
+            // bubbling is the covariant prefixing for relabel
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              ...e,
+              labels: e.labels.map((
+                [oldLabel, newLabel],
+              ) => [rootPath + oldLabel, rootPath + newLabel]),
+              [RECOMPUTE]: false,
+            });
+          } else {
+            getOwn(subscriber, ns.BUBBLE_EVENT)({
+              type: "update",
+              path: reroute,
+              [RECOMPUTE]: true,
+            });
+          }
         }
       }
+    }
+  };
+
+  const notify = (e: ReactiveEvent) => {
+    for (const callback of callbacks) {
+      callback(e);
     }
   };
 
@@ -267,51 +332,39 @@ export const reactive = <T extends object>(object: T): T => {
     );
   };
 
-  const updateLabel = (
-    oldPath: string[],
-  ): string | null => {
-    const oldLabel = oldPath[0];
-    assertExists(oldLabel);
+  const updateLabels = (oldLabels: string[]): [string, string][] => {
+    const newLabels: [string, string][] = [];
+    const updateDerivedLabels = new Map();
 
-    let newPath = ".";
-    let newLabel = "";
+    for (let index = 0; index < oldLabels.length; index++) {
+      const oldLabel = oldLabels[index];
+      assertExists(oldLabel);
 
-    const data = derivedLabels.get(oldLabel);
+      let newLabel = ".";
 
-    if (!data && oldPath.length > 1) {
-      const maybeReactive = proxy[oldLabel];
-      if (!isReactive(maybeReactive)) return null;
+      const data = derivedLabels.get(oldLabel);
+      if (!data) continue;
 
-      newPath += oldLabel;
-      const rest = getOwn(maybeReactive, ns.UPDATE_LABEL)(oldPath.slice(1));
-      if (!rest) return null;
+      derivedLabels.delete(oldLabel);
 
-      newPath += rest;
-      return newPath === "." + oldPath.join(".") ? null : newPath;
-    }
+      if (Array.isArray(object)) {
+        const i = Array.prototype.indexOf.call(object, data);
+        if (i === -1) continue;
+        newLabel += String(i);
+      } else {
+        // comparing target values (no proxies here)
+        newLabel += Object.entries(object).find(([_, v]) => v === data)?.[0] ??
+          "";
+        if (newLabel === ".") continue;
+      }
 
-    if (!data) return null;
+      if (oldLabel === newLabel) continue;
 
-    derivedLabels.delete(oldLabel);
+      // update labels
+      newLabels.push([oldLabel, newLabel]);
+      updateDerivedLabels.set(newLabel, data);
 
-    if (Array.isArray(object)) {
-      newLabel = String(Array.prototype.indexOf.call(object, data));
-      if (newLabel === "-1") return null;
-    } else {
-      newLabel = Object.entries(object).find(([_, v]) => v === data)?.[0] ?? "";
-    }
-
-    if (!newLabel) return null;
-
-    newPath += newLabel;
-
-    const maybeReactive = proxy[newLabel];
-
-    // update labels
-    if (newLabel !== oldLabel) {
-      // OVERRIDES DATA!!
-      derivedLabels.set(newLabel, data);
-
+      const maybeReactive = proxy[newLabel];
       // update subscribers
       if (isReactive(maybeReactive)) {
         (getOwn(
@@ -321,32 +374,26 @@ export const reactive = <T extends object>(object: T): T => {
       }
     }
 
-    if (oldPath.length > 1) {
-      const rest = getOwn(maybeReactive, ns.UPDATE_LABEL)(oldPath.slice(1));
-      if (!rest) return null;
-      newPath += rest;
+    for (const [label, value] of updateDerivedLabels) {
+      derivedLabels.set(label, value);
     }
 
-    return newPath === "." + oldPath.join(".") ? null : newPath;
+    return newLabels;
   };
 
   const addListener = (callback: ReactiveEventCallback) => {
     callbacks.push(callback);
   };
 
-  const addSubscriber = (
-    options: Omit<NotificationTarget, "deps"> & {
-      dep?: string[] | undefined;
-    },
-  ) => {
-    const { subscriber, rootPath, isDerived, dep } = options;
-    const dependencies = dep ?? [];
+  const addSubscriber = (options: NotificationTarget) => {
+    const { subscriber, rootPath, isDerived, deps } = options;
+    const dependencies = deps ?? [];
 
     // idempotent inserts: only one subscriber for a given edge label
     const edges = subscribers.get(subscriber);
     if (edges) {
       const edge = edges.get(rootPath);
-      if (edge && dep) {
+      if (edge && deps) {
         if (edge.deps) {
           for (const d of dependencies) {
             if (!edge.deps.includes(d)) {
@@ -406,7 +453,7 @@ export const reactive = <T extends object>(object: T): T => {
 
   const proxy = new Proxy(object, {
     apply(target, thisArg, argArray) {
-      notify({ type: "apply", path: "", args: argArray });
+      emit({ type: "apply", path: "", args: argArray });
       return Reflect.apply(target, thisArg, argArray);
     },
     get(target, property, receiver) {
@@ -417,14 +464,14 @@ export const reactive = <T extends object>(object: T): T => {
 
       if (current && current.subscriber !== proxy) {
         if (mutationMethods.has(constructor)) {
-          addSubscriber({ ...current, dep: mutationMethods.get(constructor) });
+          addSubscriber({ ...current, deps: mutationMethods.get(constructor) });
         } else {
-          addSubscriber({ ...current, dep: [path] });
+          addSubscriber({ ...current, deps: [path] });
         }
       }
 
       if (property === Symbol.iterator) {
-        // @ts-ignore is object iterable
+        // @ts-ignore object is iterable
         const iterator = object?.[Symbol.iterator]?.();
         if (
           typeof iterator === "object" &&
@@ -540,7 +587,7 @@ export const reactive = <T extends object>(object: T): T => {
         dynamicLabelMap.get(constructor)?.test(property) &&
         !derivedLabels.has(property)
       ) {
-        derivedLabels.set(property, value);
+        derivedLabels.set(path, value);
       }
 
       if (value !== null && typeof value === "object") {
@@ -613,11 +660,11 @@ export const reactive = <T extends object>(object: T): T => {
           // For Arrays we distinguish setting the length directly (it's a writable derived)
           const type = isArrayLengthProperty ? "create" : "update";
 
-          notify({ type, path, newValue, oldValue });
+          emit({ type, path, newValue, oldValue });
           Reflect.set(target, property, newValue, receiver);
         }
       } else {
-        notify({ type: "create", path, newValue });
+        emit({ type: "create", path, newValue });
         Reflect.set(target, property, newValue, receiver);
       }
 
@@ -636,7 +683,7 @@ export const reactive = <T extends object>(object: T): T => {
 
       if (property in target) {
         const oldValue = proxy[property];
-        notify({ type: "delete", path, oldValue });
+        emit({ type: "delete", path, oldValue });
 
         // prune graph
         if (isReactive(oldValue)) {
@@ -685,9 +732,11 @@ export const reactive = <T extends object>(object: T): T => {
     [ns.REMOVE_SUBSCRIBER, removeSubscriber],
     [ns.UPDATE_SUBSCRIBER, updateSubscriber],
     [ns.HAS_SUBSCRIBER, hasSubscriber],
-    [ns.NOTIFY, notify],
     [ns.READ_PATH, readPath],
-    [ns.UPDATE_LABEL, updateLabel],
+    [ns.NOTIFY, notify],
+    [ns.BUBBLE_EVENT, bubble],
+    [ns.RECOMPUTE, recompute],
+    [ns.UPDATE_LABELS, updateLabels],
     [ns.IS_REACTIVE, true],
     [ns.TARGET, object],
   ]);
@@ -770,10 +819,10 @@ const getOwn = (proxy: Record<string, any>, symbol: symbol): any => {
 };
 
 export const equals = (a: unknown, b: unknown): boolean => {
-  return target(a) === target(b);
+  return snapshot(a) === snapshot(b);
 };
 
-export const target = (p: unknown) => {
+export const snapshot = (p: unknown) => {
   return isReactive(p) ? getOwn(p, ns.TARGET) : p;
 };
 
