@@ -137,7 +137,7 @@ export const TodosPage = () => {
       animation-duration: 200ms;
     }
     ::view-transition-new(.any-li):only-child {
-      animation: in 250ms ease;
+      animation: in 250ms ease forwards;
       object-fit: contain;
       }
     ::view-transition-old(.any-li):only-child {
