@@ -1,7 +1,7 @@
 import type { TemplateTag } from "../definitions.d.ts";
 import { assert, assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
-import { addListener, isReactive, target } from "./reactivity/reactive.ts";
+import { addListener, isReactive, snapshot } from "./reactivity/reactive.ts";
 import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
@@ -117,20 +117,18 @@ export const html: TemplateTag = (strings, ...values) => {
     for (const [key, val] of Object.entries(maybeReactive)) {
       if (Array.isArray(val)) {
         const [listener, options] = val;
-        const bound = target(listener).bind(element);
+        const bound = snapshot(listener).bind(element);
         elementListeners.set(listener, bound);
-        // @ts-ignore
         element.addEventListener(key, bound, options);
       } else {
-        const bound = target(val).bind(element);
+        const bound = snapshot(val).bind(element);
         elementListeners.set(val, bound);
-        // @ts-ignore
         element.addEventListener(key, bound);
       }
     }
 
     addListener(maybeReactive, (e) => {
-      if (!(typeof e.path === "string")) return;
+      if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
 
@@ -140,11 +138,11 @@ export const html: TemplateTag = (strings, ...values) => {
 
           if (Array.isArray(newValue)) {
             const [listener, options] = newValue;
-            const bound = target(listener).bind(element);
+            const bound = snapshot(listener).bind(element);
             elementListeners.set(listener, bound);
             element.addEventListener(key, bound, options);
           } else {
-            const bound = target(newValue).bind(element);
+            const bound = snapshot(newValue).bind(element);
             elementListeners.set(newValue, bound);
             element.addEventListener(key, bound);
           }
@@ -165,11 +163,11 @@ export const html: TemplateTag = (strings, ...values) => {
 
           if (Array.isArray(newValue)) {
             const [listener, options] = newValue;
-            const bound = target(listener).bind(element);
+            const bound = snapshot(listener).bind(element);
             elementListeners.set(listener, bound);
             element.addEventListener(key, bound, options);
           } else {
-            const bound = target(newValue).bind(element);
+            const bound = snapshot(newValue).bind(element);
             elementListeners.set(newValue, bound);
             element.addEventListener(key, bound);
           }
@@ -216,7 +214,7 @@ export const html: TemplateTag = (strings, ...values) => {
     }
 
     addListener(attribute, (e) => {
-      if (!(typeof e.path === "string")) return;
+      if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
 
@@ -278,7 +276,7 @@ export const html: TemplateTag = (strings, ...values) => {
     }
 
     addListener(classList, (e) => {
-      if (!(typeof e.path === "string")) return;
+      if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
 
@@ -324,7 +322,7 @@ export const html: TemplateTag = (strings, ...values) => {
     }
 
     addListener(style, (e) => {
-      if (!(typeof e.path === "string")) return;
+      if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
 
