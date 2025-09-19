@@ -353,11 +353,14 @@ export class Boundary<T = any> {
               }
               case ".reverse":
               case ".sort": {
-                const moves: [number, number][] = labels.map((
-                  [a, b],
-                ) => [+a * 10, +b * 10]);
+                if (labels.length > 0) {
+                  const moves: [number, number][] = labels.map((
+                    [a, b],
+                  ) => [+a * 10, +b * 10]);
 
-                updates.push(moveBoundaries.bind(null, moves));
+                  updates.push(moveBoundaries.bind(null, moves));
+                  labels = [];
+                }
                 break;
               }
             }
