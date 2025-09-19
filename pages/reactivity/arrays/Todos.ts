@@ -141,7 +141,7 @@ export const TodosPage = () => {
       object-fit: contain;
       }
     ::view-transition-old(.any-li):only-child {
-      animation: out 250ms ease-out;
+      animation: out 250ms ease-out forwards;
     }
     @keyframes in {
       from {
