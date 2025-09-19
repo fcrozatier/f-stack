@@ -26,6 +26,27 @@ export const TodosPage = () => {
         Unshift
       </button>
       <button ${on({
+        click: () => todos.sort((a, b) => a.description - b.description),
+      })}>
+        Sort
+      </button>
+      <button ${on({
+        click: () => todos.splice(1, 2, todos[2]!, todos[1]!),
+      })}>
+        Swap 1 & 2
+      </button>
+      <button ${on({
+        click: () =>
+          todos.splice(1, 2, todos[2]!, { description: rand() }, todos[1]!),
+      })}>
+        Swap and insert
+      </button>
+      <button ${on({
+        click: () => todos.reverse(),
+      })}>
+        Reverse
+      </button>
+      <button ${on({
         click: () => todos.push({ description: rand() }),
       })}>
         Push
@@ -84,8 +105,8 @@ export const TodosPage = () => {
 
     <div>
       <ul>
-        ${map(todos, (todo) =>
-          html`
+        ${map(todos, (todo) => {
+          return html`
             <li>
               <h3>Number ${text(todo, "index")}</h3>
               <p>${text(todo.value, "description")}</p>
@@ -95,7 +116,8 @@ export const TodosPage = () => {
                 })}>🗑️</button>
               </div>
             </li>
-          `)}
+          `;
+        })}
       </ul>
     </div>
 
