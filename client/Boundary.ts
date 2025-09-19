@@ -169,14 +169,73 @@ export class Boundary<T = any> {
         ...values: any[]
       ) => {
         const moves: [number, number][] = [];
+        const splices: SpliceOptions[] = [];
+
+        let missing = 0;
+        let lastIndex = -1;
+        let currentAtomicSplice: SpliceOptions = {
+          start,
+          deleteCount: 0,
+          values: [],
+        };
+
+        const deleteRange = boundaries.slice(start, start + deleteCount);
+
         for (let index = 0; index < values.length; index++) {
           const value = values[index];
-          const oldIndex = boundaries.findIndex(([data]) =>
+          // moves are elements from `values` that also appear in the delete range
+          const isMove = deleteRange.findIndex(([data]) =>
             data.value === value
           );
-          if (oldIndex === -1) continue;
 
-          moves.push([oldIndex, start + index]);
+          if (isMove === -1) {
+            // it's a swap if there's a corresponding deletion in the delete range
+            // implicitly checks index < deleteCount
+            const isSwap = values.every((v) =>
+              deleteRange[index]?.[0].value !== v
+            );
+
+            // inserts or swaps influence move indices
+            if (!isSwap) {
+              missing++;
+            }
+
+            // it's an atomic (adjacent) splice
+            if (index === lastIndex + 1) {
+              currentAtomicSplice.values.push(value);
+
+              if (isSwap) {
+                currentAtomicSplice.deleteCount++;
+              }
+            } else {
+              if (currentAtomicSplice.values.length > 0) {
+                splices.push(currentAtomicSplice);
+              }
+              currentAtomicSplice = {
+                start: start + index,
+                deleteCount: isSwap ? 1 : 0,
+                values: [value],
+              };
+            }
+
+            // track adjacent groups
+            lastIndex = index;
+          } else {
+            // densely account for pure inserts so we can do all the moves first
+            const to = start + index - missing;
+            const from = start + isMove;
+
+            if (from !== to) {
+              moves.push([from, to]);
+            }
+          }
+        }
+
+        if (deleteCount > values.length) {
+          currentAtomicSplice.deleteCount += deleteCount - values.length;
+          splices.push(currentAtomicSplice);
+        } else if (currentAtomicSplice.values.length > 0) {
+          splices.push(currentAtomicSplice);
         }
 
         if (moves.length === 0) {
@@ -185,49 +244,13 @@ export class Boundary<T = any> {
           );
         }
 
-        const splices: SpliceOptions[] = [];
-
-        let lastIndex = -1;
-        let currentAtomicSplice: SpliceOptions = {
-          start,
-          deleteCount: 0,
-          values: [],
-        };
-
-        for (let index = 0; index < values.length; index++) {
-          // it's a relabel, we already have the data
-          if (moves.find(([o]) => o === start + index)) continue;
-
-          const value = values[index];
-
-          // it's an atomic splice
-          if (index === lastIndex + 1) {
-            currentAtomicSplice.values.push(value);
-
-            if (index < deleteCount) {
-              currentAtomicSplice.deleteCount++;
-            }
-          } else {
-            if (currentAtomicSplice.values.length > 0) {
-              splices.push(currentAtomicSplice);
-            }
-            currentAtomicSplice = {
-              start: start + index,
-              deleteCount: index < deleteCount ? 1 : 0,
-              values: [value],
-            };
-          }
-          // track adjacent groups
-          lastIndex = index;
-        }
+        updates.push(moveBoundaries.bind(null, moves));
 
         for (const { start, deleteCount, values } of splices) {
           updates.push(
             spliceBoundaries.bind(null, start, deleteCount, ...values),
           );
         }
-
-        updates.push(moveBoundaries.bind(null, moves));
       };
 
       const moveBoundaries = (relabels: [number, number][]) => {
