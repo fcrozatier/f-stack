@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
-import { attach, classList } from "$client/sinks.ts";
+import { classList, on } from "$client/sinks.ts";
 
 export const ClassListPage = () => {
   const selected = reactive({ value: false });
@@ -19,21 +19,15 @@ export const ClassListPage = () => {
       </button>
     </p>
     <p>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          selected.value = !selected.value;
-        });
-      })}>Toggle selection</button>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          classes["highlight"] = true;
-        });
-      })}>Insert highlight</button>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          delete classes["highlight"];
-        });
-      })}>Remove highlight</button>
+      <button ${on({ click: () => selected.value = !selected.value })}>
+        Toggle selection
+      </button>
+      <button ${on({ click: () => classes["highlight"] = true })}>
+        Insert highlight
+      </button>
+      <button ${on({ click: () => delete classes["highlight"] })}>
+        Remove highlight
+      </button>
     </p>
     <style>
     .selected {

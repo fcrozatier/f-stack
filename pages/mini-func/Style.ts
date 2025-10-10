@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
-import { attach, type ReactiveStyles, style } from "$client/sinks.ts";
+import { on, type ReactiveStyles, style } from "$client/sinks.ts";
 
 export const Style = () => {
   const bg = reactive({ value: "#ffff00" });
@@ -23,13 +23,11 @@ export const Style = () => {
     </p>
     <p>
       <label>background
-        <input type="color" value="#ffff00" ${attach(
-          (i: HTMLInputElement) => {
-            i.addEventListener("input", () => {
-              bg.value = i.value;
-            });
+        <input type="color" value="#ffff00" ${on<HTMLInputElement>({
+          input: function () {
+            bg.value = this.value;
           },
-        )}></label>
+        })}></label>
       <label>weight
         <input
           type="number"
@@ -37,29 +35,21 @@ export const Style = () => {
           max="9"
           step="1"
           value="4"
-          ${attach(
-            (i: HTMLInputElement) => {
-              i.addEventListener("change", () => {
-                weight.value = i.valueAsNumber;
-              });
+          ${on<HTMLInputElement>({
+            input: function () {
+              weight.value = this.valueAsNumber;
             },
-          )}
+          })}
         ></label>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          styles.color = styles.color === "black" ? "red" : "black";
-        });
+      <button ${on({
+        click: () => styles.color = styles.color === "black" ? "red" : "black",
       })}>Toggle color</button>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          styles.background = "yellow";
-        });
-      })}>Insert background</button>
-      <button ${attach((b) => {
-        b.addEventListener("click", () => {
-          delete styles.background;
-        });
-      })}>Remove background</button>
+      <button ${on({ click: () => styles.background = "yellow" })}>
+        Insert background
+      </button>
+      <button ${on({ click: () => delete styles.background })}>
+        Remove background
+      </button>
     </p>
   `;
 };
