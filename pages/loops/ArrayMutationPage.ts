@@ -39,5 +39,14 @@ export const ArrayMutationPage = () => {
       html`
         ${Thing({ name: thing.name as Name })}
       `)}
+
+    <style>
+    ::view-transition-group(*) {
+      animation-duration: 200ms;
+    }
+    p {
+      view-transition-name: match-element;
+    }
+    </style>
   `;
 };
