@@ -2,7 +2,6 @@ import type { TemplateTag } from "../definitions.d.ts";
 import { assert, assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
 import { addListener, isReactive, snapshot } from "./reactivity/reactive.ts";
-import { effect } from "./reactivity/signals.ts";
 import {
   type Attachment,
   type AttrSink,
@@ -97,9 +96,7 @@ export const html: TemplateTag = (strings, ...values) => {
     assertExists(element, `No element found with attachement id ${id}`);
 
     element.removeAttribute(`attachment-${id}`);
-    effect(() => {
-      attachment(element);
-    });
+    attachment(element);
   }
 
   // Listeners
