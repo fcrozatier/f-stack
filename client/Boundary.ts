@@ -5,7 +5,6 @@ import {
   reactive,
   snapshot,
 } from "./reactivity/reactive.ts";
-import { effect } from "./reactivity/signals.ts";
 import { isArraySink, isTextSink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
@@ -98,20 +97,6 @@ export class Boundary<T = any> {
 
     if (data instanceof DocumentFragment) {
       this.#end.before(data);
-    } else if (typeof data === "function") {
-      effect(() => {
-        const nodes = data.call(null);
-
-        if (nodes instanceof DocumentFragment) {
-          this.#end.before(nodes);
-          // } else if (Array.isArray(nodes)) {
-          //   this.#end.before(...nodes);
-        } else {
-          throw new Error("Unimplemented Boundary");
-        }
-
-        return () => this.deleteContents();
-      });
     } else if (isArraySink(data)) {
       const thisEnd = this.end;
       const values = data.values;
