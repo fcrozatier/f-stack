@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { state } from "$client/reactivity/signals.ts";
-import { attach } from "$client/sinks.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { on } from "$client/sinks.ts";
 
 export interface ButtonProps {
   label?: string;
@@ -8,13 +8,13 @@ export interface ButtonProps {
 }
 
 export const Button = ({ initial = 0, label = "click" }: ButtonProps = {}) => {
-  const count = state(initial);
+  const count = reactive({ value: initial });
 
   return html`
-    <button ${attach((node) => {
-      node.addEventListener("click", () => {
+    <button ${on({
+      click: () => {
         count.value += 1;
-      });
+      },
     })}>${label} ${count}</button>
   `;
 };
