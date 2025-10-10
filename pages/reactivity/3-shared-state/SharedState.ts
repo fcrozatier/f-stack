@@ -1,15 +1,16 @@
-import { attach } from "$client/sinks.ts";
-
 import { html } from "$client/html.ts";
-import { state } from "$client/reactivity/signals.ts";
+import { reactive } from "$client/reactivity/reactive.ts";
+import { derived, on } from "$client/sinks.ts";
 
-const count = state(0);
+const state = reactive({
+  count: 0,
+});
 
 export const Counter = () => {
   return html`
-    <button ${attach((b) => {
-      b.addEventListener("click", () => count.value++);
-    })}>Click ${count}</button>
+    <button${on({ click: () => state.count++ })}>
+      Click ${derived(() => state.count)}
+    </button>
   `;
 };
 
