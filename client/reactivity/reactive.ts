@@ -469,7 +469,7 @@ export function reactive<T extends object>(object: T): T {
       // @ts-ignore all non-null objects have this on the prototype
       const constructor = target.constructor;
 
-      if (current && current.subscriber !== proxy) {
+      if (current) {
         if (mutationMethods.has(constructor)) {
           addSubscriber({ ...current, deps: mutationMethods.get(constructor) });
         } else {

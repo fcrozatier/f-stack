@@ -561,9 +561,8 @@ Deno.test("derivation", () => {
     },
   });
 
-  let event: ReactiveEvent | undefined;
-
-  addListener(second, (e) => (event = e));
+  const events: ReactiveEvent[] = [];
+  addListener(second, (e) => (events.push(e)));
 
   assertEquals(first.a, true);
   assertEquals(second.b, false);
@@ -573,14 +572,44 @@ Deno.test("derivation", () => {
 
   assertEquals(first.a, false);
   assertEquals(second.b, true);
-
-  // The event represent the latest value not a's value
-  assertEquals(event, {
+  assertEquals(events, [{
     type: "update",
     path: ".b",
     newValue: true,
     oldValue: false,
+  }]);
+});
+
+Deno.test("self-derived values", () => {
+  const state = reactive({
+    count: 0,
+    get even() {
+      return this.count % 2 === 0;
+    },
   });
+
+  const events: ReactiveEvent[] = [];
+  addListener(state, (e) => events.push(e));
+
+  assertEquals(state.count, 0);
+  assertEquals(state.even, true);
+
+  state.count = 1;
+  flushSync();
+
+  assertEquals(events, [{
+    type: "update",
+    path: ".count",
+    newValue: 1,
+    oldValue: 0,
+  }, {
+    type: "update",
+    path: ".even",
+    newValue: false,
+    oldValue: true,
+  }]);
+  assertEquals(state.count, 1);
+  assertEquals(state.even, false);
 });
 
 Deno.test("upgrading derived events", () => {
