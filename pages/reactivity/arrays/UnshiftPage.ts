@@ -14,8 +14,7 @@ export const UnshiftPage = () => {
       ${map(arr, (item) =>
         html`
           <li>index ${text(item, "index")}: ${text(item, "value")}</li>
-        ` // <li>${text(item, "value")}</li>
-      )}
+        `)}
     </ul>
   `;
 };

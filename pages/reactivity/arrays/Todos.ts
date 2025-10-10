@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
 import { reactive } from "$client/reactivity/reactive.ts";
-import { attr, map, on, text } from "$client/sinks.ts";
+import { attr, derived, map, on } from "$client/sinks.ts";
 
 type Todo = {
   description: number;
@@ -108,8 +108,8 @@ export const TodosPage = () => {
         ${map(todos, (todo) => {
           return html`
             <li>
-              <h3>Number ${text(todo, "index")}</h3>
-              <p>${text(todo.value, "description")}</p>
+              <h3>Number ${derived(() => todo.index)}</h3>
+              <p>${derived(() => todo.value.description)}</p>
               <div>
                 <button class="action" ${on({
                   click: () => todos.splice(todo.index, 1),
@@ -121,7 +121,7 @@ export const TodosPage = () => {
       </ul>
     </div>
 
-    <p id="sum">${text(todos, "length")} remaining todos</p>
+    <p id="sum">${derived(() => todos.length)} remaining todos</p>
     <style>
     /*
       1. participate in hit-testing by not capturing :root in vt
