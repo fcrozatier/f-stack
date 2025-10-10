@@ -1,30 +1,29 @@
 import { html } from "$client/html.ts";
-import { effect, state } from "$client/reactivity/signals.ts";
-import { attach } from "$client/sinks.ts";
+import { addListener, reactive } from "$client/reactivity/reactive.ts";
+import { derived, on } from "$client/sinks.ts";
 
 export const Cleanup = () => {
-  const interval = state(1000);
-  const elapsed = state(0);
+  const state = reactive({
+    interval: 1000,
+    elapsed: 0,
+  });
 
-  effect(() => {
-    const id = setInterval(() => {
-      elapsed.value += 1;
-    }, interval.value);
+  let id = setInterval(() => {
+    state.elapsed += 1;
+  }, state.interval);
 
-    return () => {
+  addListener(state, (e) => {
+    if (e.type === "update" && e.path === ".interval") {
       clearInterval(id);
-    };
+      id = setInterval(() => {
+        state.elapsed += 1;
+      }, state.interval);
+    }
   });
 
   return html`
-    <button ${attach((b: HTMLButtonElement) => {
-      b.addEventListener("click", () => interval.value /= 2);
-    })}>speed up</button>
-
-    <button ${attach((b: HTMLButtonElement) => {
-      b.addEventListener("click", () => interval.value *= 2);
-    })}>slow down</button>
-
-    <p>elapsed: ${elapsed}</p>
+    <button ${on({ click: () => state.interval /= 2 })}>speed up</button>
+    <button ${on({ click: () => state.interval *= 2 })}>slow down</button>
+    <p>elapsed: ${derived(() => state.elapsed)}</p>
   `;
 };
