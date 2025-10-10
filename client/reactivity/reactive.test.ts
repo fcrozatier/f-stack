@@ -1236,6 +1236,12 @@ Deno.test("array relabeling", () => {
       args: [],
     },
   ]);
+
+  r.sort();
+  flushSync();
+
+  // the array is already sorted no other relabeling
+  assertEquals(events.filter((e) => e.type === "relabel").length, 1);
 });
 
 // Map
