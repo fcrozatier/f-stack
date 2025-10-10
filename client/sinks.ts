@@ -67,6 +67,16 @@ export const isClassSink = (value: unknown): value is ClassListValue => {
     Object.hasOwn(value, CLASS_SINK);
 };
 
+// derived
+
+export const derived = (fn: () => any) => {
+  return reactive({
+    get value() {
+      return fn();
+    },
+  });
+};
+
 // map
 
 const MAP_SINK = Symbol.for("map sink");
