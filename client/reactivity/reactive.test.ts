@@ -1146,7 +1146,7 @@ Deno.test("array functoriality", () => {
   assertEquals(mirror, [4, 1, 2]);
 });
 
-Deno.test.ignore("array length property", () => {
+Deno.test("array length property", () => {
   const r = reactive([1, 2, 3]);
 
   const events: ReactiveEvent[] = [];
@@ -1156,40 +1156,43 @@ Deno.test.ignore("array length property", () => {
   assertEquals(r.length, 3);
 
   // No .length event is emitted if the length doesn't change
-  // r.push();
-  // flushSync();
-  // assertEquals(r.length, 3);
-  // assertEquals(events.length, 1);
-  // assertEquals(events[0]?.path, ".push");
+  r.push();
+  flushSync();
+
+  assertEquals(r.length, 3);
+  assertEquals(events.length, 1);
+  assertEquals(events, [{ type: "apply", path: ".push", args: [] }]);
 
   r.push(4);
   flushSync();
+
   assertEquals(r.length, 4);
   assertEquals(events.length, 2);
-  assertEquals(events, [
-    { type: "update", path: ".length", oldValue: 3, newValue: 4 },
+  assertEquals(events.slice(1), [
     { type: "apply", path: ".push", args: [4] },
   ]);
 
   r.pop();
   flushSync();
+
   assertEquals(r.length, 3);
-  assertEquals(events.length, 4);
+  assertEquals(events.length, 3);
   assertEquals(events.slice(2), [
-    { type: "update", path: ".length", oldValue: 4, newValue: 3 },
     { type: "apply", path: ".pop", args: [] },
   ]);
 
+  // only directly setting the length property triggers a `length` event
   r.length = 0;
   flushSync();
+
   assertEquals(r.length, 0);
-  assertEquals(events.length, 5);
-  assertEquals(events[4], {
+  assertEquals(events.length, 4);
+  assertEquals(events.slice(3), [{
     type: "create",
     path: ".length",
     newValue: 0,
     oldValue: 3,
-  });
+  }]);
 });
 
 Deno.test("array-derived values", () => {
