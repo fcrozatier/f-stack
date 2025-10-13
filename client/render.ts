@@ -1,11 +1,3 @@
-import { Article } from "../components/Article.ts";
-import { Counter } from "../components/Counter.ts";
-import type { Render } from "../definitions.d.ts";
+import { TodosPage } from "../pages/reactivity/arrays/Todos.ts";
 
-// Should be idempotent
-const render: Render = (component, target) => {
-  target.appendChild(component.call());
-};
-
-render(Article.bind({ title: "Hello!!" }), document.body);
-// render(Counter({ initial: 11 }), document.body);
+document.body.replaceChildren(TodosPage());
