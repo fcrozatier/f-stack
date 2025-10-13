@@ -2,6 +2,7 @@ import { assert, assertExists } from "./assert.ts";
 import {
   addListener,
   isLeafValue,
+  isReactive,
   reactive,
   snapshot,
 } from "./reactivity/reactive.ts";
@@ -126,7 +127,7 @@ export class Boundary<T = any> {
         for (const value of values) {
           const args = reactive({
             index: start + newBoundaries.length,
-            value,
+            value: snapshot(value),
           });
           const newBoundary = new Boundary(data.mapper(args));
           newBoundaries.push([args, newBoundary]);
