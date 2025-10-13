@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { reactive } from "$client/reactivity/reactive.ts";
-import { attr, derived, map, on } from "$client/sinks.ts";
+import { derived, reactive } from "$client/reactivity/reactive.ts";
+import { attr, map, on } from "$client/sinks.ts";
 
 type Todo = {
   description: number;
