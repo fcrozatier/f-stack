@@ -109,6 +109,7 @@ export function flushSync() {
       if (e.type === "apply" && !e.path) continue;
       if (RECOMPUTE in e) getOwn(proxy, ns.RECOMPUTE)(e);
       if (e.type === "relabel" && !e.labels.length) continue;
+      if (e.type === "update" && e.newValue === e.oldValue) continue;
       getOwn(proxy, ns.NOTIFY)(e);
     }
   }

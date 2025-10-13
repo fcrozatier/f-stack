@@ -1232,6 +1232,24 @@ Deno.test("array-derived values", () => {
 
   assertEquals(derived.sum, 11);
   assertEquals(derived.len, 4);
+
+  // no update of .len from 4 to 4
+  assertEquals(events, [{
+    type: "update",
+    path: ".sum",
+    oldValue: 6,
+    newValue: 10,
+  }, {
+    type: "update",
+    path: ".len",
+    oldValue: 3,
+    newValue: 4,
+  }, {
+    type: "update",
+    path: ".sum",
+    oldValue: 10,
+    newValue: 11,
+  }]);
 });
 
 Deno.test("array relabeling", () => {
