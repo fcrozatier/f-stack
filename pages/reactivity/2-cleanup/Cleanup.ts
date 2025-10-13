@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { addListener, reactive } from "$client/reactivity/reactive.ts";
-import { derived, on } from "$client/sinks.ts";
+import { addListener, derived, reactive } from "$client/reactivity/reactive.ts";
+import { on } from "$client/sinks.ts";
 
 export const Cleanup = () => {
   const state = reactive({

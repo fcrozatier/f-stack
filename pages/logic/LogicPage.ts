@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { reactive } from "$client/reactivity/reactive.ts";
-import { derived, on } from "$client/sinks.ts";
+import { derived, reactive } from "$client/reactivity/reactive.ts";
+import { on } from "$client/sinks.ts";
 
 export const LogicPage = () => {
   const count = reactive({ value: 0 });
