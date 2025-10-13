@@ -403,6 +403,7 @@ export class Boundary<T = any> {
         this.#end.before(String(e.newValue ?? ""));
       });
     } else if (!isUnsafeHTML(data)) {
+      // can be a reactive leaf value or a raw (primitive) data
       const content = isLeafValue(data) ? data.value : data;
 
       if (content instanceof DocumentFragment) {
@@ -412,6 +413,7 @@ export class Boundary<T = any> {
         this.#end.before(String(content ?? ""));
       }
 
+      if (!isReactive(data)) return;
       addListener(data, (e) => {
         switch (e.type) {
           case "update": {
@@ -426,6 +428,7 @@ export class Boundary<T = any> {
           }
 
           case "delete":
+            // TODO: shouldn't run for a deleted property that's not the default 'value'
             this.deleteContents();
             break;
         }
