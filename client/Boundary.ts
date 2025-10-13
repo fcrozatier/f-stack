@@ -295,7 +295,10 @@ export class Boundary<T = any> {
             if (e.path === ".length") return;
             const index = Number(e.path.split(".")[1]);
             const [args] = boundaries[index]!;
-            args.value = e.newValue;
+            // updates are already handled are the reactive object level for non primitive types
+            if (typeof args.value !== "object") {
+              args.value = e.newValue;
+            }
             break;
           }
           case "apply": {
