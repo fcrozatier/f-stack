@@ -224,7 +224,12 @@ export function reactive<T extends object>(object: T): T {
               [RECOMPUTE]: e,
             });
           } else if (
-            isDerived && typeof path === "string" && deps?.includes(path)
+            isDerived && typeof path === "string" &&
+            // all self-derived updates are filtered via deps
+            // as well as non-self derived apply calls
+            // but a direct value update also notifies non-self derived subscribers
+            (proxy !== subscriber && e.type === "update" ||
+              deps?.includes(path))
           ) {
             getOwn(subscriber, ns.BUBBLE_EVENT)({
               type: "update",

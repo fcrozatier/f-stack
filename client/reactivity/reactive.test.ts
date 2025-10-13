@@ -553,7 +553,7 @@ Deno.test("auto prunes relations", () => {
 
 // Derived values
 
-Deno.test("derivation", () => {
+Deno.test("derived getters", () => {
   const first = reactive({ a: true });
   const second = reactive({
     get b() {
@@ -562,7 +562,7 @@ Deno.test("derivation", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(second, (e) => (events.push(e)));
+  addListener(second, (e) => events.push(e));
 
   assertEquals(first.a, true);
   assertEquals(second.b, false);
@@ -1212,8 +1212,6 @@ Deno.test("array-derived values", () => {
   r.push(4);
   flushSync();
 
-  assertEquals(derived.sum, 10);
-  assertEquals(derived.len, 4);
   assertEquals(events.length, 2);
   assertEquals(events, [{
     type: "update",
@@ -1226,6 +1224,14 @@ Deno.test("array-derived values", () => {
     oldValue: 3,
     newValue: 4,
   }]);
+  assertEquals(derived.sum, 10);
+  assertEquals(derived.len, 4);
+
+  r[0] = 2;
+  flushSync();
+
+  assertEquals(derived.sum, 11);
+  assertEquals(derived.len, 4);
 });
 
 Deno.test("array relabeling", () => {
