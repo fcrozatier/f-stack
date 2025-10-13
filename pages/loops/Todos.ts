@@ -3,7 +3,7 @@ import { derived, reactive } from "$client/reactivity/reactive.ts";
 import { attr, map, on } from "$client/sinks.ts";
 
 type Todo = {
-  description: number;
+  number: number;
 };
 
 const rand = () => {
@@ -12,21 +12,21 @@ const rand = () => {
 
 export const TodosPage = () => {
   const todos: Todo[] = reactive([
-    { description: rand() },
-    { description: rand() },
-    { description: rand() },
+    { number: rand() },
+    { number: rand() },
+    { number: rand() },
   ]);
   const indices = reactive({ update: 0, insert: 0 });
 
   return html`
     <div>
       <button ${on({
-        click: () => todos.unshift({ description: rand() }),
+        click: () => todos.unshift({ number: rand() }),
       })}>
         Unshift
       </button>
       <button ${on({
-        click: () => todos.sort((a, b) => a.description - b.description),
+        click: () => todos.sort((a, b) => a.number - b.number),
       })}>
         Sort
       </button>
@@ -37,7 +37,7 @@ export const TodosPage = () => {
       </button>
       <button ${on({
         click: () =>
-          todos.splice(1, 2, todos[2]!, { description: rand() }, todos[1]!),
+          todos.splice(1, 2, todos[2]!, { number: rand() }, todos[1]!),
       })}>
         Swap and insert
       </button>
@@ -47,7 +47,7 @@ export const TodosPage = () => {
         Reverse
       </button>
       <button ${on({
-        click: () => todos.push({ description: rand() }),
+        click: () => todos.push({ number: rand() }),
       })}>
         Push
       </button>
@@ -65,7 +65,7 @@ export const TodosPage = () => {
         <button ${on({
           click: () =>
             todos.splice(indices.insert, 0, {
-              description: rand(),
+              number: rand(),
             }),
         })}>Insert</button>
       </div>
@@ -85,14 +85,14 @@ export const TodosPage = () => {
             type="number"
             ${attr({
               get value() {
-                return todos[indices.update]?.description ?? "";
+                return todos[indices.update]?.number ?? "";
               },
             })}
             ${on<HTMLInputElement>({
               input: function () {
                 const todo = todos[indices.update];
                 if (todo) {
-                  todo.description = this.valueAsNumber;
+                  todo.number = this.valueAsNumber;
                 } else {
                   console.log("todo not found");
                 }
@@ -109,7 +109,7 @@ export const TodosPage = () => {
           return html`
             <li>
               <h3>Number ${derived(() => todo.index)}</h3>
-              <p>${derived(() => todo.value.description)}</p>
+              <p>${derived(() => todo.value.number)}</p>
               <div>
                 <button class="action" ${on({
                   click: () => todos.splice(todo.index, 1),
