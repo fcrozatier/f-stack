@@ -100,9 +100,8 @@ export function flushSync() {
   const pendingEvents = scheduler.getPending();
 
   // topological dequeuing
-  const scheduled = [...pendingEvents.entries()].sort(([p1], [p2]) =>
-    getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1
-  );
+  const scheduled = [...pendingEvents.entries()]
+    .sort(([p1], [p2]) => getOwn(p1, ns.HAS_SUBSCRIBER)(p2) ? -1 : 1);
 
   // for glitch freedom we need to sort events before computing new derived values
   for (const [proxy, events] of scheduled) {
@@ -273,7 +272,7 @@ export function reactive<T extends object>(object: T): T {
         derivedValues.delete(path);
       }
 
-      // get the latest values
+      // get the latest values and recache derived values
       if (
         (type === "create" || type === "update") && typeof path === "string"
       ) {
@@ -321,7 +320,7 @@ export function reactive<T extends object>(object: T): T {
             "rootPath" in e[RECOMPUTE],
             "Expected rootPath property in e[RECOMPUTE]",
           );
-          // recompute is a covariant prefixing on the relabelling
+          // recompute is a covariant prefixing in the relabelling case
           const rootPath = e[RECOMPUTE].rootPath;
           e.labels = e.labels.map(([o, n]) => [rootPath + o, rootPath + n]);
           break;
@@ -858,4 +857,14 @@ export const addListener = <T extends Record<PropertyKey, any>>(
   if (isReactive(node)) {
     getOwn(node, ns.ADD_LISTENER)(callback);
   }
+};
+
+// derived
+
+export const derived = <T>(fn: () => T): { value: T } => {
+  return reactive({
+    get value() {
+      return fn();
+    },
+  });
 };
