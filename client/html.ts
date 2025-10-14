@@ -1,4 +1,3 @@
-import type { TemplateTag } from "../definitions.d.ts";
 import { assert, assertExists } from "./assert.ts";
 import { Boundary } from "./Boundary.ts";
 import { addListener, isReactive, snapshot } from "./reactivity/reactive.ts";
@@ -15,6 +14,11 @@ import {
   type ReactiveStyles,
 } from "./sinks.ts";
 import { nanoId } from "./utils.ts";
+
+export type TemplateTag = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => DocumentFragment;
 
 export const html: TemplateTag = (strings, ...values) => {
   let innerHTML = "";
