@@ -1,13 +1,14 @@
 import { assert, assertExists } from "./assert.ts";
 import {
   addListener,
+  derived,
   isReactiveLeaf,
   reactive,
   type ReactiveLeaf,
   snapshot,
 } from "./reactivity/reactive.ts";
 import { isArraySink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
-import type { Primitive } from "./utils.ts";
+import { isPrimitive, type Primitive } from "./utils.ts";
 
 let id = 0;
 
@@ -404,12 +405,10 @@ export class Boundary<T = any> {
 
         if (path === ".key") {
           key = e.newValue;
-          this.deleteContents();
-          this.#end.before(String(content[key] ?? ""));
+          this.replaceChildren(String(content[key] ?? ""));
         } else if (path !== `.data.${key}`) return;
 
-        this.deleteContents();
-        this.#end.before(String(e.newValue ?? ""));
+        this.replaceChildren(String(e.newValue ?? ""));
       });
     } else if (isShowSink(data)) {
       const { ifCase, elseCase } = data;
@@ -444,7 +443,7 @@ export class Boundary<T = any> {
           case "update":
             this.deleteContents();
             template.innerHTML = e.newValue;
-            this.#end.before(template.content);
+            this.replaceChildren(template.content);
             break;
         }
       });
@@ -470,11 +469,10 @@ export class Boundary<T = any> {
       switch (e.type) {
         case "update": {
           const newValue = snapshot(e.newValue);
-          this.deleteContents();
           if (newValue instanceof DocumentFragment) {
-            this.#end.before(newValue);
+            this.replaceChildren(newValue);
           } else {
-            this.#end.before(String(e.newValue ?? ""));
+            this.replaceChildren(String(e.newValue ?? ""));
           }
           break;
         }
@@ -484,6 +482,15 @@ export class Boundary<T = any> {
           break;
       }
     });
+
+    this.isContentsConnected = true;
+  }
+
+  replaceChildren(...nodes: (Node | string)[]) {
+    this.range.setStartAfter(this.#start);
+    this.range.setEndBefore(this.#end);
+    this.range.deleteContents();
+    this.#end.before(...nodes);
   }
 }
 
