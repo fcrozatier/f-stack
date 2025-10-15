@@ -28,6 +28,12 @@ export class Boundary<T = any> {
     this.#end = document.createComment(`</${this.id}>`);
   }
 
+  /**
+   * Similar to `Node.isConnected` but tells whether the content is live and should be updated.
+   * Allows for early exits in update paths
+   */
+  isContentsConnected = false;
+
   get start() {
     return this.#start;
   }
@@ -57,6 +63,7 @@ export class Boundary<T = any> {
     this.range.setStartAfter(this.#start);
     this.range.setEndBefore(this.#end);
     this.range.deleteContents();
+    this.isContentsConnected = false;
   }
 
   /**
@@ -66,6 +73,7 @@ export class Boundary<T = any> {
     this.range.setStartBefore(this.#start);
     this.range.setEndAfter(this.#end);
     this.range.deleteContents();
+    this.isContentsConnected = false;
   }
 
   /**
@@ -441,13 +449,14 @@ export class Boundary<T = any> {
       addListener(data, (e) => {
         switch (e.type) {
           case "update":
-            this.deleteContents();
             template.innerHTML = e.newValue;
             this.replaceChildren(template.content);
             break;
         }
       });
     }
+
+    this.isContentsConnected = true;
   }
 
   renderSafeSink(data: DocumentFragment | ReactiveLeaf | Primitive) {
@@ -463,6 +472,7 @@ export class Boundary<T = any> {
     if (!isReactiveLeaf(data)) return;
 
     addListener(data, (e) => {
+      if (!this.isContentsConnected) return;
       if (e.type !== "update" && e.type !== "delete") return;
       if (e.path !== ".value") return;
 
