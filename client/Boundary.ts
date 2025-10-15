@@ -420,23 +420,34 @@ export class Boundary<T = any> {
       });
     } else if (isShowSink(data)) {
       const { ifCase, elseCase } = data;
+      const currentCase = data.cond ? ifCase : elseCase;
 
-      if (data.cond) {
-        this.renderSafeSink(ifCase());
-      } else if (elseCase) {
-        this.renderSafeSink(elseCase());
+      if (currentCase) {
+        const content = currentCase();
+        if (isPrimitive(content)) {
+          this.renderSafeSink(derived(currentCase) as ReactiveLeaf<Primitive>);
+        } else {
+          this.renderSafeSink(content);
+        }
       }
 
       addListener(data, (e) => {
         if (e.type !== "update" || e.path !== ".cond") return;
+        const currentCase = e.newValue ? ifCase : elseCase;
 
         maybeViewTransition(() => {
+          // disconnect boundary contents
           this.deleteContents();
 
-          if (e.newValue) {
-            this.renderSafeSink(ifCase());
-          } else if (elseCase) {
-            this.renderSafeSink(elseCase());
+          if (currentCase) {
+            const content = currentCase();
+            if (isPrimitive(content)) {
+              this.renderSafeSink(
+                derived(currentCase) as ReactiveLeaf<Primitive>,
+              );
+            } else {
+              this.renderSafeSink(content);
+            }
           }
         }, this.parentElement);
       });
