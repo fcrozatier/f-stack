@@ -1,4 +1,9 @@
-import { isLeafValue, reactive } from "./reactivity/reactive.ts";
+import {
+  isReactiveLeaf,
+  reactive,
+  type ReactiveLeaf,
+} from "./reactivity/reactive.ts";
+import type { Primitive } from "./utils.ts";
 
 // attach
 
@@ -22,9 +27,6 @@ export const isAttachment = (value: unknown): value is Attachment => {
 // attr
 
 const ATTR_SINK = Symbol.for("attr sink");
-
-type Primitive = string | number | boolean | null | undefined;
-type ReactiveLeaf<T = Primitive> = { value: T };
 
 export interface AttrSink extends Record<string, Primitive | ReactiveLeaf> {
   [ATTR_SINK]?: true;

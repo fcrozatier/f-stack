@@ -1,4 +1,5 @@
 import { assert, assertExists } from "../assert.ts";
+import { isPrimitive, type Primitive } from "../utils.ts";
 
 export type AnyConstructor = new (...args: any[]) => any;
 
@@ -846,9 +847,14 @@ export const isReactive = (
     (typeof value === "function" && ns.IS_REACTIVE in value);
 };
 
-export const isLeafValue = (data: unknown): data is { value: any } => {
+export type ReactiveLeaf<T extends Primitive = Primitive> = { value: T };
+
+/**
+ * By convention a reactive object with a `value` property having a primitive type
+ */
+export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
   return (data !== null && typeof data === "object" &&
-    ns.IS_REACTIVE in data && "value" in data);
+    ns.IS_REACTIVE in data && "value" in data && isPrimitive(data.value));
 };
 
 /**
