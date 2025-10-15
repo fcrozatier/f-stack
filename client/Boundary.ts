@@ -404,18 +404,12 @@ export class Boundary<T = any> {
       });
     } else if (isTextSink(data)) {
       const content = data.data;
-      let key = data.key;
+      const key = data.key;
       this.#end.before(String(content[key] ?? ""));
 
       addListener(data, (e) => {
         if (e.type !== "update") return;
-        const path = e.path;
-
-        if (path === ".key") {
-          key = e.newValue;
-          this.replaceChildren(String(content[key] ?? ""));
-        } else if (path !== `.data.${key}`) return;
-
+        if (e.path !== `.data.${key}`) return;
         this.replaceChildren(String(e.newValue ?? ""));
       });
     } else if (isShowSink(data)) {
