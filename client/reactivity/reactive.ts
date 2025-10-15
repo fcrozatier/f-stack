@@ -174,7 +174,7 @@ export function reactive<T extends object>(object: T): T {
   const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
   const derivedValues = new Map<string, any>();
   const derivedLabels = new Map<string, any>();
-  const callbacks: ReactiveEventCallback[] = [];
+  const callbacks: Set<ReactiveEventCallback> = new Set();
 
   function emit(e: ReactiveEvent) {
     // recompute to ensure the correct newValue in the case of batched updates
@@ -394,7 +394,8 @@ export function reactive<T extends object>(object: T): T {
   }
 
   function addListener(callback: ReactiveEventCallback) {
-    callbacks.push(callback);
+    callbacks.add(callback);
+    return () => callbacks.delete(callback);
   }
 
   function addSubscriber(options: NotificationTarget) {
@@ -860,15 +861,14 @@ export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
 /**
  * Adds a listener to a reactive graph node
  *
- * Does nothing if the node is not reactive
+ * @return A cleanup function removing the listener
  */
 export const addListener = <T extends Record<PropertyKey, any>>(
   node: T,
   callback: ReactiveEventCallback,
-) => {
-  if (isReactive(node)) {
-    getOwn(node, ns.ADD_LISTENER)(callback);
-  }
+): () => void => {
+  assert(isReactive(node), "Can't  add listeners to non-reactive structures");
+  return getOwn(node, ns.ADD_LISTENER)(callback);
 };
 
 // derived

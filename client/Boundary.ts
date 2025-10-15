@@ -28,12 +28,6 @@ export class Boundary<T = any> {
     this.#end = document.createComment(`</${this.id}>`);
   }
 
-  /**
-   * Similar to `Node.isConnected` but tells whether the content is live and should be updated.
-   * Allows for early exits in update paths
-   */
-  isContentsConnected = false;
-
   get start() {
     return this.#start;
   }
@@ -63,7 +57,6 @@ export class Boundary<T = any> {
     this.range.setStartAfter(this.#start);
     this.range.setEndBefore(this.#end);
     this.range.deleteContents();
-    this.isContentsConnected = false;
   }
 
   /**
@@ -73,7 +66,6 @@ export class Boundary<T = any> {
     this.range.setStartBefore(this.#start);
     this.range.setEndAfter(this.#end);
     this.range.deleteContents();
-    this.isContentsConnected = false;
   }
 
   /**
@@ -415,18 +407,23 @@ export class Boundary<T = any> {
     } else if (isShowSink(data)) {
       const { ifCase, elseCase } = data;
       const currentCase = data.cond ? ifCase : elseCase;
+      let cleanup: (() => void) | undefined;
 
       if (currentCase) {
         const content = currentCase();
         if (isPrimitive(content)) {
-          this.renderSafeSink(derived(currentCase) as ReactiveLeaf<Primitive>);
+          cleanup = this.renderSafeSink(
+            derived(currentCase) as ReactiveLeaf<Primitive>,
+          );
         } else {
-          this.renderSafeSink(content);
+          cleanup = this.renderSafeSink(content);
         }
       }
 
       addListener(data, (e) => {
+        // ensure we're in the right case before cleanup
         if (e.type !== "update" || e.path !== ".cond") return;
+        cleanup?.();
         const currentCase = e.newValue ? ifCase : elseCase;
 
         maybeViewTransition(() => {
@@ -436,11 +433,11 @@ export class Boundary<T = any> {
           if (currentCase) {
             const content = currentCase();
             if (isPrimitive(content)) {
-              this.renderSafeSink(
+              cleanup = this.renderSafeSink(
                 derived(currentCase) as ReactiveLeaf<Primitive>,
               );
             } else {
-              this.renderSafeSink(content);
+              cleanup = this.renderSafeSink(content);
             }
           }
         }, this.parentElement);
@@ -460,8 +457,6 @@ export class Boundary<T = any> {
         }
       });
     }
-
-    this.isContentsConnected = true;
   }
 
   renderSafeSink(data: DocumentFragment | ReactiveLeaf | Primitive) {
@@ -476,8 +471,7 @@ export class Boundary<T = any> {
 
     if (!isReactiveLeaf(data)) return;
 
-    addListener(data, (e) => {
-      if (!this.isContentsConnected) return;
+    return addListener(data, (e) => {
       if (e.type !== "update" && e.type !== "delete") return;
       if (e.path !== ".value") return;
 
@@ -497,8 +491,6 @@ export class Boundary<T = any> {
           break;
       }
     });
-
-    this.isContentsConnected = true;
   }
 
   replaceChildren(...nodes: (Node | string)[]) {

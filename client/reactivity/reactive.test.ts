@@ -124,106 +124,6 @@ Deno.test("function listeners", () => {
   });
 });
 
-Deno.test("relabelling", () => {
-  const r = reactive([{ value: "a" }, { value: "b" }]);
-
-  const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
-
-  assertEquals(events.length, 0);
-
-  r.shift();
-  flushSync();
-
-  const relabelEvent = events.find((e) => e.type === "relabel");
-  assertExists(relabelEvent, "Expected a relabel event");
-
-  // Only one relabelling happened as .0 was just removed
-  assertEquals(
-    events.map((e) => e.type).filter((t) => t === "relabel").length,
-    1,
-  );
-
-  // .1 was relabelled
-  assertEquals(relabelEvent, {
-    type: "relabel",
-    labels: [[".1", ".0"]],
-  });
-
-  // parents were updated
-  r[0]!.value = "c";
-  flushSync();
-  assertEquals(r[0]?.value, "c");
-});
-
-Deno.test("nested relabelling", () => {
-  const r = reactive({
-    first: { second: { values: [{ value: "a" }, { value: "b" }] } },
-  });
-
-  const rEvents: ReactiveEvent[] = [];
-  addListener(r, (e) => rEvents.push(e));
-
-  const firstEvents: ReactiveEvent[] = [];
-  addListener(r.first, (e) => firstEvents.push(e));
-
-  const secondEvents: ReactiveEvent[] = [];
-  addListener(r.first.second, (e) => secondEvents.push(e));
-
-  r.first.second.values.shift();
-  flushSync();
-
-  assertEquals(rEvents.length, 2);
-
-  // Only one relabelling happened as 0 was just removed
-  assertEquals(rEvents.filter((e) => e.type === "relabel").length, 1);
-
-  // 1 was relabelled
-  assertEquals(rEvents[0], {
-    type: "relabel",
-    labels: [[".first.second.values.1", ".first.second.values.0"]],
-  });
-  assertEquals(firstEvents[0], {
-    type: "relabel",
-    labels: [[".second.values.1", ".second.values.0"]],
-  });
-  assertEquals(secondEvents[0], {
-    type: "relabel",
-    labels: [[".values.1", ".values.0"]],
-  });
-
-  // parents were updated
-  r.first.second.values[0]!.value = "c";
-  flushSync();
-  assertEquals(r.first.second.values[0]?.value, "c");
-});
-
-Deno.test("derived relabelling", () => {
-  const r = reactive([3, 4, 2]);
-  const d = reactive({
-    get value() {
-      return r[0];
-    },
-  });
-
-  const dEvents: ReactiveEvent[] = [];
-  addListener(d, (e) => dEvents.push(e));
-
-  assertEquals(d.value, 3);
-
-  r.sort();
-  flushSync();
-
-  assertEquals(d.value, 2);
-  assertEquals(dEvents.length, 1);
-  assertEquals(dEvents[0], {
-    type: "update",
-    path: ".value",
-    oldValue: 3,
-    newValue: 2,
-  });
-});
-
 // Properties
 
 Deno.test("events collapse", () => {
@@ -551,6 +451,48 @@ Deno.test("auto prunes relations", () => {
   assertEquals(a.value, "b");
 });
 
+Deno.test("nested listeners", () => {
+  const r = reactive({ value: -1 });
+  const events: any[] = [];
+  const logs: string[] = [];
+
+  const MSG1 = "multiple of 6";
+  const MSG2 = "even";
+  const MSG3 = "odd";
+
+  let cleanup: (() => void) | undefined;
+
+  addListener(r, (e) => {
+    cleanup?.();
+    events.push({ ...e, info: "root listener" });
+
+    if (e.type === "update") {
+      if (e.newValue % 2 === 0) {
+        cleanup = addListener(r, (e1) => {
+          events.push({ ...e1, info: "even listener" });
+          (e.newValue % 6 === 0) ? logs.push(MSG1) : logs.push(MSG2);
+        });
+      } else {
+        cleanup = addListener(r, (e2) => {
+          events.push({ ...e2, info: "odd listener" });
+          logs.push(MSG3);
+        });
+      }
+    }
+  });
+
+  r.value = 0;
+  flushSync();
+
+  r.value = 1;
+  flushSync();
+
+  assertEquals(logs, [MSG1, MSG3]);
+
+  // The even case only runs once
+  assertEquals(events.filter((e) => e.info === "even listener").length, 1);
+});
+
 // Derived values
 
 Deno.test("derived getters", () => {
@@ -791,6 +733,108 @@ Deno.test("bubbling derived events", () => {
     path: ".inner.value",
     oldValue: 1,
     newValue: 0,
+  });
+});
+
+// Relabelling
+
+Deno.test("relabelling", () => {
+  const r = reactive([{ value: "a" }, { value: "b" }]);
+
+  const events: ReactiveEvent[] = [];
+  addListener(r, (e) => events.push(e));
+
+  assertEquals(events.length, 0);
+
+  r.shift();
+  flushSync();
+
+  const relabelEvent = events.find((e) => e.type === "relabel");
+  assertExists(relabelEvent, "Expected a relabel event");
+
+  // Only one relabelling happened as .0 was just removed
+  assertEquals(
+    events.map((e) => e.type).filter((t) => t === "relabel").length,
+    1,
+  );
+
+  // .1 was relabelled
+  assertEquals(relabelEvent, {
+    type: "relabel",
+    labels: [[".1", ".0"]],
+  });
+
+  // parents were updated
+  r[0]!.value = "c";
+  flushSync();
+  assertEquals(r[0]?.value, "c");
+});
+
+Deno.test("nested relabelling", () => {
+  const r = reactive({
+    first: { second: { values: [{ value: "a" }, { value: "b" }] } },
+  });
+
+  const rEvents: ReactiveEvent[] = [];
+  addListener(r, (e) => rEvents.push(e));
+
+  const firstEvents: ReactiveEvent[] = [];
+  addListener(r.first, (e) => firstEvents.push(e));
+
+  const secondEvents: ReactiveEvent[] = [];
+  addListener(r.first.second, (e) => secondEvents.push(e));
+
+  r.first.second.values.shift();
+  flushSync();
+
+  assertEquals(rEvents.length, 2);
+
+  // Only one relabelling happened as 0 was just removed
+  assertEquals(rEvents.filter((e) => e.type === "relabel").length, 1);
+
+  // 1 was relabelled
+  assertEquals(rEvents[0], {
+    type: "relabel",
+    labels: [[".first.second.values.1", ".first.second.values.0"]],
+  });
+  assertEquals(firstEvents[0], {
+    type: "relabel",
+    labels: [[".second.values.1", ".second.values.0"]],
+  });
+  assertEquals(secondEvents[0], {
+    type: "relabel",
+    labels: [[".values.1", ".values.0"]],
+  });
+
+  // parents were updated
+  r.first.second.values[0]!.value = "c";
+  flushSync();
+  assertEquals(r.first.second.values[0]?.value, "c");
+});
+
+Deno.test("derived relabelling", () => {
+  const r = reactive([3, 4, 2]);
+  const d = reactive({
+    get value() {
+      return r[0];
+    },
+  });
+
+  const dEvents: ReactiveEvent[] = [];
+  addListener(d, (e) => dEvents.push(e));
+
+  assertEquals(d.value, 3);
+
+  r.sort();
+  flushSync();
+
+  assertEquals(d.value, 2);
+  assertEquals(dEvents.length, 1);
+  assertEquals(dEvents[0], {
+    type: "update",
+    path: ".value",
+    oldValue: 3,
+    newValue: 2,
   });
 });
 
