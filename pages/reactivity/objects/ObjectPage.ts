@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
-import { reactive } from "$client/reactivity/reactive.ts";
-import { attach, attr, map, on } from "$client/sinks.ts";
+import { derived, reactive } from "$client/reactivity/reactive.ts";
+import { attach, attr, map, on, show } from "$client/sinks.ts";
 
 type Item = { name: string; price: number; quantity: number };
 
@@ -51,71 +51,47 @@ export const ObjectPage = () => {
 
           return html`
             <li>
-              <h3>Item ${reactive({
-                get value() {
-                  return item.index + 1;
-                },
-              })}</h3>
+              <h3>Item ${derived(() => item.index + 1)}</h3>
               <ul>
-                <li>Name: ${reactive({
-                  get value() {
-                    return state.editing
-                      ? html`
-                        <input type="text" ${attr({
-                          value: item.value.name,
-                        })} ${on<HTMLInputElement>({
-                          input: function () {
-                            item.value.name = this.value;
-                          },
-                        })}>
-                      `
-                      : item.value.name;
-                  },
-                })}</li>
-                <li>Price: ${reactive({
-                  get value() {
-                    return state.editing
-                      ? html`
-                        <input type="number" ${attach((i: HTMLInputElement) => {
-                          if (!state.editing) {
-                            i.valueAsNumber = item.value.price;
-                          }
-                        })} ${on<HTMLInputElement>({
-                          change: function () {
-                            item.value.price = this.valueAsNumber;
-                          },
-                        })}>
-                      `
-                      : item.value.price;
-                  },
-                })}</li>
-                <li>Quantity: ${reactive({
-                  get value() {
-                    return state.editing
-                      ? html`
-                        <input type="number" ${attach(
-                          (input: HTMLInputElement) => {
-                            input.valueAsNumber = item.value.quantity;
-                            input.addEventListener("input", () => {
-                              item.value.quantity = input.valueAsNumber;
-                            });
-                          },
-                        )}>
-                      `
-                      : item.value.quantity;
-                  },
-                })}</li>
+                <li>Name: ${show(() => state.editing, () =>
+                  html`
+                    <input type="text" ${attr({
+                      value: item.value.name,
+                    })} ${on<HTMLInputElement>({
+                      input: function () {
+                        item.value.name = this.value;
+                      },
+                    })}>
+                  `, () => item.value.name)}</li>
+                <li>
+                  Price: ${show(() => state.editing, () =>
+                    html`
+                      <input type="number" ${attr({
+                        value: item.value.price,
+                      })} ${on<HTMLInputElement>({
+                        input: function () {
+                          item.value.price = this.valueAsNumber;
+                        },
+                      })}>
+                    `, () => item.value.price)}
+                </li>
+                <li>Quantity: ${show(() => state.editing, () =>
+                  html`
+                    <input type="number" ${attach<HTMLInputElement>((i) => {
+                      i.defaultValue = String(item.value.quantity);
+                    })} ${on<HTMLInputElement>({
+                      input: function () {
+                        item.value.quantity = this.valueAsNumber;
+                      },
+                    })}>
+                  `, () => item.value.quantity)}</li>
               </ul>
               <button ${on({
                 click: () => {
                   state.editing = !state.editing;
                 },
               })}>
-                ${reactive({
-                  get value() {
-                    return state.editing ? "Save" : "Update";
-                  },
-                })}
+                ${derived(() => state.editing ? "Save" : "Update")}
               </button>
             </li>
           `;

@@ -1,12 +1,13 @@
 import { assert, assertExists } from "./assert.ts";
 import {
   addListener,
-  isLeafValue,
-  isReactive,
+  isReactiveLeaf,
   reactive,
+  type ReactiveLeaf,
   snapshot,
 } from "./reactivity/reactive.ts";
-import { isArraySink, isTextSink, isUnsafeHTML } from "./sinks.ts";
+import { isArraySink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
+import type { Primitive } from "./utils.ts";
 
 let id = 0;
 
@@ -91,6 +92,10 @@ export class Boundary<T = any> {
       // @ts-ignore moveBefore types missing
       parentElement.moveBefore(node, target);
     }
+  }
+
+  get parentElement() {
+    return this.start.parentElement;
   }
 
   render() {
@@ -406,38 +411,32 @@ export class Boundary<T = any> {
         this.deleteContents();
         this.#end.before(String(e.newValue ?? ""));
       });
-    } else if (!isUnsafeHTML(data)) {
-      // can be a reactive leaf value or a raw (primitive) data
-      const content = isLeafValue(data) ? data.value : data;
+    } else if (isShowSink(data)) {
+      const { ifCase, elseCase } = data;
 
-      if (content instanceof DocumentFragment) {
-        this.#end.before(content);
-      } else {
-        // a text node is a safe sink
-        this.#end.before(String(content ?? ""));
+      if (data.cond) {
+        this.renderSafeSink(ifCase());
+      } else if (elseCase) {
+        this.renderSafeSink(elseCase());
       }
 
-      if (!isReactive(data)) return;
       addListener(data, (e) => {
-        switch (e.type) {
-          case "update": {
-            const newValue = snapshot(e.newValue);
-            this.deleteContents();
-            if (newValue instanceof DocumentFragment) {
-              this.#end.before(newValue);
-            } else {
-              this.#end.before(String(e.newValue ?? ""));
-            }
-            break;
-          }
+        if (e.type !== "update" || e.path !== ".cond") return;
 
-          case "delete":
-            // TODO: shouldn't run for a deleted property that's not the default 'value'
-            this.deleteContents();
-            break;
-        }
+        maybeViewTransition(() => {
+          this.deleteContents();
+
+          if (e.newValue) {
+            this.renderSafeSink(ifCase());
+          } else if (elseCase) {
+            this.renderSafeSink(elseCase());
+          }
+        }, this.parentElement);
       });
+    } else if (!isUnsafeHTML(data)) {
+      this.renderSafeSink(data as any);
     } else {
+      // unsafe sink
       const template = document.createElement("template");
 
       addListener(data, (e) => {
@@ -451,6 +450,41 @@ export class Boundary<T = any> {
       });
     }
   }
+
+  renderSafeSink(data: DocumentFragment | ReactiveLeaf | Primitive) {
+    const content = isReactiveLeaf(data) ? data.value : data;
+
+    if (content instanceof DocumentFragment) {
+      this.#end.before(content);
+    } else {
+      // a text node is a safe sink
+      this.#end.before(String(content ?? ""));
+    }
+
+    if (!isReactiveLeaf(data)) return;
+
+    addListener(data, (e) => {
+      if (e.type !== "update" && e.type !== "delete") return;
+      if (e.path !== ".value") return;
+
+      switch (e.type) {
+        case "update": {
+          const newValue = snapshot(e.newValue);
+          this.deleteContents();
+          if (newValue instanceof DocumentFragment) {
+            this.#end.before(newValue);
+          } else {
+            this.#end.before(String(e.newValue ?? ""));
+          }
+          break;
+        }
+
+        case "delete":
+          this.deleteContents();
+          break;
+      }
+    });
+  }
 }
 
 type UpdateCallback = undefined | (() => void | Promise<void>);
@@ -461,19 +495,25 @@ type StartViewTransitionOptions = {
 
 function maybeViewTransition(
   param: StartViewTransitionOptions | UpdateCallback,
+  element?: HTMLElement | null | undefined,
 ) {
-  if (
-    matchMedia("(prefers-reduced-motion: reduce)").matches ||
-    !document.startViewTransition
-  ) {
-    if (typeof param === "function") {
-      param();
-    } else if (typeof param === "object") {
-      param?.update?.();
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // @ts-ignore FUTUR
+    if (element?.startViewTransition) {
+      // @ts-ignore FUTUR
+      return element.startViewTransition(param);
     }
-  } else {
-    // @ts-ignore Document types are not up to date
-    document.startViewTransition(param);
+
+    if (document.startViewTransition) {
+      // @ts-ignore Document types are not up to date
+      return document.startViewTransition(param);
+    }
+  }
+
+  if (typeof param === "function") {
+    param();
+  } else if (typeof param === "object") {
+    param.update?.();
   }
 }
 

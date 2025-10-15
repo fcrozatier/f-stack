@@ -1,6 +1,6 @@
 import { html } from "$client/html.ts";
 import { derived, reactive } from "$client/reactivity/reactive.ts";
-import { on } from "$client/sinks.ts";
+import { on, show } from "$client/sinks.ts";
 
 export const LogicPage = () => {
   const count = reactive({ value: 0 });
@@ -9,19 +9,15 @@ export const LogicPage = () => {
     <button ${on({ click: () => count.value++ })}>
       Clicked ${count} ${derived(() => count.value === 1 ? "time" : "times")}
     </button>
-
-    <!-- Can we have smart "partial recomputation" to avoid recreating the whole span
-      on every update? -->
-    ${derived(() => {
-      if (count.value > 10) {
-        return "Too big";
-      } else if (count.value < 5) {
-        return count.value;
-      } else {
-        return html`
+    ${show(
+      () => count.value > 10,
+      () => "Too big",
+    )} ${show(() => count.value < 5, () => count.value)} ${show(
+      () => count.value >= 5 && count.value <= 10,
+      () =>
+        html`
           <span>${count} is between 5 and 10</span>
-        `;
-      }
-    })}
+        `,
+    )}
   `;
 };

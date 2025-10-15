@@ -126,6 +126,41 @@ export const isOnSink = (value: unknown): value is On => {
     Object.hasOwn(value, ON_SINK);
 };
 
+// show
+
+const SHOW_SINK = Symbol.for("show sink");
+
+type ShowSink = {
+  cond: boolean;
+  ifCase: () => DocumentFragment | ReactiveLeaf | Primitive;
+  elseCase?:
+    | (() => DocumentFragment | ReactiveLeaf | Primitive)
+    | undefined;
+  [SHOW_SINK]: true;
+};
+
+export const show = (
+  condition: () => boolean,
+  ifCase: () => DocumentFragment | ReactiveLeaf | Primitive,
+  elseCase?:
+    | (() => DocumentFragment | ReactiveLeaf | Primitive)
+    | undefined,
+): ShowSink => {
+  return reactive({
+    get cond() {
+      return condition();
+    },
+    ifCase,
+    elseCase,
+    [SHOW_SINK]: true,
+  });
+};
+
+export const isShowSink = (value: unknown): value is ShowSink => {
+  return value !== null && typeof value === "object" &&
+    Object.hasOwn(value, SHOW_SINK);
+};
+
 // style
 
 /**
@@ -201,7 +236,7 @@ interface UnsafeHTML extends ReactiveLeaf<string> {
 export const unsafeHTML = (
   unsafe: string | ReactiveLeaf<string>,
 ): UnsafeHTML => {
-  const unsafeSink = typeof unsafe === "string" || !isLeafValue(unsafe)
+  const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
     ? reactive({ value: unsafe })
     : unsafe;
   Object.defineProperty(unsafeSink, UNSAFE_SINK, { value: true });
