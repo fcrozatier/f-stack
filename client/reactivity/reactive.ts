@@ -858,8 +858,12 @@ export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
     ns.IS_REACTIVE in data && "value" in data && isPrimitive(data.value));
 };
 
+function noop() {}
+
 /**
  * Adds a listener to a reactive graph node
+ *
+ * Does nothing if the argument is not reactive
  *
  * @return A cleanup function removing the listener
  */
@@ -867,7 +871,8 @@ export const addListener = <T extends Record<PropertyKey, any>>(
   node: T,
   callback: ReactiveEventCallback,
 ): () => void => {
-  assert(isReactive(node), "Can't  add listeners to non-reactive structures");
+  // doing the sanity check here to avoid spreading these checks all over the code
+  if (!isReactive(node)) return noop;
   return getOwn(node, ns.ADD_LISTENER)(callback);
 };
 
