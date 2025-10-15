@@ -406,41 +406,33 @@ export class Boundary<T = any> {
       });
     } else if (isShowSink(data)) {
       const { ifCase, elseCase } = data;
-      const currentCase = data.cond ? ifCase : elseCase;
       let cleanup: (() => void) | undefined;
 
-      if (currentCase) {
-        const content = currentCase();
-        if (isPrimitive(content)) {
-          cleanup = this.renderSafeSink(
-            derived(currentCase) as ReactiveLeaf<Primitive>,
-          );
-        } else {
-          cleanup = this.renderSafeSink(content);
+      const setup = (
+        currentCase:
+          | (() => DocumentFragment | ReactiveLeaf | Primitive)
+          | undefined,
+      ) => {
+        if (currentCase) {
+          const content = currentCase();
+          if (isPrimitive(content)) {
+            return this.renderSafeSink(
+              derived(currentCase) as ReactiveLeaf<Primitive>,
+            );
+          } else {
+            return this.renderSafeSink(content);
+          }
         }
-      }
+      };
+
+      cleanup = setup(data.cond ? ifCase : elseCase);
 
       addListener(data, (e) => {
         // ensure we're in the right case before cleanup
         if (e.type !== "update" || e.path !== ".cond") return;
         cleanup?.();
-        const currentCase = e.newValue ? ifCase : elseCase;
-
-        maybeViewTransition(() => {
-          // disconnect boundary contents
-          this.deleteContents();
-
-          if (currentCase) {
-            const content = currentCase();
-            if (isPrimitive(content)) {
-              cleanup = this.renderSafeSink(
-                derived(currentCase) as ReactiveLeaf<Primitive>,
-              );
-            } else {
-              cleanup = this.renderSafeSink(content);
-            }
-          }
-        }, this.parentElement);
+        this.deleteContents();
+        cleanup = setup(e.newValue ? ifCase : elseCase);
       });
     } else if (!isUnsafeHTML(data)) {
       this.renderSafeSink(data as any);
