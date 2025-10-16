@@ -3,11 +3,20 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hi</title>
+    <title>Playground</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "$clarity/": "./build/packages/clarity/",
+          "$functorial/": "./build/packages/functorial/",
+          "@std/assert/": "https://esm.sh/jsr/@std/assert/"
+        }
+      }
+    </script>
   </head>
   <body>
     <script type="module">
-      import "./build/client/render.js";
+      import "./build/playground/render.js";
     </script>
   </body>
 </html>

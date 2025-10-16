@@ -4,7 +4,7 @@ import { dirname, extname, globToRegExp, join, relative } from "@std/path";
 
 export const buildConfig = {
   exts: [".ts", ".css"],
-  matcher: globToRegExp("+(client|components|pages)/**"),
+  matcher: globToRegExp("+(packages|playground)/**"),
   skip: /(\.d|\.test|\.spec)\.ts$/,
 };
 
@@ -20,12 +20,12 @@ export const buildPath = (path: string) => {
       });
 
       content = content.replaceAll(
-        "$client",
-        relative(dirname(path), "./client"),
+        "$clarity",
+        relative(dirname(path), "./packages/clarity"),
       );
       content = content.replaceAll(
-        "$components",
-        relative(dirname(path), "./components"),
+        "$functorial",
+        relative(dirname(path), "./packages/functorial"),
       );
       break;
 
