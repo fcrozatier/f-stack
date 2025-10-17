@@ -20,7 +20,7 @@ export const buildPath = (path: string) => {
         remapSpecifiers: {
           filePath: path,
           imports: {
-            "$clarity": "./packages/clarity",
+            "$reflow": "./packages/reflow",
             "$functorial": "./packages/functorial",
           },
         },

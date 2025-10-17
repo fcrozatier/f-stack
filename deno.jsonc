@@ -16,7 +16,7 @@
     }
   },
   "imports": {
-    "$clarity/": "./packages/clarity/",
+    "$reflow/": "./packages/reflow/",
     "$functorial/": "./packages/functorial/",
 
     "@fcrozatier/type-strip": "jsr:@fcrozatier/type-strip@^1.4.0",

@@ -1,6 +1,6 @@
-import { html } from "$clarity/html.ts";
+import { html } from "$reflow/html.ts";
 import { reactive } from "$functorial/reactive.ts";
-import { map, on, text } from "$clarity/sinks.ts";
+import { map, on, text } from "$reflow/sinks.ts";
 
 export const UnshiftPage = () => {
   const arr = reactive([1, 2, 3]);

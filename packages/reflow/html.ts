@@ -2,7 +2,7 @@ import { addListener, isReactive, snapshot } from "$functorial/reactive.ts";
 import { nanoId } from "$functorial/utils.ts";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
-import { Boundary } from "./Boundary.ts";
+import { Boundary } from "./boundary.ts";
 import {
   type Attachment,
   type AttrSink,

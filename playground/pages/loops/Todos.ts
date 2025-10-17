@@ -1,6 +1,6 @@
-import { html } from "$clarity/html.ts";
+import { html } from "$reflow/html.ts";
 import { derived, reactive } from "$functorial/reactive.ts";
-import { attr, map, on } from "$clarity/sinks.ts";
+import { attr, map, on } from "$reflow/sinks.ts";
 
 type Todo = {
   number: number;

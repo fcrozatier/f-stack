@@ -1,5 +1,5 @@
-import { html } from "$clarity/html.ts";
-import { type On, on, text } from "$clarity/sinks.ts";
+import { html } from "$reflow/html.ts";
+import { type On, on, text } from "$reflow/sinks.ts";
 import { addListener, equals, reactive } from "$functorial/reactive.ts";
 
 export const OnPage = () => {

@@ -1,5 +1,5 @@
-import { html } from "$clarity/html.ts";
-import { attr } from "$clarity/sinks.ts";
+import { html } from "$reflow/html.ts";
+import { attr } from "$reflow/sinks.ts";
 import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);

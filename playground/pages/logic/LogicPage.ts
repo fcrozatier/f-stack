@@ -1,5 +1,5 @@
-import { html } from "$clarity/html.ts";
-import { on, show } from "$clarity/sinks.ts";
+import { html } from "$reflow/html.ts";
+import { on, show } from "$reflow/sinks.ts";
 import { derived, reactive } from "$functorial/reactive.ts";
 
 export const LogicPage = () => {

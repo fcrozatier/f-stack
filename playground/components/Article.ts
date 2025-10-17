@@ -1,4 +1,4 @@
-import { html } from "$clarity/html.ts";
+import { html } from "$reflow/html.ts";
 import { Counter } from "../pages/reactivity/1-state-and-derived/Counter.ts";
 
 export const Article = (props: { title: string }) => {

@@ -1,5 +1,5 @@
-import { html } from "$clarity/html.ts";
-import { attr, map, on, style } from "$clarity/sinks.ts";
+import { html } from "$reflow/html.ts";
+import { attr, map, on, style } from "$reflow/sinks.ts";
 import { reactive } from "$functorial/reactive.ts";
 
 export const LoopsPage = () => {

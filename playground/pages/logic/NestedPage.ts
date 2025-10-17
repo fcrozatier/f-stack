@@ -1,6 +1,6 @@
-import { html } from "$clarity/html.ts";
+import { html } from "$reflow/html.ts";
 import { derived, reactive } from "$functorial/reactive.ts";
-import { on, show } from "$clarity/sinks.ts";
+import { on, show } from "$reflow/sinks.ts";
 
 export const NestedPage = () => {
   const count = reactive({ value: 0 });

@@ -1,4 +1,4 @@
-import { html } from "$clarity/html.ts";
+import { html } from "$reflow/html.ts";
 import { Button, type ButtonProps } from "../../components/Button.ts";
 
 export const PropsPage = () => {
