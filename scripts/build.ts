@@ -1,6 +1,6 @@
 import stripTypes from "@fcrozatier/type-strip";
 import { ensureDirSync, existsSync, walkSync } from "@std/fs";
-import { dirname, extname, globToRegExp, join, relative } from "@std/path";
+import { dirname, extname, globToRegExp, join } from "@std/path";
 
 export const buildConfig = {
   exts: [".ts", ".css"],
@@ -17,16 +17,14 @@ export const buildPath = (path: string) => {
       content = stripTypes(content, {
         pathRewriting: true,
         removeComments: true,
+        remapSpecifiers: {
+          filePath: path,
+          imports: {
+            "$clarity": "./packages/clarity",
+            "$functorial": "./packages/functorial",
+          },
+        },
       });
-
-      content = content.replaceAll(
-        "$clarity",
-        relative(dirname(path), "./packages/clarity"),
-      );
-      content = content.replaceAll(
-        "$functorial",
-        relative(dirname(path), "./packages/functorial"),
-      );
       break;
 
     case ".css":
