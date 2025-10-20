@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { type On, on, text } from "@f-stack/reflow";
-import { equals, listen, reactive } from "@f-stack/functorial";
+import { listen, reactive, snapshot } from "@f-stack/functorial";
+import { html, type On, on, text } from "@f-stack/reflow";
 
 export const OnPage = () => {
   const increment = () => {
@@ -9,14 +8,14 @@ export const OnPage = () => {
   const decrement = () => {
     state.count -= 1;
   };
-  const log = () => {
+  const sayHi = () => {
     console.log("hi");
   };
-  const boom = () => {
-    console.log("boom");
+  const sayBye = () => {
+    console.log("bye");
   };
 
-  const state = reactive({ count: 1, input: "" });
+  const state = reactive({ count: 0, input: "" });
   const listeners: On<HTMLButtonElement> = reactive({ "click": increment });
 
   listen(state, () => {
@@ -29,20 +28,20 @@ export const OnPage = () => {
     </p>
     <p>
       <button ${on({
-        "click": () => listeners.mouseover = log,
-      })}>Add log on hover listener</button>
+        "click": () => listeners.mouseover = sayHi,
+      })}>Say hi on hover</button>
       <button ${on({
-        "click": () => delete listeners?.mouseover,
-      })}>Remove log on hover</button>
+        "click": () => delete listeners.mouseover,
+      })}>Remove sayHi</button>
       <button ${on({
-        "click": () => listeners.pointerdown = [boom, { capture: true }],
+        "click": () => listeners.pointerdown = [sayBye, { capture: true }],
       })}>Add capture listener</button>
       <button ${on({
         "click": () => delete listeners?.pointerdown,
       })}>Remove capture listener</button>
       <button ${on({
         "click": () => {
-          listeners.click = equals(listeners.click, increment)
+          listeners.click = snapshot(listeners.click) === increment
             ? decrement
             : increment;
         },
@@ -51,11 +50,11 @@ export const OnPage = () => {
 
     <p>
       <input ${on<HTMLInputElement>({
-        "input": function () {
+        input: function () {
           state.input = this.value;
         },
       })}>
     </p>
-    <div>${text(state, "input")}</div>
+    <output>${text(state, "input")}</output>
   `;
 };
