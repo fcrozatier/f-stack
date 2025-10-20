@@ -772,40 +772,6 @@ const stringifyKey = (key: string | symbol) => {
   return typeof key === "symbol" ? key.description ?? String(key) : key;
 };
 
-const readMethods = new Map([[
-  Array,
-  [
-    ".at",
-    ".entries",
-    ".every",
-    ".filter",
-    ".find",
-    ".findIndex",
-    ".findLast",
-    ".findLastIndex",
-    ".flat",
-    ".flatMap",
-    ".forEach",
-    ".includes",
-    ".indexOf",
-    ".join",
-    ".keys",
-    ".lastIndexOf",
-    ".map",
-    ".reduce",
-    ".reduceRight",
-    ".slice",
-    ".some",
-    ".toLocalString",
-    ".toReversed",
-    ".toSorted",
-    ".toSpliced",
-    ".toString",
-    ".values",
-    ".with",
-  ],
-]]);
-
 const dynamicLabelMap = new Map<AnyConstructor, RegExp>([[Array, /\d+/]]);
 
 const mutationMethods = new Map<AnyConstructor, string[]>([
