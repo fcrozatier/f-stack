@@ -20,5 +20,5 @@ jobs:
       - name: Set up Deno
         uses: denoland/setup-deno@v2
 
-      - name: Run deno task test
-        run: deno task test:unit
+      - name: Run deno test
+        run: deno test
