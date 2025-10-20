@@ -20,11 +20,15 @@
     "rules": {
       "include": [
         "default-param-last",
-        "no-slow-types",
-        "no-sync-fn-in-async-fn",
-        "verbatim-module-syntax"
+        "no-sync-fn-in-async-fn"
       ],
-      "exclude": ["no-explicit-any", "ban-types"],
+      "exclude": [
+        "no-explicit-any",
+        "ban-types",
+        "ban-ts-comment",
+        "no-var",
+        "no-inner-declarations"
+      ],
       "tags": ["jsr", "recommended", "workspace"]
     }
   },
