@@ -1,6 +1,5 @@
-import { html } from "$reflow/html.ts";
-import { on } from "$reflow/sinks.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
+import { reactive } from "@f-stack/functorial";
+import { html, on, text } from "@f-stack/reflow";
 
 type Props = { initial: number };
 
@@ -14,7 +13,7 @@ export const Counter = (props = { initial: 0 } satisfies Props) => {
 
   return html`
     <button ${on({ click: () => state.count++ })}>Click</button>
-    <div>The count is: ${derived(() => state.count)}</div>
-    <div>Is even: ${derived(() => state.isEven)}</div>
+    <div>The count is: ${text(state, "count")}</div>
+    <div>Is even: ${text(state, "isEven")}</div>
   `;
 };

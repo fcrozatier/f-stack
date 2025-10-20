@@ -1,6 +1,5 @@
-import { html } from "$reflow/html.ts";
-import { on } from "$reflow/sinks.ts";
-import { reactive } from "$functorial/reactive.ts";
+import { html, on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
 
 export interface ButtonProps {
   label?: string;

@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { attach, attr, map, on, show } from "$reflow/sinks.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { attach, attr, map, on, show } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
 
 type Item = { name: string; price: number; quantity: number };
 

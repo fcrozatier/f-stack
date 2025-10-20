@@ -2,7 +2,7 @@ import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { isPrimitive, type Primitive } from "./utils.ts";
 
-export type AnyConstructor = new (...args: any[]) => any;
+type AnyConstructor = new (...args: any[]) => any;
 
 export type ReactiveEventType =
   | "create"
@@ -868,7 +868,7 @@ function noop() {}
  *
  * @return A cleanup function removing the listener
  */
-export const addListener = <T extends Record<PropertyKey, any>>(
+export const listen = <T extends Record<PropertyKey, any>>(
   node: T,
   callback: ReactiveEventCallback,
 ): () => void => {

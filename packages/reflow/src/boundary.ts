@@ -1,12 +1,12 @@
 import {
-  addListener,
   derived,
   isReactiveLeaf,
+  listen,
   reactive,
   type ReactiveLeaf,
   snapshot,
-} from "$functorial/reactive.ts";
-import { isPrimitive, type Primitive } from "$functorial/utils.ts";
+} from "@f-stack/functorial";
+import { isPrimitive, type Primitive } from "@f-stack/functorial/utils.ts";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { isArraySink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
@@ -290,7 +290,7 @@ export class Boundary<T = any> {
       spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
-      addListener(values, (e) => {
+      listen(values, (e) => {
         switch (e.type) {
           case "relabel": {
             labels = e.labels;
@@ -398,12 +398,13 @@ export class Boundary<T = any> {
     } else if (isTextSink(data)) {
       const content = data.data;
       const key = data.key;
-      this.#end.before(String(content[key] ?? ""));
+      const textNode = new Text(String(content[key] ?? ""));
+      this.#end.before(textNode);
 
-      addListener(data, (e) => {
+      listen(content, (e) => {
         if (e.type !== "update") return;
-        if (e.path !== `.data.${key}`) return;
-        this.replaceChildren(String(e.newValue ?? ""));
+        if (e.path !== `.${key}`) return;
+        textNode.data = String(e.newValue ?? "");
       });
     } else if (isShowSink(data)) {
       const { ifCase, elseCase } = data;
@@ -428,7 +429,7 @@ export class Boundary<T = any> {
 
       cleanup = setup(data.cond ? ifCase : elseCase);
 
-      addListener(data, (e) => {
+      listen(data, (e) => {
         // ensure we're in the right case before cleanup
         if (e.type !== "update" || e.path !== ".cond") return;
         cleanup?.();
@@ -441,7 +442,7 @@ export class Boundary<T = any> {
       // unsafe sink
       const template = document.createElement("template");
 
-      addListener(data, (e) => {
+      listen(data, (e) => {
         switch (e.type) {
           case "update":
             template.innerHTML = e.newValue;
@@ -464,7 +465,7 @@ export class Boundary<T = any> {
 
     if (!isReactiveLeaf(data)) return;
 
-    return addListener(data, (e) => {
+    return listen(data, (e) => {
       if (e.type !== "update" && e.type !== "delete") return;
       if (e.path !== ".value") return;
 

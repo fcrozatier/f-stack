@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { reactive } from "$functorial/reactive.ts";
-import { map, on, text } from "$reflow/sinks.ts";
+import { html } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
+import { map, on, text } from "@f-stack/reflow";
 
 export const UnshiftPage = () => {
   const arr = reactive([1, 2, 3]);

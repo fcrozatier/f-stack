@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { classList, on } from "$reflow/sinks.ts";
-import { reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { classList, on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
 
 export const ClassListPage = () => {
   const selected = reactive({ value: false });

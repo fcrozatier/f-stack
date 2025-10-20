@@ -1,4 +1,4 @@
-import { html } from "$reflow/html.ts";
+import { html } from "@f-stack/reflow";
 
 export const Hi = () => {
   return html`

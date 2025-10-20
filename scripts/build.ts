@@ -20,8 +20,10 @@ export const buildPath = (path: string) => {
         remapSpecifiers: {
           filePath: path,
           imports: {
-            "$reflow": "./packages/reflow",
-            "$functorial": "./packages/functorial",
+            "@f-stack/reflow/": "./packages/reflow/src/",
+            "@f-stack/reflow": "./packages/reflow/src/mod.js",
+            "@f-stack/functorial/": "./packages/functorial/src/",
+            "@f-stack/functorial": "./packages/functorial/src/mod.js",
           },
         },
       });

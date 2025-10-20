@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { attach, map, on } from "$reflow/sinks.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { attach, map, on } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
 
 export const TextPage = () => {
   const user = reactive({

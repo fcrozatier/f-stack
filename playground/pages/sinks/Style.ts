@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { on, type ReactiveStyles, style } from "$reflow/sinks.ts";
-import { reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { on, type ReactiveStyles, style } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
 
 export const Style = () => {
   const bg = reactive({ value: "#ffff00" });

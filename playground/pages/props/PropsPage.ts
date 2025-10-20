@@ -1,4 +1,4 @@
-import { html } from "$reflow/html.ts";
+import { html } from "@f-stack/reflow";
 import { Button, type ButtonProps } from "../../components/Button.ts";
 
 export const PropsPage = () => {

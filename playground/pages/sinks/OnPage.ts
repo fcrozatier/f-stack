@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { type On, on, text } from "$reflow/sinks.ts";
-import { addListener, equals, reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { type On, on, text } from "@f-stack/reflow";
+import { equals, listen, reactive } from "@f-stack/functorial";
 
 export const OnPage = () => {
   const increment = () => {
@@ -19,7 +19,7 @@ export const OnPage = () => {
   const state = reactive({ count: 1, input: "" });
   const listeners: On<HTMLButtonElement> = reactive({ "click": increment });
 
-  addListener(state, () => {
+  listen(state, () => {
     console.log(state.count);
   });
 

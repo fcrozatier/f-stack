@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
-import { on, show } from "$reflow/sinks.ts";
+import { html } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
+import { on, show } from "@f-stack/reflow";
 
 export const NestedPage = () => {
   const count = reactive({ value: 0 });

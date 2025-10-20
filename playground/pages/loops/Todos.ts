@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
-import { attr, map, on } from "$reflow/sinks.ts";
+import { html } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
+import { attr, map, on } from "@f-stack/reflow";
 
 type Todo = {
   number: number;

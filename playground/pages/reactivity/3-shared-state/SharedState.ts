@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { on } from "$reflow/sinks.ts";
-import { derived, reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { on } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
 
 const state = reactive({
   count: 0,
@@ -8,7 +8,7 @@ const state = reactive({
 
 export const Counter = () => {
   return html`
-    <button${on({ click: () => state.count++ })}>
+    <button ${on({ click: () => state.count++ })}>
       Click ${derived(() => state.count)}
     </button>
   `;
@@ -16,6 +16,6 @@ export const Counter = () => {
 
 export const SharedState = () => {
   return html`
-    ${Counter} ${Counter} ${Counter}
+    ${Counter()} ${Counter()} ${Counter()}
   `;
 };

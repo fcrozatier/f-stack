@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { on } from "$reflow/sinks.ts";
-import { addListener, derived, reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { on } from "@f-stack/reflow";
+import { derived, listen, reactive } from "@f-stack/functorial";
 
 export const Cleanup = () => {
   const state = reactive({
@@ -12,7 +12,7 @@ export const Cleanup = () => {
     state.elapsed += 1;
   }, state.interval);
 
-  addListener(state, (e) => {
+  listen(state, (e) => {
     if (e.type === "update" && e.path === ".interval") {
       clearInterval(id);
       id = setInterval(() => {

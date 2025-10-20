@@ -1,6 +1,7 @@
-import { html } from "$reflow/html.ts";
-import { attr } from "$reflow/sinks.ts";
-import styles from "./hello.css" with { type: "css" };
+import { html } from "@f-stack/reflow";
+import { attr } from "@f-stack/reflow";
+// @ts-ignore works
+// import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);
 

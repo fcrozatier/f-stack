@@ -5,10 +5,10 @@ import {
   assertObjectMatch,
 } from "@std/assert";
 import {
-  addListener,
   equals,
   flushSync,
   isReactive,
+  listen,
   reactive,
   type ReactiveEvent,
   snapshot,
@@ -57,7 +57,7 @@ Deno.test("value listeners", () => {
   const r: Record<string, unknown> = reactive({ a: 1 });
   let event: ReactiveEvent | undefined;
 
-  addListener(r, (e) => (event = e));
+  listen(r, (e) => (event = e));
 
   // create
   r.new = true;
@@ -85,7 +85,7 @@ Deno.test("function listeners", () => {
   const r: Record<string, () => any> = reactive({ a: f1 });
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   assertEquals(logs.length, 0);
 
@@ -131,7 +131,7 @@ Deno.test("events collapse", () => {
   const r: Record<string, unknown> = reactive({ a: 1, b });
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   // no update to the initial state
   r.a = 1;
@@ -179,7 +179,7 @@ Deno.test("only dependencies trigger events", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(s, (e) => events.push(e));
+  listen(s, (e) => events.push(e));
 
   // no event is triggered on s when updating something it doesn't depend on
   r.b = 3;
@@ -219,16 +219,16 @@ Deno.test("glitch free (diamond)", () => {
   });
 
   let aEvent: ReactiveEvent | undefined;
-  addListener(a, (e) => (aEvent = e));
+  listen(a, (e) => (aEvent = e));
 
   let bEvent: ReactiveEvent | undefined;
-  addListener(b, (e) => (bEvent = e));
+  listen(b, (e) => (bEvent = e));
 
   let cEvent: ReactiveEvent | undefined;
-  addListener(c, (e) => (cEvent = e));
+  listen(c, (e) => (cEvent = e));
 
   let dEvent: ReactiveEvent | undefined;
-  addListener(d, (e) => (dEvent = e));
+  listen(d, (e) => (dEvent = e));
 
   assertEquals(d.d, 2 + 2);
   assertEquals(seenGlitch, false);
@@ -296,7 +296,7 @@ Deno.test("preserve `this` binding in reactive functions", () => {
   };
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   // already bound
   const getX = r.getX;
@@ -360,10 +360,10 @@ Deno.test("destructuring object maintains reactivity", () => {
   const { first } = r;
 
   const firstEvents: ReactiveEvent[] = [];
-  addListener(first, (e) => firstEvents.push(e));
+  listen(first, (e) => firstEvents.push(e));
 
   const rEvents: ReactiveEvent[] = [];
-  addListener(r, (e) => rEvents.push(e));
+  listen(r, (e) => rEvents.push(e));
 
   // updating `r` triggers the update event on `first`
   r.first.a = false;
@@ -395,7 +395,7 @@ Deno.test("reactive iterables can be mutated during iteration", () => {
   const arr = reactive([{ a: 1 }]);
 
   const events: ReactiveEvent[] = [];
-  addListener(arr, (e) => events.push(e));
+  listen(arr, (e) => events.push(e));
 
   // returns a proxied iterator
   for (const element of arr) {
@@ -414,7 +414,7 @@ Deno.test("reactive iterables can be mutated during iteration", () => {
   // Map
   const map = reactive(new Map([["a", { value: true }]]));
 
-  addListener(map, (e) => events.push(e));
+  listen(map, (e) => events.push(e));
 
   // we can destructure iterated items
   for (const [_k, item] of map) {
@@ -436,7 +436,7 @@ Deno.test("auto prunes relations", () => {
   const r = reactive([{ value: "a" }]);
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   const a = r[0]!;
   assertEquals(a?.value, "a");
@@ -462,18 +462,18 @@ Deno.test("nested listeners", () => {
 
   let cleanup: (() => void) | undefined;
 
-  addListener(r, (e) => {
+  listen(r, (e) => {
     cleanup?.();
     events.push({ ...e, info: "root listener" });
 
     if (e.type === "update") {
       if (e.newValue % 2 === 0) {
-        cleanup = addListener(r, (e1) => {
+        cleanup = listen(r, (e1) => {
           events.push({ ...e1, info: "even listener" });
           (e.newValue % 6 === 0) ? logs.push(MSG1) : logs.push(MSG2);
         });
       } else {
-        cleanup = addListener(r, (e2) => {
+        cleanup = listen(r, (e2) => {
           events.push({ ...e2, info: "odd listener" });
           logs.push(MSG3);
         });
@@ -504,7 +504,7 @@ Deno.test("derived getters", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(second, (e) => events.push(e));
+  listen(second, (e) => events.push(e));
 
   assertEquals(first.a, true);
   assertEquals(second.b, false);
@@ -531,7 +531,7 @@ Deno.test("self-derived values", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(state, (e) => events.push(e));
+  listen(state, (e) => events.push(e));
 
   assertEquals(state.count, 0);
   assertEquals(state.even, true);
@@ -564,7 +564,7 @@ Deno.test("upgrading derived events", () => {
 
   let event: ReactiveEvent | undefined;
 
-  addListener(second, (e) => (event = e));
+  listen(second, (e) => (event = e));
 
   assertEquals(first.a, 1);
   assertEquals(second.value, 3);
@@ -598,7 +598,7 @@ Deno.test("nested derivations", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(fullname, (e) => (events.push(e)));
+  listen(fullname, (e) => (events.push(e)));
 
   assertEquals(lower.first, "john");
   assertEquals(lower.last, "doe");
@@ -689,16 +689,16 @@ Deno.test("bubbling derived events", () => {
   });
 
   let sOuterEvent: ReactiveEvent | undefined;
-  addListener(second.outer, (e) => (sOuterEvent = e));
+  listen(second.outer, (e) => (sOuterEvent = e));
 
   let sInnerEvent: ReactiveEvent | undefined;
-  addListener(second.outer.inner, (e) => (sInnerEvent = e));
+  listen(second.outer.inner, (e) => (sInnerEvent = e));
 
   let tOuterEvent: ReactiveEvent | undefined;
-  addListener(third.outer, (e) => (tOuterEvent = e));
+  listen(third.outer, (e) => (tOuterEvent = e));
 
   let tInnerEvent: ReactiveEvent | undefined;
-  addListener(third.outer.inner, (e) => (tInnerEvent = e));
+  listen(third.outer.inner, (e) => (tInnerEvent = e));
 
   // track
   assertEquals(second.outer.inner.b, false);
@@ -742,7 +742,7 @@ Deno.test("relabelling", () => {
   const r = reactive([{ value: "a" }, { value: "b" }]);
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   assertEquals(events.length, 0);
 
@@ -776,13 +776,13 @@ Deno.test("nested relabelling", () => {
   });
 
   const rEvents: ReactiveEvent[] = [];
-  addListener(r, (e) => rEvents.push(e));
+  listen(r, (e) => rEvents.push(e));
 
   const firstEvents: ReactiveEvent[] = [];
-  addListener(r.first, (e) => firstEvents.push(e));
+  listen(r.first, (e) => firstEvents.push(e));
 
   const secondEvents: ReactiveEvent[] = [];
-  addListener(r.first.second, (e) => secondEvents.push(e));
+  listen(r.first.second, (e) => secondEvents.push(e));
 
   r.first.second.values.shift();
   flushSync();
@@ -821,7 +821,7 @@ Deno.test("derived relabelling", () => {
   });
 
   const dEvents: ReactiveEvent[] = [];
-  addListener(d, (e) => dEvents.push(e));
+  listen(d, (e) => dEvents.push(e));
 
   assertEquals(d.value, 3);
 
@@ -845,7 +845,7 @@ Deno.test("can compose reactive", () => {
   const r = reactive({ a: bool });
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   // the dependency tracking between r and bool begins when the path is taken
   assertEquals(r.a.value, false);
@@ -873,9 +873,9 @@ Deno.test("multi-parent adoption", () => {
   let event1: ReactiveEvent | undefined;
   let event2: ReactiveEvent | undefined;
 
-  addListener(r, (e) => (event = e));
-  addListener(r1, (e) => (event1 = e));
-  addListener(r2, (e) => (event2 = e));
+  listen(r, (e) => (event = e));
+  listen(r1, (e) => (event1 = e));
+  listen(r2, (e) => (event2 = e));
 
   // the dependency tracking between r and bool begins when the path is taken
   assertEquals(r.a.value, false);
@@ -914,19 +914,19 @@ Deno.test("multi-parent adoption", () => {
 Deno.test("bubbling", () => {
   const r = reactive({ a: { b: { c: { d: { e: { f: true } } } } } });
   let event: ReactiveEvent | undefined;
-  addListener(r, (e) => (event = e));
+  listen(r, (e) => (event = e));
 
   const refC = r.a.b.c;
   let refCEvent: ReactiveEvent | undefined;
-  addListener(refC, (e) => (refCEvent = e));
+  listen(refC, (e) => (refCEvent = e));
 
   const refD = r.a.b.c.d;
   let refDEvent: ReactiveEvent | undefined;
-  addListener(refD, (e) => (refDEvent = e));
+  listen(refD, (e) => (refDEvent = e));
 
   const refE = r.a.b.c.d.e;
   let refEEvent: ReactiveEvent | undefined;
-  addListener(refE, (e) => (refEEvent = e));
+  listen(refE, (e) => (refEEvent = e));
 
   // root, c and d see the create event but not e
   // @ts-ignore
@@ -1001,7 +1001,7 @@ Deno.test("object functoriality", () => {
 
   const mirror = {};
 
-  addListener(r, (e) => {
+  listen(r, (e) => {
     const root = ".";
     if (e.type === "relabel" || typeof e.path !== "string") return;
 
@@ -1057,7 +1057,7 @@ Deno.test("deep object functoriality", () => {
   const ref = r.a.b.c;
   const mirror = {};
 
-  addListener(ref, (e) => {
+  listen(ref, (e) => {
     if (e.type === "relabel" || typeof e.path !== "string") return;
 
     const paths = e.path.split(".").slice(1);
@@ -1114,7 +1114,7 @@ Deno.test("array functoriality", () => {
   const r: number[] = reactive([]);
   const mirror: number[] = [];
 
-  addListener(r, (e) => {
+  listen(r, (e) => {
     const root = ".";
     if (e.type === "relabel" || typeof e.path !== "string") return;
 
@@ -1147,7 +1147,7 @@ Deno.test("array functoriality", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   // we can transport operations
 
@@ -1194,7 +1194,7 @@ Deno.test("array length property", () => {
   const r = reactive([1, 2, 3]);
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   assertEquals(events.length, 0);
   assertEquals(r.length, 3);
@@ -1251,7 +1251,7 @@ Deno.test("array-derived values", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(derived, (e) => events.push(e));
+  listen(derived, (e) => events.push(e));
 
   assertEquals(derived.sum, 6);
   assertEquals(derived.len, 3);
@@ -1303,7 +1303,7 @@ Deno.test("array relabeling", () => {
   const r = reactive([3, 1, 2]);
 
   const events: ReactiveEvent[] = [];
-  addListener(r, (e) => events.push(e));
+  listen(r, (e) => events.push(e));
 
   assertEquals(events.length, 0);
 
@@ -1350,7 +1350,7 @@ Deno.test("Map functoriality", () => {
   const r = reactive(new Map());
   const mirror = {};
 
-  addListener(r, (e) => {
+  listen(r, (e) => {
     if (e.type === "apply") {
       switch (e.path) {
         case ".set": {
@@ -1418,7 +1418,7 @@ Deno.test("map-derived values", () => {
   });
 
   const events: ReactiveEvent[] = [];
-  addListener(derived, (e) => events.push(e));
+  listen(derived, (e) => events.push(e));
 
   assertEquals(derived.sum, 6);
 

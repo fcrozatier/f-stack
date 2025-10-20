@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { on, unsafeHTML } from "$reflow/sinks.ts";
-import { reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { on, unsafeHTML } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
 
 export const UnsafeHtmlPage = () => {
   // nullish values are not rendered

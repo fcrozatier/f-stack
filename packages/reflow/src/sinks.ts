@@ -2,8 +2,8 @@ import {
   isReactiveLeaf,
   reactive,
   type ReactiveLeaf,
-} from "$functorial/reactive.ts";
-import type { Primitive } from "$functorial/utils.ts";
+} from "@f-stack/functorial";
+import type { Primitive } from "@f-stack/functorial/utils.ts";
 
 // attach
 
@@ -73,7 +73,7 @@ export const isClassSink = (value: unknown): value is ClassListValue => {
 
 const MAP_SINK = Symbol.for("map sink");
 
-type MapSink<T = any> = {
+export type MapSink<T = any> = {
   values: T[];
   mapper: (reactive: { value: T; index: number }) => DocumentFragment;
   [MAP_SINK]?: true;

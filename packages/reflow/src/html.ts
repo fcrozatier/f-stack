@@ -1,5 +1,5 @@
-import { addListener, isReactive, snapshot } from "$functorial/reactive.ts";
-import { nanoId } from "$functorial/utils.ts";
+import { isReactive, listen, snapshot } from "@f-stack/functorial";
+
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { Boundary } from "./boundary.ts";
@@ -15,8 +15,9 @@ import {
   type On,
   type ReactiveStyles,
 } from "./sinks.ts";
+import { nanoId } from "./utils.ts";
 
-export type TemplateTag = (
+type TemplateTag = (
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => DocumentFragment;
@@ -129,7 +130,7 @@ export const html: TemplateTag = (strings, ...values) => {
       }
     }
 
-    addListener(maybeReactive, (e) => {
+    listen(maybeReactive, (e) => {
       if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
@@ -215,7 +216,7 @@ export const html: TemplateTag = (strings, ...values) => {
       }
     }
 
-    addListener(attribute, (e) => {
+    listen(attribute, (e) => {
       if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
@@ -277,7 +278,7 @@ export const html: TemplateTag = (strings, ...values) => {
       }
     }
 
-    addListener(classList, (e) => {
+    listen(classList, (e) => {
       if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
@@ -323,7 +324,7 @@ export const html: TemplateTag = (strings, ...values) => {
       element.style.setProperty(key, String(value));
     }
 
-    addListener(style, (e) => {
+    listen(style, (e) => {
       if (e.type === "relabel" || !(typeof e.path === "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);

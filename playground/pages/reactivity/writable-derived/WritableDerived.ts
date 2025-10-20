@@ -1,6 +1,6 @@
-import { html } from "$reflow/html.ts";
-import { on } from "$reflow/sinks.ts";
-import { reactive } from "$functorial/reactive.ts";
+import { html } from "@f-stack/reflow";
+import { on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
 
 export const WritableDerivedPage = () => {
   const count: {
