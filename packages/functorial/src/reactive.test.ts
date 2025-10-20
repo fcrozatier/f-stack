@@ -5,7 +5,6 @@ import {
   assertObjectMatch,
 } from "@std/assert";
 import {
-  equals,
   flushSync,
   isReactive,
   listen,
@@ -319,13 +318,13 @@ Deno.test("identity can be tested", () => {
   const r2 = reactive(obj2);
 
   assert(r !== obj);
-  assert(equals(r, obj));
+  assert(snapshot(r) === snapshot(obj));
 
   assert(r2 !== obj2);
-  assert(equals(r2, obj2));
+  assert(snapshot(r2) === snapshot(obj2));
 
   assert(r2.internal !== obj2.internal);
-  assert(equals(r2.internal, obj2.internal));
+  assert(snapshot(r2.internal) === snapshot(obj2.internal));
 
   const f = () => {};
   function g() {}
@@ -334,10 +333,10 @@ Deno.test("identity can be tested", () => {
   const rg = reactive({ g: g });
 
   assert(rf !== f);
-  assert(equals(rf, f));
+  assert(snapshot(rf) === snapshot(f));
 
   assert(rg.g !== g);
-  assert(equals(rg.g, g));
+  assert(snapshot(rg.g) === snapshot(g));
 });
 
 Deno.test("identity guaranty: one proxy per object ref", () => {
