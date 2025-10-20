@@ -1,5 +1,4 @@
 import { isReactive, listen, snapshot } from "@f-stack/functorial";
-
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { Boundary } from "./boundary.ts";
@@ -117,17 +116,37 @@ export const html: TemplateTag = (strings, ...values) => {
     element.removeAttribute(`on-${id}`);
     const elementListeners = new WeakMap();
 
+    type ListenerParams =
+      | EventListener
+      | [
+        EventListener,
+        options?: boolean | AddEventListenerOptions,
+      ];
+
+    const addListener = (
+      type: string,
+      params: ListenerParams,
+    ) => {
+      const [listener, options] = Array.isArray(params) ? params : [params];
+      const ref = snapshot(listener);
+      const bound = ref.bind(element);
+      element.addEventListener(type, bound, options);
+      elementListeners.set(ref, bound);
+    };
+
+    const removeListener = (
+      type: string,
+      params: ListenerParams,
+    ) => {
+      const [listener, options] = Array.isArray(params) ? params : [params];
+      const ref = snapshot(listener);
+      const bound = elementListeners.get(ref);
+      element.removeEventListener(type, bound, options);
+      elementListeners.delete(ref);
+    };
+
     for (const [key, val] of Object.entries(maybeReactive)) {
-      if (Array.isArray(val)) {
-        const [listener, options] = val;
-        const bound = snapshot(listener).bind(element);
-        elementListeners.set(listener, bound);
-        element.addEventListener(key, bound, options);
-      } else {
-        const bound = snapshot(val).bind(element);
-        elementListeners.set(val, bound);
-        element.addEventListener(key, bound);
-      }
+      addListener(key, val as ListenerParams);
     }
 
     listen(maybeReactive, (e) => {
@@ -138,57 +157,20 @@ export const html: TemplateTag = (strings, ...values) => {
       switch (e.type) {
         case "create": {
           const newValue = e.newValue;
-
-          if (Array.isArray(newValue)) {
-            const [listener, options] = newValue;
-            const bound = snapshot(listener).bind(element);
-            elementListeners.set(listener, bound);
-            element.addEventListener(key, bound, options);
-          } else {
-            const bound = snapshot(newValue).bind(element);
-            elementListeners.set(newValue, bound);
-            element.addEventListener(key, bound);
-          }
+          addListener(key, newValue);
           break;
         }
         case "update": {
           const oldValue = e.oldValue;
           const newValue = e.newValue;
 
-          if (Array.isArray(oldValue)) {
-            const [listener, options] = oldValue;
-            const bound = elementListeners.get(listener);
-            element.removeEventListener(key, bound, options);
-          } else {
-            const bound = elementListeners.get(oldValue);
-            element.removeEventListener(key, bound);
-          }
-
-          if (Array.isArray(newValue)) {
-            const [listener, options] = newValue;
-            const bound = snapshot(listener).bind(element);
-            elementListeners.set(listener, bound);
-            element.addEventListener(key, bound, options);
-          } else {
-            const bound = snapshot(newValue).bind(element);
-            elementListeners.set(newValue, bound);
-            element.addEventListener(key, bound);
-          }
+          removeListener(key, oldValue);
+          addListener(key, newValue);
           break;
         }
         case "delete": {
           const oldValue = e.oldValue;
-
-          if (Array.isArray(oldValue)) {
-            const [listener, options] = oldValue;
-            const bound = elementListeners.get(listener);
-            element.removeEventListener(key, bound, options);
-            elementListeners.delete(listener);
-          } else {
-            const bound = elementListeners.get(oldValue);
-            element.removeEventListener(key, bound);
-            elementListeners.delete(oldValue);
-          }
+          removeListener(key, oldValue);
           break;
         }
       }
