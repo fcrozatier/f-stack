@@ -1354,7 +1354,6 @@ Deno.test("Map functoriality", () => {
     if (e.type === "apply") {
       switch (e.path) {
         case ".set": {
-          // @ts-ignore
           const [k, v] = e.args;
           // @ts-ignore
           mirror[k] = v;
@@ -1362,7 +1361,6 @@ Deno.test("Map functoriality", () => {
           break;
         }
         case ".delete": {
-          // @ts-ignore
           const [k] = e.args;
           // @ts-ignore
           delete mirror[k];

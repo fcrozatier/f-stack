@@ -14,11 +14,13 @@ export interface Attachment<T extends Node = Element> {
   [ATTACHMENT_SINK]?: true;
 }
 
-export const attach = <T extends Node>(attachment: Attachment<T>) => {
+export function attach<T extends Node>(
+  attachment: Attachment<T>,
+): Attachment<T> {
   const attachmentSink = reactive(attachment);
   Object.defineProperty(attachmentSink, ATTACHMENT_SINK, { value: true });
   return attachmentSink;
-};
+}
 
 export const isAttachment = (value: unknown): value is Attachment => {
   return typeof value === "function" && Object.hasOwn(value, ATTACHMENT_SINK);
@@ -28,21 +30,19 @@ export const isAttachment = (value: unknown): value is Attachment => {
 
 const ATTR_SINK = Symbol.for("attr sink");
 
-export interface AttrSink extends Record<string, Primitive | ReactiveLeaf> {
-  [ATTR_SINK]?: true;
-}
+export type AttrSink = Record<string, Primitive | ReactiveLeaf>;
 
-export const attr = (attributes: AttrSink) => {
+export function attr(attributes: AttrSink): AttrSink {
   const attrSink = reactive(attributes);
   Object.defineProperty(attrSink, ATTR_SINK, { value: true });
   return attrSink;
-};
+}
 
-export const isAttrSink = (value: unknown): value is AttrSink => {
+export function isAttrSink(value: unknown): value is AttrSink {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, ATTR_SINK);
-};
+}
 
 // classList
 
@@ -57,17 +57,17 @@ export type ClassListValue = Record<
   boolean | null | undefined | ReactiveLeaf
 >;
 
-export const classList = (classes: ClassListValue) => {
+export function classList(classes: ClassListValue): ClassListValue {
   const classSink = reactive(classes);
   Object.defineProperty(classSink, CLASS_SINK, { value: true });
   return classSink;
-};
+}
 
-export const isClassSink = (value: unknown): value is ClassListValue => {
+export function isClassSink(value: unknown): value is ClassListValue {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, CLASS_SINK);
-};
+}
 
 // map
 
@@ -79,21 +79,21 @@ export type MapSink<T = any> = {
   [MAP_SINK]?: true;
 };
 
-export const map = <T>(
+export function map<T>(
   values: T[],
   mapper: (reactive: { value: T; index: number }) => DocumentFragment,
-): MapSink<T> => {
+): MapSink<T> {
   return {
     values,
     mapper,
     [MAP_SINK]: true,
   };
-};
+}
 
-export const isArraySink = (value: unknown): value is MapSink => {
+export function isArraySink(value: unknown): value is MapSink {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, MAP_SINK);
-};
+}
 
 // on
 
@@ -113,18 +113,18 @@ export type On<U = HTMLElement, V = HTMLElementEventMap> = {
     ];
 };
 
-export const on = <U = HTMLElement, V = HTMLElementEventMap>(
+export function on<U = HTMLElement, V = HTMLElementEventMap>(
   listeners: On<U, V>,
-) => {
+): On<U, V> {
   const onSink = reactive(listeners);
   Object.defineProperty(onSink, ON_SINK, { value: true });
   return onSink;
-};
+}
 
-export const isOnSink = (value: unknown): value is On => {
+export function isOnSink(value: unknown): value is On {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, ON_SINK);
-};
+}
 
 // show
 
@@ -139,13 +139,13 @@ type ShowSink = {
   [SHOW_SINK]: true;
 };
 
-export const show = (
+export function show(
   condition: () => boolean,
   ifCase: () => DocumentFragment | ReactiveLeaf | Primitive,
   elseCase?:
     | (() => DocumentFragment | ReactiveLeaf | Primitive)
     | undefined,
-): ShowSink => {
+): ShowSink {
   return reactive({
     get cond() {
       return condition();
@@ -154,12 +154,12 @@ export const show = (
     elseCase,
     [SHOW_SINK]: true,
   });
-};
+}
 
-export const isShowSink = (value: unknown): value is ShowSink => {
+export function isShowSink(value: unknown): value is ShowSink {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, SHOW_SINK);
-};
+}
 
 // style
 
@@ -186,19 +186,19 @@ export type ReactiveStyles = {
   ]?: string | number | ReactiveLeaf<string | number>;
 };
 
-export const style = (styles: ReactiveStyles) => {
+export function style(styles: ReactiveStyles): ReactiveStyles {
   const styleSink = reactive(styles);
   Object.defineProperty(styleSink, STYLE_SINK, { value: true });
   return styleSink;
-};
+}
 
-export const isStyleSink = (
+export function isStyleSink(
   value: unknown,
-): value is ReactiveStyles => {
+): value is ReactiveStyles {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, STYLE_SINK);
-};
+}
 
 // text
 
@@ -210,18 +210,18 @@ export interface TextSink {
   [TEXT_SINK]?: true;
 }
 
-export const text = <T extends Record<string, any>>(
+export function text<T extends Record<string, any>>(
   node: T,
   key: keyof T & string = "value",
-): TextSink => {
+): TextSink {
   return { data: node, key, [TEXT_SINK]: true };
-};
+}
 
-export const isTextSink = (value: unknown): value is TextSink => {
+export function isTextSink(value: unknown): value is TextSink {
   return value !== null &&
     typeof value === "object" &&
     Object.hasOwn(value, TEXT_SINK);
-};
+}
 
 // unsafe
 
@@ -231,18 +231,18 @@ interface UnsafeHTML extends ReactiveLeaf<string> {
   [UNSAFE_SINK]?: true;
 }
 
-export const unsafeHTML = (
+export function unsafeHTML(
   unsafe: string | ReactiveLeaf<string>,
-): UnsafeHTML => {
+): UnsafeHTML {
   const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
     ? reactive({ value: unsafe })
     : unsafe;
   Object.defineProperty(unsafeSink, UNSAFE_SINK, { value: true });
   return unsafeSink;
-};
+}
 
-export const isUnsafeHTML = (value: unknown): value is UnsafeHTML => {
+export function isUnsafeHTML(value: unknown): value is UnsafeHTML {
   return typeof value === "object" &&
     value !== null &&
     Object.hasOwn(value, UNSAFE_SINK);
-};
+}

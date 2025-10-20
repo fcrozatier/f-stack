@@ -581,9 +581,7 @@ export function reactive<T extends object>(object: T): T {
           // Some objects have exotic properties like Map.size
           if (e instanceof TypeError) {
             value = target[property];
-          } else {
-            throw e;
-          }
+          } else throw e;
         } finally {
           current = prevParent;
         }
