@@ -3,7 +3,7 @@ import { html, on, text } from "@f-stack/reflow";
 
 type Props = { initial: number };
 
-export const Counter = (props = { initial: 0 } satisfies Props) => {
+export const Counter = (props: Props = { initial: 0 }) => {
   const state = reactive({
     count: props.initial,
     get isEven() {

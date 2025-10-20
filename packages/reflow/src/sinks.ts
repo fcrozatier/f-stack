@@ -214,7 +214,7 @@ export const text = <T extends Record<string, any>>(
   node: T,
   key: keyof T & string = "value",
 ): TextSink => {
-  return reactive({ data: node, key, [TEXT_SINK]: true });
+  return { data: node, key, [TEXT_SINK]: true };
 };
 
 export const isTextSink = (value: unknown): value is TextSink => {
