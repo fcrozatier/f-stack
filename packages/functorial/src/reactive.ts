@@ -801,9 +801,9 @@ export const equals = (a: unknown, b: unknown): boolean => {
   return snapshot(a) === snapshot(b);
 };
 
-export const snapshot = (p: unknown) => {
+export function snapshot<T>(p: T): T {
   return isReactive(p) ? getOwn(p, ns.TARGET) : p;
-};
+}
 
 export const isReactive = (
   value: unknown,
