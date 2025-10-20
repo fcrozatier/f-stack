@@ -797,10 +797,6 @@ const getOwn = (proxy: Record<string, any>, symbol: symbol): any => {
   return Object.getOwnPropertyDescriptor(proxy, symbol)?.value;
 };
 
-export const equals = (a: unknown, b: unknown): boolean => {
-  return snapshot(a) === snapshot(b);
-};
-
 export function snapshot<T>(p: T): T {
   return isReactive(p) ? getOwn(p, ns.TARGET) : p;
 }
