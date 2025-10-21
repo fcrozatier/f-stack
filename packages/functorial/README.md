@@ -1,6 +1,6 @@
-# Functorial Reactivity
+# Functorial
 
-_We've found the true reactivity primitive_
+_The most granular and natural reactivity primitive_
 
 ## Introduction
 

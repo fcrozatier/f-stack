@@ -1,6 +1,6 @@
 # F-Stack
 
-_Web dev for the fun of it_
+_Wander off the main road into an alternate world of web wonders_
 
 The f-stack is a comprehensive set of tools letting you build web apps in a
 modern and fun way while exploring new frontiers:

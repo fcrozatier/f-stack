@@ -282,16 +282,34 @@ export type CamelToKebab<T extends string> = T extends
   : T;
 
 /**
- * The type of a {@linkcode style} sink
+ * A {@linkcode StyleSink} is a `Record` such that:
+ * - the keys are CSS properties or --dashed identifiers
+ * - the values are strings or numbers
+ *
+ * @see {@linkcode style}
  */
 export type StyleSink = {
   [
     K in CamelToKebab<keyof CSSStyleDeclaration & string> | `--${string}`
-  ]?: string | number | ReactiveLeaf<string | number>;
+  ]?: string | number;
 };
 
 /**
- * Creates a `style` sink to handle inline styles on an `Element`
+ * Creates a `style` sink that handles inline styles on an `Element`
+ *
+ * @example
+ *
+ * ```ts
+ * import { html, style } from "@f-stack/reflow";
+ *
+ * export const StyleDemo = () => {
+ *   return html`
+ *     <div ${style({
+ *       "--bg": 'red',
+ *       color: "var(--bg)"
+ *     })}>Hello</div>`
+ * }
+ * ```
  */
 export function style(styles: StyleSink): StyleSink {
   const styleSink = reactive(styles);

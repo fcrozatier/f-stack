@@ -3,10 +3,10 @@ import { on, style, type StyleSink } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
 
 export const Style = () => {
-  const bg = reactive({ value: "#ffff00" });
   const weight = reactive({ value: 4 });
+
   const styles: StyleSink = reactive({
-    "--bg": bg,
+    "--bg": "#ffff00",
     outline: "1px solid red",
     color: "red",
     get "font-weight"() {
@@ -17,15 +17,15 @@ export const Style = () => {
 
   return html`
     <p>
-      <button ${style(styles)}>
+      <span ${style(styles)}>
         foo
-      </button>
+      </span>
     </p>
     <p>
       <label>background
         <input type="color" value="#ffff00" ${on<HTMLInputElement>({
           input: function () {
-            bg.value = this.value;
+            styles["--bg"] = this.value;
           },
         })}></label>
       <label>weight
@@ -44,11 +44,8 @@ export const Style = () => {
       <button ${on({
         click: () => styles.color = styles.color === "black" ? "red" : "black",
       })}>Toggle color</button>
-      <button ${on({ click: () => styles.background = "yellow" })}>
-        Insert background
-      </button>
-      <button ${on({ click: () => delete styles.background })}>
-        Remove background
+      <button ${on({ click: () => styles.background = "green" })}>
+        Set green background
       </button>
     </p>
   `;

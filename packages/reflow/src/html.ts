@@ -1,4 +1,4 @@
-import { isReactive, listen, snapshot } from "@f-stack/functorial";
+import { listen, snapshot } from "@f-stack/functorial";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { Boundary } from "./boundary.ts";
@@ -300,14 +300,12 @@ export const html: TemplateTag = (strings, ...values) => {
 
     element.removeAttribute(`style-${id}`);
 
-    for (const [key, val] of Object.entries(style)) {
-      const value = val && isReactive(val) && "value" in val ? val.value : val;
-
+    for (const [key, value] of Object.entries(style)) {
       element.style.setProperty(key, String(value));
     }
 
     listen(style, (e) => {
-      if (e.type === "relabel" || !(typeof e.path === "string")) return;
+      if (e.type === "relabel" || (typeof e.path !== "string")) return;
       const key = e.path.split(".")[1];
       assertExists(key);
 
