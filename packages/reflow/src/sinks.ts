@@ -3,7 +3,7 @@ import {
   reactive,
   type ReactiveLeaf,
 } from "@f-stack/functorial";
-import type { Primitive } from "@f-stack/functorial/utils.ts";
+import type { Primitive } from "@f-stack/functorial/utils";
 
 // attach
 

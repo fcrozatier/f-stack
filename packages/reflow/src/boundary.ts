@@ -6,7 +6,7 @@ import {
   type ReactiveLeaf,
   snapshot,
 } from "@f-stack/functorial";
-import { isPrimitive, type Primitive } from "@f-stack/functorial/utils.ts";
+import { isPrimitive, type Primitive } from "@f-stack/functorial/utils";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { isMapSink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";

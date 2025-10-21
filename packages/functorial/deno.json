@@ -4,6 +4,6 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./utils.ts": "./src/utils.ts"
+    "./utils": "./src/utils.ts"
   }
 }
