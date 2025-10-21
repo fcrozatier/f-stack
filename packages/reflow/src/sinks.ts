@@ -109,16 +109,18 @@ export type MapSink<T = any> = {
  * @example
  *
  * ```ts
- * import { map } from "@f-stack/reflow";
+ * import { html, map } from "@f-stack/reflow";
  *
- * const arr = ["a", "b", "c"];
+ * export const MapDemo = () => {
+ *   const arr = ["a", "b", "c"];
  *
- * html`
- * <ul>
- *   ${map(arr, (letter) => {
- *     return html`<li>${letter.index}: ${letter.value}<li>`
- *   })}
- * </ul>`
+ *   return html`
+ *   <ul>
+ *     ${map(arr, (letter) => {
+ *       return html`<li>${letter.index}: ${letter.value}<li>`
+ *     })}
+ *   </ul>`
+ * }
  * ```
  *
  * @param values The array to iterate on
@@ -171,11 +173,13 @@ export type On<U = HTMLElement, V = HTMLElementEventMap> = {
  * @example Simple click listener
  *
  * ```ts
- * import { on } from "@f-stack/reflow";
+ * import { html, on } from "@f-stack/reflow";
  *
- * html`<button ${on({
- *   click: () => console.log('hi')
- * })}>Click</button>`
+ * export const ClickDemo = () => {
+ *   return html`<button ${on({
+ *     click: () => console.log('hi')
+ *   })}>Click</button>`
+ * }
  * ```
  *
  * @example Type parameter and `this` keyword
@@ -183,13 +187,15 @@ export type On<U = HTMLElement, V = HTMLElementEventMap> = {
  * Pass a type parameter to the {@linkcode on} sink for a more accurate typing of `this`
  *
  * ```ts
- * import { on } from "@f-stack/reflow";
+ * import { html, on } from "@f-stack/reflow";
  *
- * html`<input ${on<HTMLInputElement>({
- *   input: function () {
- *     console.log(this.value)
- *   }
- * })}>`
+ * export const ThisDemo = () => {
+ *   return html`<input ${on<HTMLInputElement>({
+ *     input: function () {
+ *       console.log(this.value)
+ *     }
+ *   })}>`
+ * }
  * ```
  */
 export function on<U = HTMLElement, V = HTMLElementEventMap>(
@@ -331,14 +337,16 @@ export interface TextSink {
  * import { html, text } from "@f-stack/reflow";
  * import { reactive } from "@f-stack/reflow/reactivity";
  *
- * const user = reactive({
- *   name: "Bob",
- *   age: 21
- * })
+ * export const TextDemo = () => {
+ *   const user = reactive({
+ *     name: "Bob",
+ *     age: 21
+ *   })
  *
- * html`
- *  Name: ${text(user, "name")} Age: ${text(user, "age")}
- * `
+ *   return html`
+ *     Name: ${text(user, "name")} Age: ${text(user, "age")}
+ *   `
+ * }
  * ```
  *
  * @param node the {@linkcode reactive} object reference
@@ -385,10 +393,13 @@ export interface UnsafeHTML extends ReactiveLeaf<string> {
  *
  * ```ts
  * import { html, unsafeHTML } from "@f-stack/reflow";
+ * import { reactive } from "@f-stack/reflow/reactivity";
  *
- * const unsafeInput = reactive({ value: "<em>Raw HTML</em>" });
+ * export const UnsafeDemo = () => {
+ *   const unsafeInput = reactive({ value: "<em>Raw HTML</em>" });
  *
- * html`${unsafeHTML(unsafeInput)}`
+ *   return html`${unsafeHTML(unsafeInput)}`
+ * }
  * ```
  */
 export function unsafeHTML(
