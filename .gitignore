@@ -4,3 +4,4 @@ deno.lock
 notebook.ipynb
 
 build
+docs
