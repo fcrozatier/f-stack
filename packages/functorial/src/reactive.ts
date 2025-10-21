@@ -4,6 +4,9 @@ import { isPrimitive, type Primitive } from "./utils.ts";
 
 type AnyConstructor = new (...args: any[]) => any;
 
+/**
+ * Represents the type of a {@linkcode ReactiveEvent}
+ */
 export type ReactiveEventType =
   | "create"
   | "update"
@@ -11,6 +14,9 @@ export type ReactiveEventType =
   | "apply"
   | "relabel";
 
+/**
+ * A `ReactiveEvent` is fired every time a change or method call is detected on a {@linkcode reactive} data
+ */
 export type ReactiveEvent =
   | {
     type: "create";
@@ -33,9 +39,12 @@ export type ReactiveEvent =
   | { type: "apply"; path: string | symbol; args: any[] }
   | { type: "relabel"; labels: [string, string][] };
 
+/**
+ * Represents the callbacks of the {@linkcode listen} function
+ */
 export type ReactiveEventCallback = (event: ReactiveEvent) => void;
 
-export class Scheduler {
+class Scheduler {
   #callback: () => void;
   #pending: Map<Record<PropertyKey, any>, ReactiveEvent[]> = new Map();
 
@@ -97,6 +106,9 @@ const insert = (
   }
 };
 
+/**
+ * Executes all pending event notifications immediately instead of in the next microtask
+ */
 export function flushSync() {
   pending = false;
   const pendingEvents = scheduler.getPending();
@@ -159,6 +171,11 @@ type NotificationTarget = {
 
 let current: NotificationTarget | undefined;
 
+/**
+ * Creates a `reactive` data structure
+ *
+ * @param object Can be an object, an array, a `Map` etc.
+ */
 export function reactive<T extends object>(object: T): T {
   // avoids double proxying
   if (isReactive(object)) return object;
@@ -797,22 +814,29 @@ const getOwn = (proxy: Record<string, any>, symbol: symbol): any => {
   return Object.getOwnPropertyDescriptor(proxy, symbol)?.value;
 };
 
+/**
+ * Returns the underlying target object of a {@linkcode reactive} `Proxy`
+ */
 export function snapshot<T>(p: T): T {
   return isReactive(p) ? getOwn(p, ns.TARGET) : p;
 }
 
-export const isReactive = (
-  value: unknown,
-): value is Record<PropertyKey, any> => {
-  return (value !== null && typeof value === "object" &&
-    ns.IS_REACTIVE in value) ||
-    (typeof value === "function" && ns.IS_REACTIVE in value);
+/**
+ * Checks whether `data` is reactive
+ */
+export const isReactive = (data: unknown): data is Record<PropertyKey, any> => {
+  return (data !== null && typeof data === "object" &&
+    ns.IS_REACTIVE in data) ||
+    (typeof data === "function" && ns.IS_REACTIVE in data);
 };
 
+/**
+ * A `ReactiveLeaf` is a {@linkcode reactive} object with a `value` property having a {@linkcode Primitive} type
+ */
 export type ReactiveLeaf<T extends Primitive = Primitive> = { value: T };
 
 /**
- * By convention a reactive object with a `value` property having a primitive type
+ * Checks whether `data` is a {@linkcode ReactiveLeaf}
  */
 export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
   return (data !== null && typeof data === "object" &&
@@ -822,11 +846,29 @@ export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
 function noop() {}
 
 /**
- * Adds a listener to a reactive graph node
+ * Listens to a {@linkcode reactive} graph and runs the provided callback whenever a change or call is detected
  *
  * Does nothing if the argument is not reactive
  *
- * @return A cleanup function removing the listener
+ * @example
+ *
+ * ```ts
+ * import { reactive, listen } from "@f-stack/functorial";
+ *
+ * const state = reactive({ count: 0 });
+ *
+ * listen(state, (e) => {
+ *   // types are "create", "update", "delete", "apply" and "relabel"
+ *   if(e.type === "update" && e.path === ".count") {
+ *     console.log(`old: ${e.oldValue}, new: ${e.newValue}`);
+ *   }
+ * });
+ *
+ * state.count = 1;
+ * // old: 0, new: 1
+ * ```
+ *
+ * @return A cleanup function to remove the listener
  */
 export const listen = <T extends Record<PropertyKey, any>>(
   node: T,
@@ -839,6 +881,21 @@ export const listen = <T extends Record<PropertyKey, any>>(
 
 // derived
 
+/**
+ * Creates a derived {@linkcode reactive} with a `value` getter
+ *
+ * @example
+ *
+ * ```ts
+ * import { reactive, derived } from "@f-stack/functorial";
+ * import { assertEquals } from "@std/assert";
+ *
+ * const count = reactive({ value: 1 });
+ * const double = derived(() => count.value * 2);
+ *
+ * assertEquals(double.value, 2);
+ * ```
+ */
 export const derived = <T>(fn: () => T): { value: T } => {
   return reactive({
     get value() {

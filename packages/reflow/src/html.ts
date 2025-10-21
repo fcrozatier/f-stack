@@ -5,22 +5,30 @@ import { Boundary } from "./boundary.ts";
 import {
   type Attachment,
   type AttrSink,
-  type ClassListValue,
-  isAttachment,
+  type ClassListSink,
+  isAttachSink,
   isAttrSink,
   isClassSink,
   isOnSink,
   isStyleSink,
   type On,
-  type ReactiveStyles,
+  type StyleSink,
 } from "./sinks.ts";
 import { nanoId } from "./utils.ts";
 
-type TemplateTag = (
+/**
+ * Type of the {@linkcode html} template tag
+ */
+export type TemplateTag = (
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => DocumentFragment;
 
+/**
+ * Creates a `DocumentFragment` from the passed in template string.
+ *
+ * Accepts interpolated values corresponding to the different sinks.
+ */
 export const html: TemplateTag = (strings, ...values) => {
   let innerHTML = "";
 
@@ -28,8 +36,8 @@ export const html: TemplateTag = (strings, ...values) => {
   const attachments = new Map<string, Attachment>();
   const listeners = new Map<string, On>();
   const attributes = new Map<string, AttrSink>();
-  const classLists = new Map<string, ClassListValue>();
-  const styles = new Map<string, ReactiveStyles>();
+  const classLists = new Map<string, ClassListSink>();
+  const styles = new Map<string, StyleSink>();
 
   for (let index = 0; index < values.length; index++) {
     const string = strings[index]!;
@@ -54,7 +62,7 @@ export const html: TemplateTag = (strings, ...values) => {
       styles.set(id, data);
 
       innerHTML += ` style-${id} `;
-    } else if (isAttachment(data)) {
+    } else if (isAttachSink(data)) {
       attachments.set(id, data);
 
       innerHTML += ` attachment-${id} `;

@@ -2,12 +2,24 @@ import stripTypes from "@fcrozatier/type-strip";
 import { ensureDirSync, existsSync, walkSync } from "@std/fs";
 import { dirname, extname, globToRegExp, join } from "@std/path";
 
+/**
+ * Config options used for builds
+ *
+ * @prop {string[]} exts List of file extensions used to filter entries
+ * @prop {RegExp} matcher Regular expression pattern used to match entries
+ * @prop {RegExp} skip Regular expression pattern used to skip entries
+ */
 export const buildConfig = {
   exts: [".ts", ".css"],
   matcher: globToRegExp("+(packages|playground)/**"),
   skip: /(\.d|\.test|\.spec)\.ts$/,
 };
 
+/**
+ * Builds a source file
+ *
+ * @param path Path to the source file to build
+ */
 export const buildPath = (path: string) => {
   console.log(path);
 

@@ -13,10 +13,11 @@ export {
 export type {
   Attachment,
   AttrSink,
-  ClassSink,
+  ClassListSink,
   MapSink,
   On,
-  ReactiveStyles,
+  ShowSink,
   StyleSink,
   TextSink,
+  UnsafeHTML,
 } from "./sinks.ts";

@@ -9,18 +9,30 @@ import {
 import { isPrimitive, type Primitive } from "@f-stack/functorial/utils.ts";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
-import { isArraySink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
+import { isMapSink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
 
 let id = 0;
 
+/**
+ * A {@linkcode Boundary} is a live `DocumentFragment` with a start and end `Comment` nodes.
+ */
 export class Boundary<T = any> {
   #start: Comment;
   #end: Comment;
 
+  /** @internal */
   id: number;
+  /** @internal */
   range: Range;
+
+  /**
+   * Holds the data the {@linkcode Boundary} manages, which can be any of the different sorts of sinks, a {@linkcode ReactiveLeaf} or a {@linkcode Primitive}
+   */
   data: T;
 
+  /**
+   * Creates a new {@linkcode Boundary}
+   */
   constructor(data: T) {
     this.id = id++;
     this.range = new Range();
@@ -29,7 +41,10 @@ export class Boundary<T = any> {
     this.#end = document.createComment(`</${this.id}>`);
   }
 
-  get start() {
+  /**
+   * Returns the start `Comment` of the {@linkcode Boundary}
+   */
+  get start(): Comment {
     return this.#start;
   }
 
@@ -38,7 +53,10 @@ export class Boundary<T = any> {
     this.#start = comment;
   }
 
-  get end() {
+  /**
+   * Returns the end `Comment` of the {@linkcode Boundary}
+   */
+  get end(): Comment {
     return this.#end;
   }
 
@@ -47,11 +65,16 @@ export class Boundary<T = any> {
     this.#end = comment;
   }
 
-  toString() {
+  /**
+   * Returns a string representing this {@linkcode Boundary}
+   */
+  toString(): string {
     return `<!--<${this.id}>--><!--</${this.id}>-->`;
   }
 
   /**
+   * Removes the {@linkcode Boundary} content, leaving the start and end `Comment` in place.
+   *
    * Like `Range.deleteContents`
    */
   deleteContents() {
@@ -61,7 +84,11 @@ export class Boundary<T = any> {
   }
 
   /**
-   * Like `Element.remove`
+   * Removes the {@linkcode Boundary} from its parent node.
+   *
+   * This also removes the start and end `Comment`
+   *
+   * Like `Element.remove()`
    */
   remove() {
     this.range.setStartBefore(this.#start);
@@ -70,10 +97,9 @@ export class Boundary<T = any> {
   }
 
   /**
-   * Moves the boundary before the target provided they have a common parent by calling
-   * `parent.moveBefore`
+   * Moves the {@linkcode Boundary} before the target provided they have a common parent.
    *
-   * Like `Element.moveBefore`
+   * @param target The target `Node` where to move the {@linkcode Boundary} before
    */
   moveBefore(target: Node) {
     const start = this.start;
@@ -96,16 +122,22 @@ export class Boundary<T = any> {
     }
   }
 
-  get parentElement() {
+  /**
+   * Returns the {@linkcode Boundary}'s parent `Element` or null
+   */
+  get parentElement(): HTMLElement | null {
     return this.start.parentElement;
   }
 
+  /**
+   * Renders a {@linkcode Boundary} and sets up the required listeners for granular updates
+   */
   render() {
     const data = this.data;
 
     if (data instanceof DocumentFragment) {
       this.#end.before(data);
-    } else if (isArraySink(data)) {
+    } else if (isMapSink(data)) {
       const thisEnd = this.end;
       const values = data.values;
       const boundaries: [{ index: number; value: any }, Boundary][] = [];
@@ -453,7 +485,12 @@ export class Boundary<T = any> {
     }
   }
 
-  renderSafeSink(data: DocumentFragment | ReactiveLeaf | Primitive) {
+  /**
+   * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and also inserts nested `DocumentFragments` as-is
+   */
+  renderSafeSink(
+    data: DocumentFragment | ReactiveLeaf | Primitive,
+  ): (() => void) | undefined {
     const content = isReactiveLeaf(data) ? data.value : data;
 
     if (content instanceof DocumentFragment) {
@@ -487,6 +524,10 @@ export class Boundary<T = any> {
     });
   }
 
+  /**
+   * Replaces the existing children of a Boundary with a specified new set of children.
+   * These can be string or Node objects.
+   */
   replaceChildren(...nodes: (Node | string)[]) {
     this.range.setStartAfter(this.#start);
     this.range.setEndBefore(this.#end);

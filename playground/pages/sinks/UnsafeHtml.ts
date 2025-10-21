@@ -2,6 +2,9 @@ import { html } from "@f-stack/reflow";
 import { on, unsafeHTML } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
 
+/**
+ * `unsafeHTML` demo
+ */
 export const UnsafeHtmlPage = () => {
   // nullish values are not rendered
   let username;
@@ -18,7 +21,7 @@ export const UnsafeHtmlPage = () => {
     <p>unsafe: ${unsafeHTML("<em>HTML</em>")}</p>
     <div>
       <textarea ${on<HTMLTextAreaElement>({
-        "input": function () {
+        input: function () {
           unsafeInput.value = this.value;
         },
       })}></textarea>

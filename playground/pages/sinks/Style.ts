@@ -1,11 +1,11 @@
 import { html } from "@f-stack/reflow";
-import { on, type ReactiveStyles, style } from "@f-stack/reflow";
+import { on, style, type StyleSink } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
 
 export const Style = () => {
   const bg = reactive({ value: "#ffff00" });
   const weight = reactive({ value: 4 });
-  const styles: ReactiveStyles = reactive({
+  const styles: StyleSink = reactive({
     "--bg": bg,
     outline: "1px solid red",
     color: "red",

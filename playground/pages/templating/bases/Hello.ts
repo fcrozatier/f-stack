@@ -11,6 +11,9 @@ const Nested = () => {
   `;
 };
 
+/**
+ * Showcase simple interpolation
+ */
 export const Hello = () => {
   // Add data
   const name = "World";
