@@ -2,7 +2,8 @@
 
 _Web dev for the fun of it_
 
-The f-stack is a comprehensive set of tools letting you build web apps in a modern and fun way while exploring new frontiers:
+The f-stack is a comprehensive set of tools letting you build web apps in a
+modern and fun way while exploring new frontiers:
 
 - Free yourself from complex build chains
 - Experience functorial-reactivity, the next-gen reactivity system
