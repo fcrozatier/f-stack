@@ -221,22 +221,14 @@ export const html: TemplateTag = (strings, ...values) => {
             } else {
               element.removeAttribute(key);
             }
-            if (
-              nonReflectedAttributes
-                // @ts-ignore element has the constructor property
-                .get(element.constructor)?.includes(key)
-            ) {
+            if (isNonReflectedAttribute(element, key)) {
               // @ts-ignore element has property [key]
               element[key] = Boolean(value);
             }
           } else {
             element.setAttribute(key, String(value));
 
-            if (
-              nonReflectedAttributes
-                // @ts-ignore element has the constructor property
-                .get(element.constructor)?.includes(key)
-            ) {
+            if (isNonReflectedAttribute(element, key)) {
               // @ts-ignore element has property [key]
               element[key] = value;
             }
@@ -365,6 +357,7 @@ export const booleanAttributes = [
   "selected", // on <option>
 ];
 
-const nonReflectedAttributes = new Map([
-  [HTMLInputElement, ["value", "checked"]],
-]);
+function isNonReflectedAttribute(element: Element, key: string) {
+  return element instanceof HTMLInputElement &&
+    ["value", "checked"].includes(key);
+}
