@@ -1,10 +1,17 @@
 # F-Stack
 
-<em>Where the fun begins</em>
+_Web dev for the fun of it_
 
-Build web apps in a modern, fun and exciting way, and explore new frontiers:
+The f-stack is a comprehensive set of tools letting you build web apps in a modern and fun way while exploring new frontiers:
 
 - Free yourself from complex build chains
-- Discover functorial-reactivity, the next-gen reactivity system
-- Experience the peace of mind of the Reflow mental models, and think clearly about your code
-- Powerful f-kit effect system
+- Experience functorial-reactivity, the next-gen reactivity system
+- Discover powerful mental models that let you reason clearly about your code
+
+## [Functorial](./packages/functorial/README.md)
+
+The underlying reactivity system.
+
+## [Reflow](./packages/reflow/README.md)
+
+The `html` template tag and common web mappings for attributes, listeners etc.
