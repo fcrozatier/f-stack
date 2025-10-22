@@ -358,7 +358,7 @@ export interface TextSink {
 }
 
 /**
- * Creates a text sink from a {@linkcode reactive} object reference and key
+ * Creates a text sink from a {@linkcode reactive} object reference and a key
  *
  * __`text` sink vs `derived` sink__
  *

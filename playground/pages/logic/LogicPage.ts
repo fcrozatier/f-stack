@@ -9,15 +9,21 @@ export const LogicPage = () => {
     <button ${on({ click: () => count.value++ })}>
       Clicked ${count} ${derived(() => count.value === 1 ? "time" : "times")}
     </button>
-    ${show(
-      () => count.value > 10,
-      () => "Too big",
-    )} ${show(() => count.value < 5, () => count.value)} ${show(
-      () => count.value >= 5 && count.value <= 10,
-      () =>
-        html`
-          <span>${count} is between 5 and 10</span>
-        `,
-    )}
+
+    <p>
+      ${show(
+        () => count.value < 5,
+        () => count.value,
+        () =>
+          html`
+            <span>
+              ${show(() => count.value > 10, () => "Too big", () =>
+                html`
+                  ${count} is between 5 and 10
+                `)}
+            </span>
+          `,
+      )}
+    </p>
   `;
 };

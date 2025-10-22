@@ -15,7 +15,11 @@ export const LoopsPage = () => {
   const selected = reactive({ value: "red" });
 
   return html`
-    <h1 ${style({ "color": selected })}>Pick a color</h1>
+    <h1 ${style({
+      get color() {
+        return selected.value;
+      },
+    })}>Pick a color</h1>
 
     <div>
       ${map(colors, ({ value: color, index: i }) =>
