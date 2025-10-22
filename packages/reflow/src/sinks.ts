@@ -41,7 +41,7 @@ const ATTR_SINK = Symbol.for("attr sink");
 /**
  * Type of an {@linkcode attr} sink
  */
-export type AttrSink = Record<string, Primitive | ReactiveLeaf>;
+export type AttrSink = Record<string, Primitive>;
 
 /**
  * Creates an {@linkcode attr} sink that manages attributes on an `Element`

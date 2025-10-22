@@ -192,9 +192,7 @@ export const html: TemplateTag = (strings, ...values) => {
 
     element.removeAttribute(`attr-${id}`);
 
-    for (const [key, val] of Object.entries(attribute)) {
-      const value = val && typeof val === "object" ? val.value : val;
-
+    for (const [key, value] of Object.entries(attribute)) {
       if (booleanAttributes.includes(key)) {
         if (value) {
           element.setAttribute(key, "");

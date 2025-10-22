@@ -6,24 +6,26 @@ export const Attr = () => {
   const myAttr: AttrSink = reactive({
     id: "ok",
     type: "button",
-    disabled,
+    get disabled() {
+      return disabled.value;
+    },
   });
   const input = reactive({ text: "hello", number: 10 });
 
   return html`
-    <p>The attr() mini-functor manages attributes</p>
     <p>
       <button ${attr(myAttr)}>I'm a button</button>
     </p>
+    <h3>Manage non boolean attributes</h3>
     <p>
       <button ${on({
         click: () => {
-          myAttr["value"] = "0";
+          myAttr["value"] = 0;
         },
       })}>Add value attribute</button>
       <button ${on({
         click: () => {
-          myAttr["value"] = String(Number(myAttr["value"]) + 2);
+          myAttr["value"] = 2;
         },
       })}>Update value attribute</button>
       <button ${on({
@@ -32,6 +34,7 @@ export const Attr = () => {
         },
       })}>Remove value attribute</button>
     </p>
+    <h3>Manage boolean attributes</h3>
     <p>
       <button ${on({
         click: () => {
@@ -44,18 +47,22 @@ export const Attr = () => {
         },
       })}>Remove disabled attribute</button>
     </p>
-
+    <h2>Two-way bindings</h2>
     <div>
-      <input type="text" ${attr({ value: input.text })} ${on<HTMLInputElement>(
-        {
-          input: function () {
-            input.text = this.value;
-          },
+      <input type="text" ${attr({
+        get value() {
+          return input.text;
         },
-      )}>
-      <input type="number" ${attr({ value: input.number })} ${on<
-        HTMLInputElement
-      >({
+      })} ${on<HTMLInputElement>({
+        input: function () {
+          input.text = this.value;
+        },
+      })}>
+      <input type="number" ${attr({
+        get value() {
+          return input.number;
+        },
+      })} ${on<HTMLInputElement>({
         input: function () {
           input.number = this.valueAsNumber;
         },
