@@ -1,23 +1,42 @@
 # Functorial
 
-_The most granular and natural reactivity primitive_
+The reactivity primitive.
 
 ## Introduction
 
-We want a way to interact with web APIs in a faithful manner when we update our
-data.
+_The problem: we want a way to interact with web APIs in a faithful, reactive
+and declarative manner._
 
-To achieve this faithful communication between your templates and the DOM,
-functorial reactivity lets you not only map the data, but also the behavior to a
-corresponding interpretation in the DOM.
+Functorial reactivity achieves this by letting you not only map the data, but
+also the behaviors.
 
-For example `delete` an object property to remove a listener, call `unshift()`
-on a list to prepend data in the DOM. The idea is to use mutable structures and
-reflect their changes (transport their operations) to the DOM.
+For example, `delete` an object property to remove a listener, call `unshift()`
+on a list to prepend data in the DOM.
 
-As a consequence this yields the highest level of granularity as well as a
-cristal-clear mental model and a principled approach to manipulating web APIs
-declaratively.
+We always mutate the DOM for performance, so the idea is to use mutable
+structures and reflect their changes (transport their operations) to update the
+DOM.
+
+As a consequence, this approach yields
+
+- The highest level of granularity
+- A cristal-clear [mental model](#mental-model)
+- A principled approach to manipulating web APIs declaratively
+
+## Mental Model
+
+Functorial reactivity creates a faithful communication between your templates
+and the DOM.
+
+It is faithful as we both:
+
+- know the full story of what happens on the Template side
+- can reach whole APIs dynamically on the DOM side
+
+![Mental Model](<assets/mental model.png>)
+
+In practice, the `listen` callback gives us all the fine-grained details we need
+about the data update to perform the corresponding surgical DOM updates.
 
 ### Videos
 
@@ -34,8 +53,8 @@ Functorial is a low-level, framework-independent reactivity system. You can use
 it directly but will have to implement common web mappings (attributes,
 listeners etc.) yourself.
 
-These common functorial mappings are provided in [Reflow]() which is the natural
-companion and recommended way to use Functorial.
+These common functorial mappings are provided in [Reflow](../reflow/README.md)
+which is the natural companion and recommended way to use Functorial.
 
 ```sh
 deno add jsr:@f-stack/functorial
@@ -45,7 +64,7 @@ deno add jsr:@f-stack/functorial
 
 Here are a few raw examples showcasing some of the basic Functorial features.
 You can also have a look at the [Playground](../../playground/) for real life
-examples.
+examples and usage with Reflow.
 
 ### Reactive objects
 
@@ -131,16 +150,6 @@ array.push(4);
 //   args: [4]
 // }
 ```
-
-## Mental Model
-
-![Mental Model](<assets/mental model.png>)
-
-The `listen` callback gives us the fine-grained details we need about the data
-update to perform the corresponding surgical DOM updates. This way we can for
-example map `push` to `append` and the mental model is that we transport
-operations from Templates to their natural corresponding interpretation in the
-DOM.
 
 ## [Playground](../../playground/)
 

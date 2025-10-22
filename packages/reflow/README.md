@@ -1,0 +1,426 @@
+# Reflow
+
+Companion `html` template tag to functorial reactivity.
+
+## High level overview
+
+The Reflow template tag can interpolate values from various sinks to create
+functorial mappings with web APIs. This means that when the data is updated, or
+values are created or deleted, the corresponding API methods are called with the
+expected semantics. See below for a walkthrough of the various available sinks.
+
+The template tag returns a `DocumentFragment` that can be inserted in the DOM
+directly, and will automatically update when needed with the highest
+granularity.
+
+## Sinks
+
+### `on`
+
+Handles event listeners on an `Element`. Creates a functorial mapping with the
+element `addEventListener` and `removeEventListener` methods
+
+> [!TIP]
+> You can access a strongly typed `this` value by using a type argument with a
+> function declaration like below
+
+```ts
+import { html, type On, on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const OnDemo = () => {
+  const sayHi = () => console.log("hi");
+  const listeners: On<HTMLButtonElement> = reactive({});
+
+  return html`
+    <div>
+      <button ${on({ click: () => listeners.click = sayHi })}>Add sayHi</button>
+      <button ${on({
+        click: () => delete listeners.click,
+      })}>Remove sayHi</button>
+      <button ${on(listeners)}>Click</button>
+    </div>
+
+    <label>
+      this value
+      <input type="number" ${on<HTMLInputElement>({
+        input: function () {
+          console.log(this.valueAsNumber);
+        },
+      })}>
+    </label>
+  `;
+};
+```
+
+### `attr`
+
+Handles attributes on an `Element`. Creates a functorial mapping with the
+element `setAttribute` and `removeAttribute` methods.
+
+```ts
+import { attr, type AttrSink, html, on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const AttrDemo = () => {
+  const attributes: AttrSink = reactive({});
+
+  return html`
+    <div>
+      <button ${on({ click: () => attributes.id = "red" })}>Add id</button>
+      <button ${on({ click: () => attributes.id = "green" })}>Update id</button>
+      <button ${on({ click: () => delete attributes.id })}>Remove id</button>
+    </div>
+    <span ${attr(attributes)}></span>
+
+    <style>
+    #red { background: red; }
+    #green { background: green; }
+    span { display: inline-block; min-width: 10em; aspect-ratio: 1; margin-top: 1em; }
+    </style>
+  `;
+};
+```
+
+### `classList`
+
+Handles conditional classes on an `Element`. This creates a functorial mapping
+with the element `classList.add` and `classList.remove` methods.
+
+> [!TIP]
+> You can use getters in any reactive object to derive values like in this
+> example
+
+```ts
+import { attr, classList, html, on } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const ClassListDemo = () => {
+  const state = reactive({ notAllowed: true });
+
+  return html`
+    <button ${on({
+      click: () => state.notAllowed = !state.notAllowed,
+    })}>Toggle state</button>
+
+    <button ${attr({
+      get disabled() {
+        return state.notAllowed;
+      },
+    })} ${classList({
+      get "not-allowed opacity-50"() {
+        return state.notAllowed;
+      },
+    })}>Click</button>
+
+    <style>
+    .opacity-50 { opacity: 0.5; }
+    .not-allowed { cursor: not-allowed; }
+    </style>
+  `;
+};
+```
+
+### `text`
+
+Handles the creation and update of `Text` nodes.
+
+> [!TIP]
+> For convenience, you can also use a `Primitive` or `ReactiveLeaf` directly to
+> create `Text` nodes.
+
+```ts
+import { html, on, text } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const TextDemo = () => {
+  const primitive =
+    "strings, numbers or booleans (nullish values are omitted in a text sink)";
+  const leaf = reactive({
+    value: "A reactive leaf is a reactive with a primitive `value` key",
+  });
+  const state = reactive({ disabled: true });
+
+  return html`
+    <p>${primitive}</p>
+    <p>${leaf}</p>
+    <p>The state is disabled: ${text(state, "disabled")}</p>
+    <button ${on({
+      click: () => state.disabled = !state.disabled,
+    })}>Toggle state</button>
+  `;
+};
+```
+
+### `derived`
+
+As mentioned above we can directly interpolate a reactive leaf. It's actually a
+more general than that with `derived` sinks who can return `html` expressions,
+primitives or reactive leaves. It's a more powerful sink than `text` but it
+creates an additional `Proxy` wrapper.
+
+> [!TIP]
+> Use a `derived` sink when you need an expression or have a dynamic key,
+> otherwise use a `text` sink which is slightly more efficient.
+
+```ts
+import { html, on, text } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/reflow/reactivity";
+
+export const DerivedDemo = () => {
+  const state = reactive({ count: 0 });
+
+  return html`
+    <button ${on({ click: () => state.count++ })}>
+      ${text(state, "count")} ${derived(() =>
+        state.count === 1
+          ? html`
+            <em>Click</em>
+          `
+          : "Clicks"
+      )}
+    </button>
+  `;
+};
+```
+
+### `show`
+
+Handles conditional templates. It takes 3 callbacks: the first returns the
+condition, the second is the template, primitive or reactive leaf to use in the
+`true` case and the second is the template, primitive or reactive leaf to use in
+the `false` case.
+
+> [!TIP]
+> For simple ternary conditions, you can use a `derived` sink like below. But
+> the `derived` callback reruns every time its dependencies change, which can be
+> wasteful (even though the result is cached) as the function body is still
+> executed. The `show` sink addresses this by decoupling the evaluation of the
+> conditional expression from the templates expressions. **In short**, use
+> `derived` for simple conditionals and `show` for better node reuse with more
+> complex templates.
+
+```ts
+import { html } from "@f-stack/reflow";
+import { on, show } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/functorial";
+
+export const ShowDemo = () => {
+  const count = reactive({ value: 0 });
+
+  return html`
+    <button ${on({ click: () => count.value++ })}>
+      Clicked ${count} ${derived(() => count.value === 1 ? "time" : "times")}
+    </button>
+
+    <p>
+      ${show(
+        () => count.value < 5,
+        () => count.value,
+        () =>
+          html`
+            <span>
+              ${show(
+                () => count.value > 10,
+                () =>
+                  html`
+                    <strong>Too big</strong>
+                  `,
+                () =>
+                  html`
+                    ${count} is between 5 and 10
+                  `,
+              )}
+            </span>
+          `,
+      )}
+    </p>
+  `;
+};
+```
+
+### `map`
+
+Handles iterations over an array. Creates a funtorial mapping that allows
+mutating the array directly with `push`, `unshift`, `splice`, `sort` or any
+other `Array` method to respectively append, prepend, insert or move items etc.
+
+> [!NOTE]
+> Notice that we don't destructure items in the `map` callback of the below
+> example. That's because we want to pass the references and not the values for
+> reactivity. You'll find this refreshing: there's no magic, the passed by
+> reference / value semantics is the same as in JS, it's easy to reason about
+> and coherent throughout.
+
+> [!TIP]
+> The `map` functor updates it's data in a `ViewTransition` so you can easily
+> add some flair to your list updates with a few lines of CSS like below, no
+> animation library required.
+
+```ts
+import { html, map, on, text } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+const randint = () => {
+  return Math.round(Math.random() * 100);
+};
+
+export const MapDemo = () => {
+  const numbers = reactive([randint(), randint(), randint()]);
+
+  return html`
+    <h2>Insert</h2>
+    <p>
+      <button ${on({
+        click: () => numbers.push(randint()),
+      })}>push</button>
+      <button ${on({
+        click: () => numbers.unshift(randint()),
+      })}>unshift</button>
+      <button ${on({
+        click: () => numbers.splice(1, 0, randint()),
+      })}>
+        splice(1, 0, rand())
+      </button>
+    </p>
+    <h2>Remove</h2>
+    <p>
+      <button ${on({ click: () => numbers.pop() })}>pop</button>
+      <button ${on({ click: () => numbers.shift() })}>shift</button>
+    </p>
+    <h2>Update</h2>
+    <p>
+      <button ${on({
+        click: () => numbers[0]! += 1,
+      })}>increment index 0</button>
+      <button ${on({ click: () => numbers.sort() })}>sort</button>
+      <button ${on({ click: () => numbers.reverse() })}>reverse</button>
+    </p>
+    <ul>${map(numbers, (item) => {
+      return html`
+        <li>index ${text(item, "index")}: ${text(item, "value")}</li>
+      `;
+    })}</ul>
+
+    <style>
+    :root {
+      view-transition-name: none;
+    }
+    ::view-transition-group(*) {
+      animation-duration: 200ms;
+    }
+    ::view-transition-new(.li):only-child {
+      animation: in 250ms ease both;
+    }
+    ::view-transition-old(.li):only-child {
+      animation: out 200ms ease-out both;
+    }
+    @keyframes in {
+      from {
+        width: 100%;
+        height: 0;
+      }
+      to {
+        height: 100%;
+      }
+    }
+    @keyframes out {
+      to {
+        opacity: 0;
+        scale: 0.8;
+        transform: translateX(100px);
+      }
+    }
+    li {
+      view-transition-name: match-element;
+      view-transition-class: li;
+    }
+    </style>
+  `;
+};
+```
+
+### `style`
+
+Handles inline styles on an `Element`. Creates a functorial mapping with the
+element `style.setProperty` and `style.removeProperty` methods.
+
+> [!TIP]
+> You can also manipulate reactive --dashed ident properties this way like below
+
+```ts
+import { attr, html, on, style, type StyleSink } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const StyleDemo = () => {
+  const styles: StyleSink = reactive({
+    "--bg": "#ffff00",
+    color: "red",
+    background: "var(--bg, blue)",
+  });
+
+  return html`
+    <div>
+      <button ${on({
+        click: () => styles.outline = "1px solid red",
+      })}>Add outline</button>
+      <button ${on({
+        click: () => delete styles.outline,
+      })}>Remove outline</button>
+
+      <label>
+        Update background
+        <input type="color" ${attr({
+          get value() {
+            return styles["--bg"];
+          },
+        })} ${on<HTMLInputElement>({
+          input: function () {
+            styles["--bg"] = this.value;
+          },
+        })}>
+      </label>
+    </div>
+    <span ${style(styles)}></span>
+
+    <style>
+    span { display: inline-block; min-width: 10em; aspect-ratio: 1; margin-top: 1em; }
+    </style>
+  `;
+};
+```
+
+### `unsafeHTML`
+
+Handles raw HTML.
+
+> [!Warning] Only use this sink with trusted inputs
+
+```ts
+import { html, on, unsafeHTML } from "@f-stack/reflow";
+import { reactive } from "@f-stack/reflow/reactivity";
+
+export const UnsafeHTMLDemo = () => {
+  const unsafeInput = reactive({ value: "" });
+
+  return html`
+    <div>
+      <label for="html">Update HTML</label>
+      <textarea
+        id="html"
+        name="unsafe"
+        placeholder="<em>HTML</em>"
+        ${on<HTMLTextAreaElement>({
+          input: function () {
+            unsafeInput.value = this.value;
+          },
+        })}
+      ></textarea>
+    </div>
+    <output>${unsafeHTML(unsafeInput)}</output>
+    <style>
+    label { display: block; }
+    </style>
+  `;
+};
+```
