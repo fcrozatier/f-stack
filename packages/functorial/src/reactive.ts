@@ -870,11 +870,11 @@ function noop() {}
  *
  * @return A cleanup function to remove the listener
  */
-export const listen = <T extends Record<PropertyKey, any>>(
+export const listen = <T>(
   node: T,
   callback: ReactiveEventCallback,
 ): () => void => {
-  // doing the sanity check here to avoid spreading these checks all over the code
+  // doing the sanity check here to avoid spreading these checks all over the codebase
   if (!isReactive(node)) return noop;
   return getOwn(node, ns.ADD_LISTENER)(callback);
 };

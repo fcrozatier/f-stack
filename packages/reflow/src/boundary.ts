@@ -503,8 +503,6 @@ export class Boundary<T = any> {
       this.#end.before(String(content ?? ""));
     }
 
-    if (!isReactiveLeaf(data)) return;
-
     return listen(data, (e) => {
       if (e.type !== "update" && e.type !== "delete") return;
       if (e.path !== ".value") return;
