@@ -4,16 +4,16 @@ _The most granular and natural reactivity primitive_
 
 ## Introduction
 
-What we want is a way to interact with web APIs in a faithful manner when we
-update our data.
+We want a way to interact with web APIs in a faithful manner when we update our
+data.
 
 To achieve this faithful communication between your templates and the DOM,
 functorial reactivity lets you not only map the data, but also the behavior to a
 corresponding interpretation in the DOM.
 
 For example `delete` an object property to remove a listener, call `unshift()`
-on a list to prepend data in the DOM etc. The idea is to use mutable structures
-and reflect their changes (transport their operations) to the DOM.
+on a list to prepend data in the DOM. The idea is to use mutable structures and
+reflect their changes (transport their operations) to the DOM.
 
 As a consequence this yields the highest level of granularity as well as a
 cristal-clear mental model and a principled approach to manipulating web APIs

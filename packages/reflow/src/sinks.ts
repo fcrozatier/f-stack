@@ -68,13 +68,28 @@ const CLASSLIST_SINK = Symbol.for("classList sink");
 /**
  * Type of the {@linkcode classList} sink
  */
-export type ClassListSink = Record<
-  string,
-  boolean | null | undefined | ReactiveLeaf
->;
+export type ClassListSink = Record<string, boolean | null | undefined>;
 
 /**
  * Creates a {@linkcode classList} sink that handles conditional classes on an `Element`
+ *
+ * @example
+ *
+ * ```ts
+ * import { html, classList } from "@f-stack/reflow";
+ *
+ * export const ClassListDemo = () => {
+ *   return html`
+ *     <span ${classList({ highlight: true })}>Hi</span>
+ *
+ *     <style>
+ *       .highlight {
+ *         color: red;
+ *       }
+ *     </style>
+ *   `
+ * }
+ * ```
  */
 export function classList(classes: ClassListSink): ClassListSink {
   const classSink = reactive(classes);

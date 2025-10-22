@@ -1,29 +1,25 @@
-import { html } from "@f-stack/reflow";
+import { type ClassListSink, html } from "@f-stack/reflow";
 import { classList, on } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
 
 export const ClassListPage = () => {
-  const selected = reactive({ value: false });
-
-  const classes: Record<string, any> = reactive({
-    selected,
+  const classes: ClassListSink = reactive({
+    selected: false,
     get "not-selected"() {
-      return !selected.value;
+      return !this.selected;
     },
   });
 
   return html`
     <p>
-      <button ${classList(classes)}>
-        foo
-      </button>
+      <span ${classList(classes)}>foo</span>
     </p>
     <p>
-      <button ${on({ click: () => selected.value = !selected.value })}>
+      <button ${on({ click: () => classes.selected = !classes.selected })}>
         Toggle selection
       </button>
       <button ${on({ click: () => classes["highlight"] = true })}>
-        Insert highlight
+        Highlight
       </button>
       <button ${on({ click: () => delete classes["highlight"] })}>
         Remove highlight

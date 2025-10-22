@@ -249,8 +249,7 @@ export const html: TemplateTag = (strings, ...values) => {
 
     element.removeAttribute(`class-${id}`);
 
-    for (const [key, val] of Object.entries(classList)) {
-      const value = val && typeof val === "object" ? val.value : val;
+    for (const [key, value] of Object.entries(classList)) {
       const classes = key.split(" ");
 
       if (value) {
