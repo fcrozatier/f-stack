@@ -453,3 +453,8 @@ export function isUnsafeHTML(value: unknown): value is UnsafeHTML {
     value !== null &&
     Object.hasOwn(value, UNSAFE_SINK);
 }
+
+/**
+ * Return type of the {@linkcode derived} sink callback when inlined in the template
+ */
+export type DerivedSink = Primitive | ReactiveLeaf | DocumentFragment;

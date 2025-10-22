@@ -9,7 +9,13 @@ import {
 import { isPrimitive, type Primitive } from "@f-stack/functorial/utils";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
-import { isMapSink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.ts";
+import {
+  type DerivedSink,
+  isMapSink,
+  isShowSink,
+  isTextSink,
+  isUnsafeHTML,
+} from "./sinks.ts";
 
 let id = 0;
 
@@ -491,9 +497,7 @@ export class Boundary<T = any> {
   /**
    * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and also inserts nested `DocumentFragments` as-is
    */
-  renderDerivedSink(
-    data: DocumentFragment | ReactiveLeaf | Primitive,
-  ): (() => void) | undefined {
+  renderDerivedSink(data: DerivedSink): (() => void) | undefined {
     const content = isReactiveLeaf(data) ? data.value : data;
 
     if (content instanceof DocumentFragment) {
