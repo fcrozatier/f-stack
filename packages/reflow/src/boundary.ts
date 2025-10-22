@@ -137,6 +137,10 @@ export class Boundary<T = any> {
 
     if (data instanceof DocumentFragment) {
       this.#end.before(data);
+    } else if (isPrimitive(data)) {
+      this.#end.before(String(data ?? ""));
+    } else if (isReactiveLeaf(data)) {
+      this.renderDerivedSink(data);
     } else if (isMapSink(data)) {
       const thisEnd = this.end;
       const values = data.values;
@@ -439,7 +443,6 @@ export class Boundary<T = any> {
         textNode.data = String(e.newValue ?? "");
       });
     } else if (isShowSink(data)) {
-      const { ifCase, elseCase } = data;
       let cleanup: (() => void) | undefined;
 
       const setup = (
@@ -450,27 +453,25 @@ export class Boundary<T = any> {
         if (currentCase) {
           const content = currentCase();
           if (isPrimitive(content)) {
-            return this.renderSafeSink(
+            return this.renderDerivedSink(
               derived(currentCase) as ReactiveLeaf<Primitive>,
             );
           } else {
-            return this.renderSafeSink(content);
+            return this.renderDerivedSink(content);
           }
         }
       };
 
-      cleanup = setup(data.cond ? ifCase : elseCase);
+      cleanup = setup(data.cond ? data.ifCase : data.elseCase);
 
       listen(data, (e) => {
         // ensure we're in the right case before cleanup
         if (e.type !== "update" || e.path !== ".cond") return;
         cleanup?.();
         this.deleteContents();
-        cleanup = setup(e.newValue ? ifCase : elseCase);
+        cleanup = setup(e.newValue ? data.ifCase : data.elseCase);
       });
-    } else if (!isUnsafeHTML(data)) {
-      this.renderSafeSink(data as any);
-    } else {
+    } else if (isUnsafeHTML(data)) {
       // unsafe sink
       const template = document.createElement("template");
 
@@ -482,13 +483,15 @@ export class Boundary<T = any> {
             break;
         }
       });
+    } else {
+      throw new Error(`Unexpected sink: ${data}`);
     }
   }
 
   /**
    * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and also inserts nested `DocumentFragments` as-is
    */
-  renderSafeSink(
+  renderDerivedSink(
     data: DocumentFragment | ReactiveLeaf | Primitive,
   ): (() => void) | undefined {
     const content = isReactiveLeaf(data) ? data.value : data;
@@ -529,10 +532,12 @@ export class Boundary<T = any> {
    * These can be string or Node objects.
    */
   replaceChildren(...nodes: (Node | string)[]) {
-    this.range.setStartAfter(this.#start);
-    this.range.setEndBefore(this.#end);
-    this.range.deleteContents();
-    this.#end.before(...nodes);
+    if (this.parentElement) {
+      this.range.setStartAfter(this.#start);
+      this.range.setEndBefore(this.#end);
+      this.range.deleteContents();
+      this.#end.before(...nodes);
+    }
   }
 }
 
