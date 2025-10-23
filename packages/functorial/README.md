@@ -63,8 +63,8 @@ deno add jsr:@f-stack/functorial
 ## Examples
 
 Here are a few raw examples showcasing some of the basic Functorial features.
-You can also have a look at the [Playground](../../playground/README.md) for real life
-examples and usage with Reflow.
+You can also have a look at the [Playground](../../playground/README.md) for
+real life examples and usage with Reflow.
 
 ### Reactive objects
 
