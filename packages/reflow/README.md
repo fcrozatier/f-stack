@@ -13,6 +13,16 @@ The template tag returns a `DocumentFragment` that can be inserted in the DOM
 directly, and will automatically update when needed with the highest
 granularity.
 
+## Install
+
+Depending on your package manager:
+
+```sh
+deno add jsr:@f-stack/reflow
+pnpm i jsr:@f-stack/reflow
+npx jsr add @f-stack/reflow
+```
+
 ## Sinks
 
 ### `on`
@@ -182,8 +192,7 @@ export const TextDemo = () => {
 
 ### `derived`
 
-We can directly interpolate a reactive leaf and it's actually more general with
-`derived` sinks who can return `html` expressions, primitives or reactive
+A `derived` sink can return `html` expressions, primitives or reactive
 leaves. It's a more powerful sink than `text` but it creates an additional
 `Proxy` wrapper.
 
@@ -422,7 +431,7 @@ export const StyleDemo = () => {
 
 Handles raw HTML.
 
-> [!Warning] Only use this sink with trusted inputs
+> [!WARNING] Only use this sink with trusted inputs
 
 ```ts
 import { html, on, unsafeHTML } from "@f-stack/reflow";
@@ -452,3 +461,7 @@ export const UnsafeHTMLDemo = () => {
   `;
 };
 ```
+
+## [API](https://jsr.io/@f-stack/reflow/doc)
+
+Interactive API on JSR.

@@ -1,3 +1,9 @@
+/**
+ * Main Functorial exports
+ *
+ * @module
+ */
+
 export {
   derived,
   flushSync,
