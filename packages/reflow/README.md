@@ -1,6 +1,6 @@
 # Reflow
 
-Companion `html` template tag to functorial reactivity.
+The companion `html` template tag to functorial reactivity.
 
 ## High level overview
 
@@ -82,6 +82,36 @@ export const AttrDemo = () => {
 };
 ```
 
+### `attach`
+
+Runs a callback hook on the `Element` it is attached to.
+
+```ts
+import { reactive } from "@f-stack/reflow/reactivity";
+import { attach, html, on } from "@f-stack/reflow";
+
+export const AttachDemo = () => {
+  const form = reactive({ value: "Bob" });
+
+  return html`
+    <form>
+      <label>username:
+        <input type="text"
+          ${attach((i: HTMLInputElement) => {
+            i.defaultValue = form.value;
+          })}
+          ${on<HTMLInputElement>({
+            input: function () {
+              form.value = this.value;
+            },
+          })}>
+      </label>
+      <button type="reset">Reset</button>
+    </form>
+  `;
+};
+```
+
 ### `classList`
 
 Handles conditional classes on an `Element`. This creates a functorial mapping
@@ -154,14 +184,14 @@ export const TextDemo = () => {
 
 ### `derived`
 
-As mentioned above we can directly interpolate a reactive leaf. It's actually a
-more general than that with `derived` sinks who can return `html` expressions,
+We can directly interpolate a reactive leaf and it's actually
+more general with `derived` sinks who can return `html` expressions,
 primitives or reactive leaves. It's a more powerful sink than `text` but it
 creates an additional `Proxy` wrapper.
 
 > [!TIP]
 > Use a `derived` sink when you need an expression or have a dynamic key,
-> otherwise use a `text` sink which is slightly more efficient.
+> otherwise use a `text` sink for simple reads of a reactive object.
 
 ```ts
 import { html, on, text } from "@f-stack/reflow";
@@ -187,8 +217,8 @@ export const DerivedDemo = () => {
 ### `show`
 
 Handles conditional templates. It takes 3 callbacks: the first returns the
-condition, the second is the template, primitive or reactive leaf to use in the
-`true` case and the second is the template, primitive or reactive leaf to use in
+conditional value, the second is the template, primitive or reactive leaf to use in the
+`true` case and the third is the template, primitive or reactive leaf to use in
 the `false` case.
 
 > [!TIP]

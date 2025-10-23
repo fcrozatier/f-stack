@@ -11,7 +11,7 @@ export {
   unsafeHTML,
 } from "./sinks.ts";
 export type {
-  Attachment,
+  AttachSink,
   AttrSink,
   ClassListSink,
   MapSink,
@@ -19,5 +19,5 @@ export type {
   ShowSink,
   StyleSink,
   TextSink,
-  UnsafeHTML,
+  UnsafeSink,
 } from "./sinks.ts";

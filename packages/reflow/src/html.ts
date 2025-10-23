@@ -3,7 +3,7 @@ import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import { Boundary } from "./boundary.ts";
 import {
-  type Attachment,
+  type AttachSink,
   type AttrSink,
   type ClassListSink,
   isAttachSink,
@@ -33,7 +33,7 @@ export const html: TemplateTag = (strings, ...values) => {
   let innerHTML = "";
 
   const boundaries = new Map<number, Boundary>();
-  const attachments = new Map<string, Attachment>();
+  const attachments = new Map<string, AttachSink>();
   const listeners = new Map<string, On>();
   const attributes = new Map<string, AttrSink>();
   const classLists = new Map<string, ClassListSink>();

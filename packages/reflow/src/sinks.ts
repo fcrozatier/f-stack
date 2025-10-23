@@ -7,31 +7,58 @@ import type { Primitive } from "@f-stack/functorial/utils";
 
 // attach
 
-const ATTACHMENT_SINK = Symbol.for("attachment sink");
+const ATTACH_SINK = Symbol.for("attach sink");
 
 /**
- * Type of an {@linkcode attach} sink
+ * Type of a {@linkcode attach} sink
  */
-export interface Attachment<T extends Node = Element> {
-  (element: T): void | (() => void);
+export interface AttachSink<T extends Node = Element> {
+  (element: T): void;
 }
 
 /**
- * Creates an {@linkcode attach} sink
+ * Creates an {@linkcode attach} sink.
+ *
+ * The callback hook runs on the element it is attached to.
+ *
+ * @example
+ *
+ * ```ts
+ * import { attach, html, on } from "@f-stack/reflow";
+ * import { reactive } from "@f-stack/reflow/reactivity";
+ *
+ * export const UseDemo = () => {
+ *   const form = reactive({ value: "Bob" });
+ *
+ *   return html`
+ *     <form>
+ *       <label>username:
+ *         <input type="text"
+ *           ${attach((i: HTMLInputElement) => {
+ *             i.defaultValue = form.value;
+ *           })}
+ *           ${on<HTMLInputElement>({
+ *             input: function () {
+ *               form.value = this.value;
+ *             },
+ *           })}>
+ *       </label>
+ *       <button type="reset">Reset</button>
+ *     </form>
+ *   `;
+ * };
+ * ```
  */
-export function attach<T extends Node>(
-  attachment: Attachment<T>,
-): Attachment<T> {
-  const attachmentSink = reactive(attachment);
-  Object.defineProperty(attachmentSink, ATTACHMENT_SINK, { value: true });
-  return attachmentSink;
+export function attach<T extends Node>(hook: AttachSink<T>): AttachSink<T> {
+  Object.defineProperty(hook, ATTACH_SINK, { value: true });
+  return hook;
 }
 
 /**
  * Checks whether a sink is an {@linkcode attach} sink
  */
-export const isAttachSink = (value: unknown): value is Attachment => {
-  return typeof value === "function" && Object.hasOwn(value, ATTACHMENT_SINK);
+export const isAttachSink = (value: unknown): value is AttachSink => {
+  return typeof value === "function" && Object.hasOwn(value, ATTACH_SINK);
 };
 
 // attr
@@ -410,7 +437,7 @@ const UNSAFE_SINK = Symbol.for("unsafe sink");
 /**
  * Type of the {@linkcode unsafeHTML} sink
  */
-export interface UnsafeHTML extends ReactiveLeaf<string> {
+export interface UnsafeSink extends ReactiveLeaf<string> {
   /** @internal */
   [UNSAFE_SINK]?: true;
 }
@@ -437,7 +464,7 @@ export interface UnsafeHTML extends ReactiveLeaf<string> {
  */
 export function unsafeHTML(
   unsafe: string | ReactiveLeaf<string>,
-): UnsafeHTML {
+): UnsafeSink {
   const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
     ? reactive({ value: unsafe })
     : unsafe;
@@ -448,7 +475,7 @@ export function unsafeHTML(
 /**
  * Checks whether a sink is an {@link unsafeHTML} sink
  */
-export function isUnsafeHTML(value: unknown): value is UnsafeHTML {
+export function isUnsafeHTML(value: unknown): value is UnsafeSink {
   return typeof value === "object" &&
     value !== null &&
     Object.hasOwn(value, UNSAFE_SINK);
