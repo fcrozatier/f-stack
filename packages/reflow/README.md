@@ -96,15 +96,13 @@ export const AttachDemo = () => {
   return html`
     <form>
       <label>username:
-        <input type="text"
-          ${attach((i: HTMLInputElement) => {
-            i.defaultValue = form.value;
-          })}
-          ${on<HTMLInputElement>({
-            input: function () {
-              form.value = this.value;
-            },
-          })}>
+        <input type="text" ${attach((i: HTMLInputElement) => {
+          i.defaultValue = form.value;
+        })} ${on<HTMLInputElement>({
+          input: function () {
+            form.value = this.value;
+          },
+        })}>
       </label>
       <button type="reset">Reset</button>
     </form>
@@ -184,10 +182,10 @@ export const TextDemo = () => {
 
 ### `derived`
 
-We can directly interpolate a reactive leaf and it's actually
-more general with `derived` sinks who can return `html` expressions,
-primitives or reactive leaves. It's a more powerful sink than `text` but it
-creates an additional `Proxy` wrapper.
+We can directly interpolate a reactive leaf and it's actually more general with
+`derived` sinks who can return `html` expressions, primitives or reactive
+leaves. It's a more powerful sink than `text` but it creates an additional
+`Proxy` wrapper.
 
 > [!TIP]
 > Use a `derived` sink when you need an expression or have a dynamic key,
@@ -217,9 +215,9 @@ export const DerivedDemo = () => {
 ### `show`
 
 Handles conditional templates. It takes 3 callbacks: the first returns the
-conditional value, the second is the template, primitive or reactive leaf to use in the
-`true` case and the third is the template, primitive or reactive leaf to use in
-the `false` case.
+conditional value, the second is the template, primitive or reactive leaf to use
+in the `true` case and the third is the template, primitive or reactive leaf to
+use in the `false` case.
 
 > [!TIP]
 > For simple ternary conditions, you can use a `derived` sink like below. But
