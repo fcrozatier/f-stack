@@ -28,12 +28,12 @@ As a consequence, this approach yields
 Functorial reactivity creates a faithful communication between your templates
 and the DOM.
 
-It is faithful as we both:
+Faithful means that we both:
 
 - know the full story of what happens on the Template side
 - can reach whole APIs dynamically on the DOM side
 
-![Mental Model](<assets/mental model.png>)
+![Mental Model](<assets/mental_model.png>)
 
 In practice, the `listen` callback gives us all the fine-grained details we need
 about the data update to perform the corresponding surgical DOM updates.
@@ -63,8 +63,8 @@ deno add jsr:@f-stack/functorial
 ## Examples
 
 Here are a few raw examples showcasing some of the basic Functorial features.
-You can also have a look at the [Playground](../../playground/) for real life
-examples and usage with Reflow.
+You can also have a look at the [Playground](../../playground/README.md) for
+real life examples and usage with Reflow.
 
 ### Reactive objects
 
@@ -151,6 +151,6 @@ array.push(4);
 // }
 ```
 
-## [Playground](../../playground/)
+## [Playground](../../playground/README.md)
 
 ## API
