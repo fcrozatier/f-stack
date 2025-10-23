@@ -1,13 +1,13 @@
 import { html } from "@f-stack/reflow";
 import { attr } from "@f-stack/reflow";
-// @ts-ignore works
+// @ts-ignore works in Chrome
 // import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);
 
 const Nested = () => {
   return html`
-    <p data-scope="2">Another</p>
+    <p scope="2">Another</p>
   `;
 };
 
@@ -21,14 +21,14 @@ export const Hello = () => {
     "https://images.dog.ceo/breeds/terrier-patterdale/dog-1268559_640.jpg";
 
   return html`
-    <div data-scope="1">
+    <div scope="1">
       <h1>Hello ${name.toUpperCase()}</h1>
 
-      <img ${attr({ src, alt: `${name} dances` })} />
+      <img ${attr({ src, alt: "dog" })} width="300" />
 
       <p>A paragraph</p>
 
-      ${Nested}
+      ${Nested()}
     </div>
   `;
 };

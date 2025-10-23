@@ -1,4 +1,4 @@
-@scope ([data-scope="1"]) to ([data-scope]) {
+@scope ([scope="1"]) to ([scope]) {
   p {
     color: goldenrod;
     font-family: "Comic Sans MS", cursive;
