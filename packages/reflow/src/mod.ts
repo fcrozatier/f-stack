@@ -1,3 +1,9 @@
+/**
+ * Main Reflow exports
+ *
+ * @module
+ */
+
 export { html } from "./html.ts";
 export {
   attach,

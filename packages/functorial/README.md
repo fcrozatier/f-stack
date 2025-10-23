@@ -58,6 +58,8 @@ which is the natural companion and recommended way to use Functorial.
 
 ```sh
 deno add jsr:@f-stack/functorial
+pnpm i jsr:@f-stack/functorial
+npx jsr add @f-stack/functorial
 ```
 
 ## Examples
@@ -153,4 +155,6 @@ array.push(4);
 
 ## [Playground](../../playground/README.md)
 
-## API
+## [API](https://jsr.io/@f-stack/functorial/doc)
+
+Interactive API on JSR
