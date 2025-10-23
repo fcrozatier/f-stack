@@ -192,9 +192,9 @@ export const TextDemo = () => {
 
 ### `derived`
 
-A `derived` sink can return `html` expressions, primitives or reactive
-leaves. It's a more powerful sink than `text` but it creates an additional
-`Proxy` wrapper.
+A `derived` sink can return `html` expressions, primitives or reactive leaves.
+It's a more powerful sink than `text` but it creates an additional `Proxy`
+wrapper.
 
 > [!TIP]
 > Use a `derived` sink when you need an expression or have a dynamic key,
