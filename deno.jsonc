@@ -33,7 +33,7 @@
     }
   },
   "imports": {
-    "@fcrozatier/type-strip": "jsr:@fcrozatier/type-strip@^1.4.0",
+    "@fcrozatier/type-strip": "jsr:@fcrozatier/type-strip@^1.4.1",
     "@std/assert": "jsr:@std/assert@^1.0.15",
     "@std/async": "jsr:@std/async@^1.0.15",
     "@std/fs": "jsr:@std/fs@^1.0.19",
