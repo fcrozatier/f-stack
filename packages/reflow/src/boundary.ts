@@ -1,12 +1,10 @@
 import {
-  derived,
   isReactiveLeaf,
   listen,
   reactive,
-  type ReactiveLeaf,
   snapshot,
 } from "@f-stack/functorial";
-import { isPrimitive, type Primitive } from "@f-stack/functorial/utils";
+import { isPrimitive } from "@f-stack/functorial/utils";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import {
@@ -451,20 +449,9 @@ export class Boundary<T = any> {
     } else if (isShowSink(data)) {
       let cleanup: (() => void) | undefined;
 
-      const setup = (
-        currentCase:
-          | (() => DocumentFragment | ReactiveLeaf | Primitive)
-          | undefined,
-      ) => {
+      const setup = (currentCase: (() => DerivedSink) | undefined) => {
         if (currentCase) {
-          const content = currentCase();
-          if (isPrimitive(content)) {
-            return this.renderDerivedSink(
-              derived(currentCase) as ReactiveLeaf<Primitive>,
-            );
-          } else {
-            return this.renderDerivedSink(content);
-          }
+          return this.renderDerivedSink(currentCase());
         }
       };
 
