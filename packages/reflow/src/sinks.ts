@@ -265,9 +265,9 @@ const SHOW_SINK = Symbol.for("show sink");
  */
 export type ShowSink = {
   cond: boolean;
-  ifCase: () => DocumentFragment | ReactiveLeaf | Primitive;
+  ifCase: () => DerivedSink;
   elseCase?:
-    | (() => DocumentFragment | ReactiveLeaf | Primitive)
+    | (() => DerivedSink)
     | undefined;
 };
 
@@ -280,9 +280,9 @@ export type ShowSink = {
  */
 export function show(
   condition: () => boolean,
-  ifCase: () => DocumentFragment | ReactiveLeaf | Primitive,
+  ifCase: () => DerivedSink,
   elseCase?:
-    | (() => DocumentFragment | ReactiveLeaf | Primitive)
+    | (() => DerivedSink)
     | undefined,
 ): ShowSink {
   return reactive({
