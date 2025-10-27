@@ -5,6 +5,22 @@ import {
 } from "@f-stack/functorial";
 import type { Primitive } from "@f-stack/functorial/utils";
 
+export type ElementSink =
+  | AttachSink<any>
+  | AttrSink
+  | ClassListSink
+  | On<any, any>
+  | StyleSink;
+
+export type FragmentSink =
+  | DerivedSink
+  | MapSink
+  | ShowSink
+  | TextSink
+  | UnsafeSink;
+
+export type Sink = ElementSink | FragmentSink;
+
 // attach
 
 const ATTACH_SINK = Symbol.for("attach sink");

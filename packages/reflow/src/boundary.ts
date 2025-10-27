@@ -13,36 +13,32 @@ import {
   isShowSink,
   isTextSink,
   isUnsafeHTML,
+  type Sink,
 } from "./sinks.ts";
-
-let id = 0;
 
 /**
  * A {@linkcode Boundary} is a live `DocumentFragment` with a start and end `Comment` nodes.
  */
-export class Boundary<T = any> {
+export class Boundary {
   #start: Comment;
   #end: Comment;
 
-  /** @internal */
-  id: number;
   /** @internal */
   range: Range;
 
   /**
    * Holds the data the {@linkcode Boundary} manages, which can be any of the different sorts of sinks, a {@linkcode ReactiveLeaf} or a {@linkcode Primitive}
    */
-  data: T;
+  data: Sink;
 
   /**
    * Creates a new {@linkcode Boundary}
    */
-  constructor(data: T) {
-    this.id = id++;
+  constructor(data: Sink) {
     this.range = new Range();
     this.data = data;
-    this.#start = document.createComment(`<${this.id}>`);
-    this.#end = document.createComment(`</${this.id}>`);
+    this.#start = document.createComment("");
+    this.#end = document.createComment("");
   }
 
   /**
@@ -53,7 +49,6 @@ export class Boundary<T = any> {
   }
 
   set start(comment: Comment) {
-    assert(comment.data === `<${this.id}>`, "Unmatched ids");
     this.#start = comment;
   }
 
@@ -65,15 +60,7 @@ export class Boundary<T = any> {
   }
 
   set end(comment: Comment) {
-    assert(comment.data === `</${this.id}>`, "Unmatched ids");
     this.#end = comment;
-  }
-
-  /**
-   * Returns a string representing this {@linkcode Boundary}
-   */
-  toString(): string {
-    return `<!--<${this.id}>--><!--</${this.id}>-->`;
   }
 
   /**
