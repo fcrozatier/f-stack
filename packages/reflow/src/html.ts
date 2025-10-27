@@ -21,8 +21,8 @@ export type TemplateTag = (
 
 const templateCache = new WeakMap<TemplateStringsArray, Template>();
 
-let elementSinkId: number = 0;
-let fragmentSinkId: number = 0;
+let elementSinkId = 0;
+let fragmentSinkId = 0;
 
 /**
  * Creates a `DocumentFragment` from the passed in template string.
@@ -115,7 +115,7 @@ class Template {
 
     let element: Element;
     while ((element = walker.nextNode() as Element)) {
-      // nextNode returns a Node | null that we keep Elements
+      // nextNode returns a Node | null in general but we only keep Elements
       if (!element) break;
 
       if (element.tagName === "BOUNDARY") {
