@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Benchmark: Multiple data-* attributes</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        margin: 2rem;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      button {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Benchmark: querySelectorAll vs TreeWalker</h1>
+
+    <p>
+      This benchmark compares performance when matching elements with <code
+      >data-a</code>, <code>data-b</code>, or <code>data-c</code>.
+    </p>
+
+    <label>
+      Number of elements:
+      <input id="count" type="number" value="10000" min="1000" step="1000">
+    </label>
+    <button id="run">Run benchmark</button>
+
+    <pre id="output"></pre>
+
+    <section id="tree"></section>
+
+    <script>
+      const count = document.getElementById("count");
+      const run = document.getElementById("run");
+      const output = document.getElementById("output");
+      const tree = document.getElementById("tree");
+
+      function log(...args) {
+        output.textContent += args.join(" ") + "\n";
+      }
+
+      const ATTRS = ["data-a", "data-b", "data-c"];
+
+      function buildDOM(count) {
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+          const div = document.createElement("div");
+
+          // 10% tagged
+          if (Math.random() <= 0.1) {
+            // Assign one of the three attributes ~1/3 each
+            const attr = ATTRS[i % ATTRS.length];
+            div.setAttribute(attr, "");
+          }
+          frag.appendChild(div);
+        }
+        tree.replaceChildren(frag);
+      }
+
+      function benchmark(label, fn) {
+        const start = performance.now();
+        const result = fn();
+        const end = performance.now();
+        const time = end - start;
+        log(
+          `${label}: ${time.toFixed(2)} ms (${result.length} matches)`,
+        );
+        return time;
+      }
+
+      run.onclick = () => {
+        output.textContent = "";
+        const value = count.valueAsNumber;
+
+        log(`Building ${value} elements...`);
+        buildDOM(value);
+
+        log("\nRunning querySelectorAll with explicit attributes...");
+        const time1 = benchmark(
+          'querySelectorAll("[data-a],[data-b],[data-c]")',
+          () => document.querySelectorAll("[data-a],[data-b],[data-c]"),
+        );
+
+        log("\nRunning TreeWalker...");
+        const time2 = benchmark("TreeWalker", () => {
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_ELEMENT,
+          );
+          const results = [];
+          let node;
+          while ((node = walker.nextNode())) {
+            if (ATTRS.some((a) => node.hasAttribute(a))) {
+              results.push(node);
+            }
+          }
+          return results;
+        });
+
+        log("\nResult summary:");
+        log(
+          `Explicit selector is ${
+            (time2 / time1).toFixed(1)
+          }× faster than TreeWalker.`,
+        );
+      };
+    </script>
+  </body>
+</html>
