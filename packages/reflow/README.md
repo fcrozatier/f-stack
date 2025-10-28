@@ -119,11 +119,12 @@ document.body.append(Demo());
 
 ## Features
 
-- Structured and granular approach alined with functorial reactivity
-- Supports all common web mapping (attributes, listeners etc)
+- Structured and super granular approach thanks to functorial reactivity
+- Corollary: Optimal node reuse
+- Supports all common web mappings (attributes, listeners etc)
 - Supports all namespaces with `html`, `svg` and `math` template tags
 - No special syntax like `.prop`, `@on`
-- Corollary: faster parsing in one pass
+- Corollary: Faster parsing in one pass
 - Template caching
 - Strong type safety with no extension required
 - Supports type parameters for even stronger type safety
