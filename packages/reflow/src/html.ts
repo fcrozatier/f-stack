@@ -49,14 +49,18 @@ function makeTemplateTag(mode: Mode): TemplateTag {
 }
 
 /**
- * Creates a `DocumentFragment` from the passed in template string.
- *
- * Accepts interpolated values corresponding to the different sinks.
+ * The `HTML` template tag
  */
 export const html: TemplateTag = makeTemplateTag("html");
 
+/**
+ * The `SVG` template tag
+ */
 export const svg: TemplateTag = makeTemplateTag("svg");
 
+/**
+ * The `MathML` template tag
+ */
 export const math: TemplateTag = makeTemplateTag("math");
 
 function getTemplate(
