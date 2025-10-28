@@ -7,6 +7,7 @@ import {
   isAttrSink,
   isClassSink,
   isOnSink,
+  isPropSink,
   isStyleSink,
   type Sink,
 } from "./sinks.ts";
@@ -25,6 +26,7 @@ const ATTACH_SINK = "attach-🚰";
 const ATTR_SINK = "attr-🚰";
 const CLASSLIST_SINK = "classlist-🚰";
 const ON_SINK = "on-🚰";
+const PROP_SINK = "prop-🚰";
 const STYLE_SINK = "style-🚰";
 const BOUNDARY_SINK = "boundary-🚰";
 
@@ -72,6 +74,10 @@ function getTemplate(strings: TemplateStringsArray, ...sinks: Sink[]) {
       } else if (isOnSink(data)) {
         const id = elementSinkId++;
         innerHTML += ` ${ON_SINK}="${id}" `;
+        elementSinks.set(id, index);
+      } else if (isPropSink(data)) {
+        const id = elementSinkId++;
+        innerHTML += ` ${PROP_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else if (isStyleSink(data)) {
         const id = elementSinkId++;
@@ -338,6 +344,44 @@ class Template {
                 removeListener(key, oldValue);
                 break;
               }
+            }
+          });
+        }
+      }
+
+      // Prop
+      const propId = currentElement.getAttribute(PROP_SINK);
+      if (propId !== null) {
+        const index = this.elementSinks.get(+propId);
+        if (index !== undefined) {
+          const props = sinks[index];
+          assert(isPropSink(props));
+
+          const element = currentElement;
+          element.removeAttribute(PROP_SINK);
+
+          for (const [key, value] of Object.entries(props)) {
+            // @ts-ignore key in element
+            element[key] = value;
+          }
+
+          listen(props, (e) => {
+            if (e.type === "relabel" || !(typeof e.path === "string")) return;
+            const key = e.path.split(".")[1];
+            assertExists(key);
+            assert(key in element);
+
+            switch (e.type) {
+              case "create":
+              case "update": {
+                // @ts-ignore key in element
+                element[key] = e.newValue;
+                break;
+              }
+              case "delete":
+                // @ts-ignore key in element
+                element[key] = null;
+                break;
             }
           });
         }

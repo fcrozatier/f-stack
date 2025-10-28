@@ -11,6 +11,7 @@ export {
   classList,
   map,
   on,
+  prop,
   show,
   style,
   text,

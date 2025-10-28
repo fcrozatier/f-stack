@@ -1,17 +1,45 @@
 # Reflow
 
-The companion `html` template tag to functorial reactivity.
+`html` template tag based on [Functorial](../functorial/README.md).
 
-## High level overview
+## Features
 
-The Reflow template tag can interpolate values from various sinks to create
-functorial mappings with web APIs. This means that when the data is updated, or
-values are created or deleted, the corresponding API methods are called with the
-expected semantics. See below for a walkthrough of the various available sinks.
+- Structured and granular approach alined with functorial reactivity
+- Supports all common web mapping (attributes, listeners etc)
+- No special syntax like `.prop`, `@on`
+- Corollary: faster parsing in one pass
+- Template caching
+- Strong type safety with no extension required
+- Supports type parameters for even stronger type safety
 
-The template tag returns a `DocumentFragment` that can be inserted in the DOM
-directly, and will automatically update when needed with the highest
-granularity.
+## Mental model
+
+The Reflow template tags let us insert reactive data in our templates inside
+holes (sinks) to declaratively manipulate web APIs (`Attr`, `EventListener`,
+`DOMTokenList` etc)
+
+This is done in a very structured way, and there are two sorts of sinks:
+
+1. Element-level sinks
+
+- [`attr`](#attr)
+- [`classList`](#classlist)
+- [`on`](#on)
+- [`prop`](#prop)
+- [`style`](#style)
+
+2. Fragment-level sinks
+
+- [`derived`](#derived)
+- [`map`](#map)
+- [`show`](#show)
+- [`text`](#text)
+- [`unsafeHTML`](#unsafehtml)
+
+See below for a walkthrough of the various available sinks.
+
+The template tag returns a live `DocumentFragment` that can be directly inserted
+in the DOM.
 
 ## Install
 
@@ -31,7 +59,7 @@ Handles event listeners on an `Element`. Creates a functorial mapping with the
 element `addEventListener` and `removeEventListener` methods
 
 > [!TIP]
-> You can access a strongly typed `this` value by using a type argument with a
+> You can access a strongly typed `this` value by using a type parameter with a
 > function declaration like below
 
 ```ts
@@ -88,6 +116,31 @@ export const AttrDemo = () => {
     #green { background: green; }
     span { display: inline-block; min-width: 10em; aspect-ratio: 1; margin-top: 1em; }
     </style>
+  `;
+};
+```
+
+### `prop`
+
+Handles an `Element` properties.
+
+> [!TIP]
+> You can use a type parameter for element-specific props type safety
+
+```ts
+import { html, prop } from "@f-stack/reflow";
+
+export const PropPage = () => {
+  return html`
+    <form>
+      <input type="checkbox" ${prop<HTMLInputElement>({
+        indeterminate: true,
+      })}>
+      <input type="text" ${prop<HTMLInputElement>({ defaultValue: "Bob" })}>
+      <p>
+        <button type="reset">Reset</button>
+      </p>
+    </form>
   `;
 };
 ```
