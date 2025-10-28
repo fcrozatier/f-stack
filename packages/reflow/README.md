@@ -132,8 +132,8 @@ document.body.append(Demo());
 ## Mental model
 
 The Reflow template tags let us insert reactive data in our templates inside
-holes (sinks) to declaratively and reactively manipulate web APIs (`Attr`, `EventListener`,
-`DOMTokenList` etc). This is done in a very structured way.
+holes (sinks) to declaratively and reactively manipulate web APIs (`Attr`,
+`EventListener`, `DOMTokenList` etc). This is done in a very structured way.
 
 There are two sorts of sinks:
 
