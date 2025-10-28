@@ -4,7 +4,7 @@
  * @module
  */
 
-export { html } from "./html.ts";
+export { html, math, svg } from "./html.ts";
 export {
   attach,
   attr,
