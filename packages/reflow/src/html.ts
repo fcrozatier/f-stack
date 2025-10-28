@@ -21,6 +21,13 @@ export type TemplateTag = (
 
 const templateCache = new WeakMap<TemplateStringsArray, Template>();
 
+const ATTACH_SINK = "attach-🚰";
+const ATTR_SINK = "attr-🚰";
+const CLASSLIST_SINK = "classlist-🚰";
+const ON_SINK = "on-🚰";
+const STYLE_SINK = "style-🚰";
+const BOUNDARY_SINK = "boundary-🚰";
+
 let elementSinkId = 0;
 let fragmentSinkId = 0;
 
@@ -52,27 +59,27 @@ function getTemplate(strings: TemplateStringsArray, ...sinks: Sink[]) {
 
       if (isAttachSink(data)) {
         const id = elementSinkId++;
-        innerHTML += ` attach-🚰="${id}" `;
+        innerHTML += ` ${ATTACH_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else if (isAttrSink(data)) {
         const id = elementSinkId++;
-        innerHTML += ` attr-🚰="${id}" `;
+        innerHTML += ` ${ATTR_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else if (isClassSink(data)) {
         const id = elementSinkId++;
-        innerHTML += ` classlist-🚰="${id}" `;
+        innerHTML += ` ${CLASSLIST_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else if (isOnSink(data)) {
         const id = elementSinkId++;
-        innerHTML += ` on-🚰="${id}" `;
+        innerHTML += ` ${ON_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else if (isStyleSink(data)) {
         const id = elementSinkId++;
-        innerHTML += ` style-🚰="${id}" `;
+        innerHTML += ` ${STYLE_SINK}="${id}" `;
         elementSinks.set(id, index);
       } else {
         const id = fragmentSinkId++;
-        innerHTML += `<boundary boundary-🚰="${id}"></boundary>`;
+        innerHTML += `<boundary ${BOUNDARY_SINK}="${id}"></boundary>`;
         fragmentSinks.set(id, index);
       }
     }
@@ -119,7 +126,7 @@ class Template {
       if (!element) break;
 
       if (element.tagName === "BOUNDARY") {
-        const boundaryId = element.getAttribute("boundary-🚰");
+        const boundaryId = element.getAttribute(BOUNDARY_SINK);
         if (boundaryId !== null) {
           const index = this.fragmentSinks.get(+boundaryId);
           if (index !== undefined) {
@@ -141,27 +148,27 @@ class Template {
       }
 
       // Attach
-      const attachId = element.getAttribute("attach-🚰");
+      const attachId = element.getAttribute(ATTACH_SINK);
       if (attachId !== null) {
         const index = this.elementSinks.get(+attachId);
         if (index !== undefined) {
           const attach = sinks[index];
           assert(isAttachSink(attach));
 
-          element.removeAttribute("attach-🚰");
+          element.removeAttribute(ATTACH_SINK);
           attach(element);
         }
       }
 
       // Attr
-      const attrId = element.getAttribute("attr-🚰");
+      const attrId = element.getAttribute(ATTR_SINK);
       if (attrId !== null) {
         const index = this.elementSinks.get(+attrId);
         if (index !== undefined) {
           const attr = sinks[index];
           assert(isAttrSink(attr));
 
-          element.removeAttribute("attr-🚰");
+          element.removeAttribute(ATTR_SINK);
 
           for (const [key, value] of Object.entries(attr)) {
             if (booleanAttributes.includes(key)) {
@@ -213,14 +220,14 @@ class Template {
       }
 
       // ClassList
-      const classlistId = element.getAttribute("classlist-🚰");
+      const classlistId = element.getAttribute(CLASSLIST_SINK);
       if (classlistId !== null) {
         const index = this.elementSinks.get(+classlistId);
         if (index !== undefined) {
           const classList = sinks[index];
           assert(isClassSink(classList));
 
-          element.removeAttribute(`classlist-🚰`);
+          element.removeAttribute(CLASSLIST_SINK);
 
           for (const [key, value] of Object.entries(classList)) {
             const classes = key.split(" ");
@@ -261,14 +268,14 @@ class Template {
       }
 
       // On
-      const onId = element.getAttribute("on-🚰");
+      const onId = element.getAttribute(ON_SINK);
       if (onId !== null) {
         const index = this.elementSinks.get(+onId);
         if (index !== undefined) {
           const listeners = sinks[index];
           assert(isOnSink(listeners));
 
-          element.removeAttribute(`on-🚰`);
+          element.removeAttribute(ON_SINK);
 
           const elementListeners = new WeakMap();
 
@@ -339,7 +346,7 @@ class Template {
       }
 
       // Style
-      const styleId = element.getAttribute("style-🚰");
+      const styleId = element.getAttribute(STYLE_SINK);
       if (styleId !== null) {
         const index = this.elementSinks.get(+styleId);
         if (index !== undefined) {
@@ -352,7 +359,7 @@ class Template {
             "expected an html, svg or mathML element",
           );
 
-          element.removeAttribute(`style-🚰`);
+          element.removeAttribute(STYLE_SINK);
 
           for (const [key, value] of Object.entries(style)) {
             element.style.setProperty(key, String(value));
