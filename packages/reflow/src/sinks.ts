@@ -13,6 +13,7 @@ export type ElementSink =
   | AttrSink
   | ClassListSink
   | On<any, any>
+  | Prop<any>
   | StyleSink;
 
 /**
@@ -279,6 +280,66 @@ export function on<U = HTMLElement, V = HTMLElementEventMap>(
 export function isOnSink(value: unknown): value is On {
   return value !== null && typeof value === "object" &&
     Object.hasOwn(value, ON_SINK);
+}
+
+// prop
+
+const PROP_SINK = Symbol.for("prop sink");
+
+// https://github.com/Microsoft/TypeScript/issues/27024
+type Equals<X, Y> = (<T>() => T extends X ? 1 : 0) extends
+  <U>() => U extends Y ? 1 : 0 ? true : false;
+
+/** @internal */
+type WritableKeys<T> = {
+  [K in keyof T]:
+    Equals<{ [P in K]: T[K] }, { -readonly [P in K]: T[K] }> extends true ? K
+      : never;
+}[keyof T];
+
+/**
+ * Type of the {@linkcode prop} sink
+ */
+export type Prop<T extends Element = Element> = {
+  [K in WritableKeys<T> as T[K] extends Function ? never : K]?: T[K];
+};
+
+/**
+ * Creates a {@linkcode prop} sink that manages an `Element` properties
+ *
+ * @example
+ *
+ * ```ts
+ * import { html, prop } from "@f-stack/reflow";
+ *
+ * export const PropDemo = () => {
+ *   return html`
+ *     <form>
+ *       <input type="checkbox" ${prop<HTMLInputElement>({
+ *         indeterminate: true,
+ *       })}>
+ *       <input type="text" ${prop<HTMLInputElement>({ defaultValue: "Bob" })}>
+ *       <p>
+ *         <button type="reset">Reset</button>
+ *       </p>
+ *     </form>
+ *   `;
+ * };
+ *
+ * ```
+ */
+export function prop<U extends Element = HTMLElement>(props: Prop<U>): Prop {
+  const propSink = reactive(props);
+  Object.defineProperty(propSink, PROP_SINK, { value: true });
+  return propSink;
+}
+
+/**
+ * Checks whether a sink is an {@linkcode on} sink
+ */
+export function isPropSink(value: unknown): value is Prop {
+  return value !== null && typeof value === "object" &&
+    Object.hasOwn(value, PROP_SINK);
 }
 
 // show
