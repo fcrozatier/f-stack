@@ -478,9 +478,7 @@ export interface UnsafeSink extends ReactiveLeaf<string> {
  * }
  * ```
  */
-export function unsafeHTML(
-  unsafe: string | ReactiveLeaf<string>,
-): UnsafeSink {
+export function unsafeHTML(unsafe: string | ReactiveLeaf<string>): UnsafeSink {
   const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
     ? reactive({ value: unsafe })
     : unsafe;

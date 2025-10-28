@@ -120,13 +120,12 @@ class Template {
     const clone = document.importNode(this.fragment, true);
     const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
 
-    let element: Element;
-    while ((element = walker.nextNode() as Element)) {
-      // nextNode returns a Node | null in general but we only keep Elements
-      if (!element) break;
+    let currentElement: Element | null;
+    while ((currentElement = walker.nextNode() as Element | null)) {
+      if (!currentElement) break;
 
-      if (element.tagName === "BOUNDARY") {
-        const boundaryId = element.getAttribute(BOUNDARY_SINK);
+      if (currentElement.tagName === "BOUNDARY") {
+        const boundaryId = currentElement.getAttribute(BOUNDARY_SINK);
         if (boundaryId !== null) {
           const index = this.fragmentSinks.get(+boundaryId);
           if (index !== undefined) {
@@ -138,7 +137,7 @@ class Template {
             boundary.start = start;
             boundary.end = end;
 
-            element.replaceWith(start, end);
+            currentElement.replaceWith(start, end);
             boundary.render();
             walker.currentNode = end;
 
@@ -148,26 +147,27 @@ class Template {
       }
 
       // Attach
-      const attachId = element.getAttribute(ATTACH_SINK);
+      const attachId = currentElement.getAttribute(ATTACH_SINK);
       if (attachId !== null) {
         const index = this.elementSinks.get(+attachId);
         if (index !== undefined) {
           const attach = sinks[index];
           assert(isAttachSink(attach));
 
-          element.removeAttribute(ATTACH_SINK);
-          attach(element);
+          currentElement.removeAttribute(ATTACH_SINK);
+          attach(currentElement);
         }
       }
 
       // Attr
-      const attrId = element.getAttribute(ATTR_SINK);
+      const attrId = currentElement.getAttribute(ATTR_SINK);
       if (attrId !== null) {
         const index = this.elementSinks.get(+attrId);
         if (index !== undefined) {
           const attr = sinks[index];
           assert(isAttrSink(attr));
 
+          const element = currentElement;
           element.removeAttribute(ATTR_SINK);
 
           for (const [key, value] of Object.entries(attr)) {
@@ -220,13 +220,14 @@ class Template {
       }
 
       // ClassList
-      const classlistId = element.getAttribute(CLASSLIST_SINK);
+      const classlistId = currentElement.getAttribute(CLASSLIST_SINK);
       if (classlistId !== null) {
         const index = this.elementSinks.get(+classlistId);
         if (index !== undefined) {
           const classList = sinks[index];
           assert(isClassSink(classList));
 
+          const element = currentElement;
           element.removeAttribute(CLASSLIST_SINK);
 
           for (const [key, value] of Object.entries(classList)) {
@@ -249,14 +250,11 @@ class Template {
             switch (e.type) {
               case "create":
               case "update": {
-                const value = e.newValue;
-
-                if (value) {
+                if (e.newValue) {
                   element.classList.add(...classes);
                 } else {
                   element.classList.remove(...classes);
                 }
-
                 break;
               }
               case "delete":
@@ -268,15 +266,15 @@ class Template {
       }
 
       // On
-      const onId = element.getAttribute(ON_SINK);
+      const onId = currentElement.getAttribute(ON_SINK);
       if (onId !== null) {
         const index = this.elementSinks.get(+onId);
         if (index !== undefined) {
           const listeners = sinks[index];
           assert(isOnSink(listeners));
 
+          const element = currentElement;
           element.removeAttribute(ON_SINK);
-
           const elementListeners = new WeakMap();
 
           type ListenerParams =
@@ -294,7 +292,7 @@ class Template {
               ? params
               : [params];
             const ref = snapshot(listener);
-            const bound = ref.bind(element);
+            const bound = ref.bind(currentElement);
             element.addEventListener(type, bound, options);
             elementListeners.set(ref, bound);
           };
@@ -346,23 +344,24 @@ class Template {
       }
 
       // Style
-      const styleId = element.getAttribute(STYLE_SINK);
+      const styleId = currentElement.getAttribute(STYLE_SINK);
       if (styleId !== null) {
         const index = this.elementSinks.get(+styleId);
         if (index !== undefined) {
           const style = sinks[index];
           assert(isStyleSink(style));
           assert(
-            element instanceof HTMLElement ||
-              element instanceof SVGElement ||
-              element instanceof MathMLElement,
+            currentElement instanceof HTMLElement ||
+              currentElement instanceof SVGElement ||
+              currentElement instanceof MathMLElement,
             "expected an html, svg or mathML element",
           );
 
+          const element = currentElement;
           element.removeAttribute(STYLE_SINK);
 
           for (const [key, value] of Object.entries(style)) {
-            element.style.setProperty(key, String(value));
+            currentElement.style.setProperty(key, String(value));
           }
 
           listen(style, (e) => {
@@ -373,11 +372,11 @@ class Template {
             switch (e.type) {
               case "create":
               case "update": {
-                (element as HTMLElement).style.setProperty(key, e.newValue);
+                element.style.setProperty(key, e.newValue);
                 break;
               }
               case "delete":
-                (element as HTMLElement).style.removeProperty(key);
+                element.style.removeProperty(key);
                 break;
             }
           });
