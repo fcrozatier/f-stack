@@ -19,7 +19,8 @@ To cut a release, follow these steps:
 
 3. Create and land a PR
 
-4. Generate a release tag following this pattern `release-YYYY.MM.DD` and the release notes from github UI and manually update `Release.md` if needed
+4. Generate a release tag following this pattern `release-YYYY.MM.DD` and the
+   release notes from github UI and manually update `Release.md` if needed
 
 5. Publish as pre-release
 
