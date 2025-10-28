@@ -5,6 +5,9 @@ import {
 } from "@f-stack/functorial";
 import type { Primitive } from "@f-stack/functorial/utils";
 
+/**
+ * The type of an element sink
+ */
 export type ElementSink =
   | AttachSink<any>
   | AttrSink
@@ -12,6 +15,9 @@ export type ElementSink =
   | On<any, any>
   | StyleSink;
 
+/**
+ * The type of a fragment sink
+ */
 export type FragmentSink =
   | DerivedSink
   | MapSink
@@ -19,6 +25,9 @@ export type FragmentSink =
   | TextSink
   | UnsafeSink;
 
+/**
+ * A sink is either an {@linkcode ElementSink} or a {@linkcode FragmentSink}
+ */
 export type Sink = ElementSink | FragmentSink;
 
 // attach
