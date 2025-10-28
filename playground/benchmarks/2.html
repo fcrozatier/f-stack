@@ -55,12 +55,13 @@
         for (let i = 0; i < count; i++) {
           const div = document.createElement("div");
 
-          // 10% tagged
-          if (Math.random() <= 0.1) {
-            // Assign one of the three attributes ~1/3 each
-            const attr = ATTRS[i % ATTRS.length];
-            div.setAttribute(attr, "");
+          for (const attr of ATTRS) {
+            if (Math.random() <= 0.1) {
+              div.setAttribute(attr, "");
+              div.setAttribute("x", "");
+            }
           }
+
           frag.appendChild(div);
         }
         tree.replaceChildren(frag);
@@ -72,7 +73,7 @@
         const end = performance.now();
         const time = end - start;
         log(
-          `${label}: ${time.toFixed(2)} ms (${result.length} matches)`,
+          `${label}: ${time.toFixed(2)} ms (${result} matches)`,
         );
         return time;
       }
@@ -84,10 +85,71 @@
         log(`Building ${value} elements...`);
         buildDOM(value);
 
-        log("\nRunning querySelectorAll with explicit attributes...");
+        log(
+          "\nRunning querySelectorAll with explicit attributes [data-a],[data-b],[data-c]",
+        );
         const time1 = benchmark(
           'querySelectorAll("[data-a],[data-b],[data-c]")',
-          () => document.querySelectorAll("[data-a],[data-b],[data-c]"),
+          () => {
+            const elements = document.querySelectorAll(
+              "[data-a],[data-b],[data-c]",
+            );
+            for (const element of elements) {
+              if (element.hasAttribute("data-a")) {
+                console.log("data-a");
+              }
+              if (element.hasAttribute("data-b")) {
+                console.log("data-b");
+              }
+              if (element.hasAttribute("data-c")) {
+                console.log("data-c");
+              }
+            }
+            return elements.length;
+          },
+        );
+
+        log(
+          "\nRunning querySelectorAll single attribute x",
+        );
+        const timeX = benchmark(
+          'querySelectorAll("[x]")',
+          () => {
+            const elements = document.querySelectorAll("[x]");
+            for (const element of elements) {
+              if (element.hasAttribute("data-a")) {
+                console.log("data-a");
+              }
+              if (element.hasAttribute("data-b")) {
+                console.log("data-b");
+              }
+              if (element.hasAttribute("data-c")) {
+                console.log("data-c");
+              }
+            }
+            return elements.length;
+          },
+        );
+
+        log("\nRunning querySelectorAll one by one");
+        benchmark(
+          "querySelectorAll one by one",
+          () => {
+            const as = document.querySelectorAll("[data-a]");
+            for (const a of as) {
+              console.log("data-a");
+            }
+            const bs = document.querySelectorAll("[data-b]");
+            for (const b of bs) {
+              console.log("data-b");
+            }
+            const cs = document.querySelectorAll("[data-c]");
+            for (const c of cs) {
+              console.log("data-c");
+            }
+
+            return as.length + bs.length + cs.length;
+          },
         );
 
         log("\nRunning TreeWalker...");
@@ -96,14 +158,23 @@
             document.body,
             NodeFilter.SHOW_ELEMENT,
           );
-          const results = [];
+          let matches = 0;
           let node;
           while ((node = walker.nextNode())) {
-            if (ATTRS.some((a) => node.hasAttribute(a))) {
-              results.push(node);
+            if (node.hasAttribute("data-a")) {
+              console.log("data-a");
+              matches++;
+            }
+            if (node.hasAttribute("data-b")) {
+              console.log("data-b");
+              matches++;
+            }
+            if (node.hasAttribute("data-c")) {
+              console.log("data-c");
+              matches++;
             }
           }
-          return results;
+          return matches;
         });
 
         log("\nResult summary:");
