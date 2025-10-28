@@ -2,10 +2,126 @@
 
 `html` template tag based on [Functorial](../functorial/README.md).
 
+## Overview
+
+```ts
+import { attr, html, map, on, svg } from "@f-stack/reflow";
+import { derived, reactive } from "@f-stack/reflow/reactivity";
+
+type Circle = {
+  radius: number;
+  color: string;
+};
+
+const randint = () => {
+  return Math.random() * 200;
+};
+
+const Demo = () => {
+  const newCircle: Circle = { radius: 10, color: "#00ffff" };
+  const circles: Circle[] = reactive([
+    { radius: 100, color: "#ff00ff" },
+    { radius: 20, color: "#ffff00" },
+  ]);
+
+  return html`
+    <div>
+      <label for="radius">radius</label>
+      <input
+        id="radius"
+        type="number"
+        min="0"
+        max="100"
+        step="10"
+        value="10"
+        ${on<HTMLInputElement>({
+          input: function () {
+            newCircle.radius = this.valueAsNumber;
+          },
+        })}
+      >
+      <label for="color">color</label>
+      <input id="color" type="color" value="#00ffff" ${on({
+        input: function () {
+          newCircle.color = this.value;
+        },
+      })}>
+      <button ${on({
+        click: () => circles.push(newCircle),
+      })}>Add circle</button>
+    </div>
+
+    <svg
+      width="300"
+      height="300"
+      viewBox="0 0 300 300"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      ${map(circles, (circle) => {
+        return svg`
+          <circle ${attr({
+            cx: randint(),
+            cy: randint(),
+            r: circle.value.radius,
+            fill: circle.value.color,
+          })} />
+        `;
+      })}
+    </svg>
+
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <mrow>
+        <mtext>Total area = </mtext>
+        <munderover>
+          <mo>∑</mo>
+          <mrow>
+            <mi>i</mi><mo>=</mo><mn>0</mn>
+          </mrow>
+          <mn>${derived(() => circles.length)}</mn>
+        </munderover>
+        <mrow>
+          <mi>π</mi>
+          <msup>
+            <msub><mi>r</mi><mi>i</mi></msub>
+            <mn>2</mn>
+          </msup>
+          <mo>=</mo>
+          <mn>${derived(() =>
+            Math.round(
+              circles.reduce(
+                (acc, curr) => acc + Math.PI * curr.radius ** 2,
+                0,
+              ),
+            )
+          )}</mn>
+        </mrow>
+      </mrow>
+    </math>
+
+    <style>
+    body {
+      display: grid;
+      place-items: center;
+      gap: 2rem;
+      margin: 2rem;
+    }
+    div {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    </style>
+  `;
+};
+
+document.body.append(Demo());
+```
+
 ## Features
 
 - Structured and granular approach alined with functorial reactivity
 - Supports all common web mapping (attributes, listeners etc)
+- Supports all namespaces with `html`, `svg` and `math` template tags
 - No special syntax like `.prop`, `@on`
 - Corollary: faster parsing in one pass
 - Template caching
@@ -15,10 +131,10 @@
 ## Mental model
 
 The Reflow template tags let us insert reactive data in our templates inside
-holes (sinks) to declaratively manipulate web APIs (`Attr`, `EventListener`,
-`DOMTokenList` etc)
+holes (sinks) to declaratively and reactively manipulate web APIs (`Attr`, `EventListener`,
+`DOMTokenList` etc). This is done in a very structured way.
 
-This is done in a very structured way, and there are two sorts of sinks:
+There are two sorts of sinks:
 
 1. Element-level sinks
 
