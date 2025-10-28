@@ -12,8 +12,14 @@ import {
   type Sink,
 } from "./sinks.ts";
 
+type Mode = "html" | "svg" | "math";
+
 /**
- * Type of the {@linkcode html} template tag
+ * Type of the template tag functions
+ *
+ * @see {@linkcode html}
+ * @see {@linkcode svg}
+ * @see {@linkcode math}
  */
 export type TemplateTag = (
   strings: TemplateStringsArray,
@@ -30,24 +36,42 @@ const PROP_SINK = "prop-🚰";
 const STYLE_SINK = "style-🚰";
 const BOUNDARY_SINK = "boundary-🚰";
 
+const BOUNDARY_ELEMENT = "boundary";
+
 let elementSinkId = 0;
 let fragmentSinkId = 0;
 
-/**
- * Creates a `DocumentFragment` from the passed in template string.
- *
- * Accepts interpolated values corresponding to the different sinks.
- */
-export const html: TemplateTag = (strings, ...sinks) => {
-  const template = getTemplate(strings, ...sinks);
-  return template.hydrate(sinks);
-};
+function makeTemplateTag(mode: Mode): TemplateTag {
+  return ((strings, ...sinks) => {
+    const template = getTemplate(mode, strings, ...sinks);
+    return template.hydrate(sinks);
+  });
+}
 
-function getTemplate(strings: TemplateStringsArray, ...sinks: Sink[]) {
+/**
+ * The `HTML` template tag
+ */
+export const html: TemplateTag = makeTemplateTag("html");
+
+/**
+ * The `SVG` template tag
+ */
+export const svg: TemplateTag = makeTemplateTag("svg");
+
+/**
+ * The `MathML` template tag
+ */
+export const math: TemplateTag = makeTemplateTag("math");
+
+function getTemplate(
+  mode: Mode,
+  strings: TemplateStringsArray,
+  ...sinks: Sink[]
+) {
   let template = templateCache.get(strings);
 
   if (!template) {
-    let innerHTML = "";
+    let innerHTML = mode !== "html" ? `<${mode}>` : "";
 
     // sink id - sink index
     const elementSinks = new Map<number, number>();
@@ -85,17 +109,20 @@ function getTemplate(strings: TemplateStringsArray, ...sinks: Sink[]) {
         elementSinks.set(id, index);
       } else {
         const id = fragmentSinkId++;
-        innerHTML += `<boundary ${BOUNDARY_SINK}="${id}"></boundary>`;
+        innerHTML +=
+          `<${BOUNDARY_ELEMENT} ${BOUNDARY_SINK}="${id}"></${BOUNDARY_ELEMENT}>`;
         fragmentSinks.set(id, index);
       }
     }
 
     innerHTML += strings[strings.length - 1];
+    innerHTML += mode !== "html" ? `</${mode}>` : "";
 
     const templateElement = document.createElement("template");
     templateElement.innerHTML = innerHTML;
 
     template = new Template(
+      mode,
       templateElement.content,
       elementSinks,
       fragmentSinks,
@@ -108,15 +135,18 @@ function getTemplate(strings: TemplateStringsArray, ...sinks: Sink[]) {
 }
 
 class Template {
+  mode: Mode;
   fragment: DocumentFragment;
   elementSinks: Map<number, number>;
   fragmentSinks: Map<number, number>;
 
   constructor(
+    mode: Mode,
     fragment: DocumentFragment,
     elementSinks: Map<number, number>,
     fragmentSinks: Map<number, number>,
   ) {
+    this.mode = mode;
     this.fragment = fragment;
     this.elementSinks = elementSinks;
     this.fragmentSinks = fragmentSinks;
@@ -130,7 +160,7 @@ class Template {
     while ((currentElement = walker.nextNode() as Element | null)) {
       if (!currentElement) break;
 
-      if (currentElement.tagName === "BOUNDARY") {
+      if (currentElement.tagName.toLowerCase() === BOUNDARY_ELEMENT) {
         const boundaryId = currentElement.getAttribute(BOUNDARY_SINK);
         if (boundaryId !== null) {
           const index = this.fragmentSinks.get(+boundaryId);
@@ -426,6 +456,15 @@ class Template {
           });
         }
       }
+    }
+
+    if (this.mode !== "html") {
+      const wrapper = clone.firstElementChild;
+      const result = document.createDocumentFragment();
+      if (!wrapper) return result;
+      // no `children` spreading to avoid array conversion from `HTMLCollection`
+      while (wrapper.firstChild) result.append(wrapper.firstChild);
+      return result;
     }
 
     return clone;
