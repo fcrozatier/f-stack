@@ -114,7 +114,8 @@ const Demo = () => {
   `;
 };
 
-document.body.append(Demo());
+// Directly append to your document body:
+// document.body.append(Demo());
 ```
 
 ## Features
