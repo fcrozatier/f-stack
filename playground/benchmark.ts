@@ -1,19 +1,32 @@
 import { html } from "../packages/reflow/src/html.ts";
-import { Counter } from "./pages/reactivity/1-state-and-derived/Counter.ts";
 
-const COUNT = 1000;
+function median(arr: number[]) {
+  const length = arr.length;
 
-export const Benchmark = () => {
+  if (length === 0) throw new Error("Empty array");
+
+  const lowerMiddleIndex = Math.floor((length - 1) / 2);
+  const upperMiddleIndex = Math.ceil((length - 1) / 2);
+
+  return (arr[lowerMiddleIndex]! + arr[upperMiddleIndex]!) / 2;
+}
+
+export const Benchmark = (count: number, fn: (...args: any[]) => any) => {
+  const durations: number[] = [];
   const start = performance.now();
 
-  for (let i = 0; i < COUNT; i++) {
-    Counter();
+  for (let i = 0; i < count; i++) {
+    const before = performance.now();
+    fn();
+    const after = performance.now();
+    durations.push(+(after - before).toFixed(2));
   }
 
   const end = performance.now();
 
   const duration = (end - start).toFixed(2);
-  const avg = (+duration / COUNT).toFixed(2);
+  const avg = (+duration / count).toFixed(2);
+  const med = median(durations.toSorted());
 
   return html`
     <p>
@@ -21,6 +34,9 @@ export const Benchmark = () => {
     </p>
     <p>
       Average render time ${avg}ms
+    </p>
+    <p>
+      Median render time ${med.toFixed(2)}ms
     </p>
   `;
 };

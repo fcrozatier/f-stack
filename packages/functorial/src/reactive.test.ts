@@ -206,7 +206,7 @@ Deno.test("glitch free (diamond)", () => {
     },
   });
 
-  // a naive depth-first synchronous event updates strategy would cause the chain of recomputations a -> b -> d -> (then) c -> (then again) d and we catch the glitch in the first update of d
+  // a naive depth-first synchronous event update strategy would cause the chain of recomputations a -> b -> d -> (then) c -> (then again) d and we catch the glitch in the first update of d
   let seenGlitch = false;
   const d = reactive({
     get d() {

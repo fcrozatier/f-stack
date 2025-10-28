@@ -1,9 +1,10 @@
 import { listen, reactive } from "@f-stack/functorial";
-import { attach, attr, html, on } from "@f-stack/reflow";
+import { attach, attr, html, on, show } from "@f-stack/reflow";
 
 export const AttachPage = () => {
   const form = reactive({ value: "Bob" });
   const color = reactive({ value: "#40E0D0" });
+  const display = reactive({ value: true });
 
   return html`
     <form>
@@ -29,34 +30,49 @@ export const AttachPage = () => {
           color.value = this.value;
         },
       })}>
+      <button ${on({
+        click: () => {
+          display.value = !display.value;
+        },
+      })}>Show</button>
     </div>
 
-    <canvas width="300" height="300" ${attach(
-      (canvas: HTMLCanvasElement) => {
-        const context = canvas.getContext("2d");
+    ${show(() => display.value, () =>
+      html`
+        <canvas width="300" height="300" ${attach(
+          (canvas: HTMLCanvasElement) => {
+            const context = canvas.getContext("2d");
 
-        if (context) {
-          const draw = (color: string) => {
-            context.fillStyle = color;
-            context.fillRect(0, 0, 200, 200);
-          };
+            if (context) {
+              const draw = (color: string) => {
+                context.fillStyle = color;
+                context.fillRect(0, 0, 200, 200);
+              };
 
-          draw(color.value);
+              draw(color.value);
 
-          listen(color, (e) => {
-            if (e.type !== "update") return;
-            draw(e.newValue);
-          });
-        }
-      },
-    )}>Enable JS</canvas>
+              listen(color, (e) => {
+                console.log(e);
+                if (e.type !== "update") return;
+                draw(e.newValue);
+              });
+            }
+          },
+        )}>Enable JS</canvas>
+      `)}
 
     <style>
+    html { scrollbar-gutter: stable; }
     div {
       margin-top: 1em;
+      display: flex;
+      align-items: center;
+      justify-items: stretch;
+      gap: 1em;
     }
     canvas {
       display: block;
+      max-height: 70vmin;
       margin-inline: auto;
       margin-top: 1em;
     }

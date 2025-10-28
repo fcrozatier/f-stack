@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Benchmark: Multiple data-* attributes</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        margin: 2rem;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      button {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Benchmark: querySelectorAll vs TreeWalker</h1>
+
+    <p>
+      This benchmark compares performance when matching elements with <code
+      >data-a</code>, <code>data-b</code>, or <code>data-c</code>.
+    </p>
+
+    <label>
+      Number of elements:
+      <input id="count" type="number" value="10000" min="1000" step="1000">
+    </label>
+    <button id="run">Run benchmark</button>
+
+    <pre id="output"></pre>
+
+    <section id="tree"></section>
+
+    <script>
+      const count = document.getElementById("count");
+      const run = document.getElementById("run");
+      const output = document.getElementById("output");
+      const tree = document.getElementById("tree");
+
+      function log(...args) {
+        output.textContent += args.join(" ") + "\n";
+      }
+
+      const ATTRS = ["data-a", "data-b", "data-c"];
+
+      function buildDOM(count) {
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < count; i++) {
+          const div = document.createElement("div");
+
+          for (const attr of ATTRS) {
+            if (Math.random() <= 0.1) {
+              div.setAttribute(attr, "");
+              div.setAttribute("x", "");
+            }
+          }
+
+          frag.appendChild(div);
+        }
+        tree.replaceChildren(frag);
+      }
+
+      function benchmark(label, fn) {
+        const start = performance.now();
+        const result = fn();
+        const end = performance.now();
+        const time = end - start;
+        log(
+          `${label}: ${time.toFixed(2)} ms (${result} matches)`,
+        );
+        return time;
+      }
+
+      run.onclick = () => {
+        output.textContent = "";
+        const value = count.valueAsNumber;
+
+        log(`Building ${value} elements...`);
+        buildDOM(value);
+
+        log(
+          "\nRunning querySelectorAll with explicit attributes [data-a],[data-b],[data-c]",
+        );
+        const time1 = benchmark(
+          'querySelectorAll("[data-a],[data-b],[data-c]")',
+          () => {
+            const elements = document.querySelectorAll(
+              "[data-a],[data-b],[data-c]",
+            );
+            for (const element of elements) {
+              if (element.hasAttribute("data-a")) {
+                console.log("data-a");
+              }
+              if (element.hasAttribute("data-b")) {
+                console.log("data-b");
+              }
+              if (element.hasAttribute("data-c")) {
+                console.log("data-c");
+              }
+            }
+            return elements.length;
+          },
+        );
+
+        log(
+          "\nRunning querySelectorAll single attribute x",
+        );
+        const timeX = benchmark(
+          'querySelectorAll("[x]")',
+          () => {
+            const elements = document.querySelectorAll("[x]");
+            for (const element of elements) {
+              if (element.hasAttribute("data-a")) {
+                console.log("data-a");
+              }
+              if (element.hasAttribute("data-b")) {
+                console.log("data-b");
+              }
+              if (element.hasAttribute("data-c")) {
+                console.log("data-c");
+              }
+            }
+            return elements.length;
+          },
+        );
+
+        log("\nRunning querySelectorAll one by one");
+        benchmark(
+          "querySelectorAll one by one",
+          () => {
+            const as = document.querySelectorAll("[data-a]");
+            for (const a of as) {
+              console.log("data-a");
+            }
+            const bs = document.querySelectorAll("[data-b]");
+            for (const b of bs) {
+              console.log("data-b");
+            }
+            const cs = document.querySelectorAll("[data-c]");
+            for (const c of cs) {
+              console.log("data-c");
+            }
+
+            return as.length + bs.length + cs.length;
+          },
+        );
+
+        log("\nRunning TreeWalker...");
+        const time2 = benchmark("TreeWalker", () => {
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_ELEMENT,
+          );
+          let matches = 0;
+          let node;
+          while ((node = walker.nextNode())) {
+            if (node.hasAttribute("data-a")) {
+              console.log("data-a");
+              matches++;
+            }
+            if (node.hasAttribute("data-b")) {
+              console.log("data-b");
+              matches++;
+            }
+            if (node.hasAttribute("data-c")) {
+              console.log("data-c");
+              matches++;
+            }
+          }
+          return matches;
+        });
+
+        log("\nResult summary:");
+        log(
+          `Explicit selector is ${
+            (time2 / time1).toFixed(1)
+          }× faster than TreeWalker.`,
+        );
+      };
+    </script>
+  </body>
+</html>

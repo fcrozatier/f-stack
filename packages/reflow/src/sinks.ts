@@ -5,6 +5,31 @@ import {
 } from "@f-stack/functorial";
 import type { Primitive } from "@f-stack/functorial/utils";
 
+/**
+ * The type of an element sink
+ */
+export type ElementSink =
+  | AttachSink<any>
+  | AttrSink
+  | ClassListSink
+  | On<any, any>
+  | StyleSink;
+
+/**
+ * The type of a fragment sink
+ */
+export type FragmentSink =
+  | DerivedSink
+  | MapSink
+  | ShowSink
+  | TextSink
+  | UnsafeSink;
+
+/**
+ * A sink is either an {@linkcode ElementSink} or a {@linkcode FragmentSink}
+ */
+export type Sink = ElementSink | FragmentSink;
+
 // attach
 
 const ATTACH_SINK = Symbol.for("attach sink");
@@ -462,9 +487,7 @@ export interface UnsafeSink extends ReactiveLeaf<string> {
  * }
  * ```
  */
-export function unsafeHTML(
-  unsafe: string | ReactiveLeaf<string>,
-): UnsafeSink {
+export function unsafeHTML(unsafe: string | ReactiveLeaf<string>): UnsafeSink {
   const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
     ? reactive({ value: unsafe })
     : unsafe;
