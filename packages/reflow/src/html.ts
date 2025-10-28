@@ -134,9 +134,10 @@ class Template {
             element.replaceWith(start, end);
             boundary.render();
             walker.currentNode = end;
+
+            continue;
           }
         }
-        continue;
       }
 
       // Attach
