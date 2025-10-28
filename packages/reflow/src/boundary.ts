@@ -130,7 +130,7 @@ export class Boundary {
       this.#end.before(data);
     } else if (isPrimitive(data)) {
       this.#end.before(String(data ?? ""));
-    } else if (isReactiveLeaf(data)) {
+    } else if (isReactiveLeaf(data) && !isUnsafeHTML(data)) {
       this.renderDerivedSink(data);
     } else if (isMapSink(data)) {
       const thisEnd = this.end;
@@ -454,6 +454,8 @@ export class Boundary {
     } else if (isUnsafeHTML(data)) {
       // unsafe sink
       const template = document.createElement("template");
+      template.innerHTML = data.value;
+      this.replaceChildren(template.content);
 
       listen(data, (e) => {
         switch (e.type) {
