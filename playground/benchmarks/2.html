@@ -94,18 +94,22 @@
             const elements = document.querySelectorAll(
               "[data-a],[data-b],[data-c]",
             );
+            let matches = 0;
             for (const element of elements) {
               if (element.hasAttribute("data-a")) {
                 console.log("data-a");
+                matches++;
               }
               if (element.hasAttribute("data-b")) {
                 console.log("data-b");
+                matches++;
               }
               if (element.hasAttribute("data-c")) {
                 console.log("data-c");
+                matches++;
               }
             }
-            return elements.length;
+            return matches;
           },
         );
 
@@ -116,18 +120,22 @@
           'querySelectorAll("[x]")',
           () => {
             const elements = document.querySelectorAll("[x]");
+            let matches = 0;
             for (const element of elements) {
               if (element.hasAttribute("data-a")) {
                 console.log("data-a");
+                matches++;
               }
               if (element.hasAttribute("data-b")) {
                 console.log("data-b");
+                matches++;
               }
               if (element.hasAttribute("data-c")) {
                 console.log("data-c");
+                matches++;
               }
             }
-            return elements.length;
+            return matches;
           },
         );
 
@@ -176,6 +184,42 @@
           }
           return matches;
         });
+
+        // NOTE: this method mutates elements and removes attributes. Run last
+        log(
+          "\nRunning querySelectorAll query by query (no duplication)",
+        );
+        benchmark(
+          "querySelectorAll query by query (no duplication)",
+          () => {
+            const queries = ["[data-a]", "[data-b]", "[data-c]"];
+            let matches = 0;
+
+            for (const query of queries) {
+              const elements = document.querySelectorAll(query);
+
+              for (const element of elements) {
+                if (element.hasAttribute("data-a")) {
+                  matches++;
+                  console.log("data-a");
+                  element.removeAttribute("data-a");
+                }
+                if (element.hasAttribute("data-b")) {
+                  matches++;
+                  console.log("data-b");
+                  element.removeAttribute("data-b");
+                }
+                if (element.hasAttribute("data-c")) {
+                  matches++;
+                  console.log("data-c");
+                  element.removeAttribute("data-c");
+                }
+              }
+            }
+
+            return matches;
+          },
+        );
 
         log("\nResult summary:");
         log(
