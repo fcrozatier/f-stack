@@ -28,7 +28,7 @@ export const LoopsPage = () => {
             ${attr({
               "aria-label": color,
               get "aria-current"() {
-                return String(selected.value === color);
+                return selected.value === color;
               },
             })}
             ${on({ click: () => selected.value = color })}

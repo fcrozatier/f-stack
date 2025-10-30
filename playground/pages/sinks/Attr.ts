@@ -3,7 +3,7 @@ import { attr, type AttrSink, html, on } from "@f-stack/reflow";
 
 export const Attr = () => {
   const disabled = reactive({ value: false });
-  const myAttr: AttrSink = reactive({
+  const myAttr: AttrSink<"button"> = reactive({
     id: "ok",
     type: "button",
     get disabled() {
