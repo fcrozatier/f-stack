@@ -110,9 +110,7 @@ export type AttrSink<T extends TagName = "div"> = T extends
 /**
  * Creates an {@linkcode attr} sink that manages attributes on an `Element`
  */
-export function attr<T extends TagName>(
-  attributes: AttrSink<T>,
-): AttrSink<T> {
+export function attr<T extends TagName>(attributes: AttrSink<T>): AttrSink<T> {
   const attrSink = reactive(attributes);
   Object.defineProperty(attrSink, ATTR_SINK, { value: true });
   return attrSink;

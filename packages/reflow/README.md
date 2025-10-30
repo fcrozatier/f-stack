@@ -180,6 +180,10 @@ element `addEventListener` and `removeEventListener` methods
 > You can access a strongly typed `this` value by using a type parameter with a
 > function declaration like below
 
+> [!TIP]
+> You can pass `addEventListener` options like `once`, `capture` or `signal` by
+> using a tuple as in the `sayHi` example below
+
 ```ts
 import { html, type On, on } from "@f-stack/reflow";
 import { reactive } from "@f-stack/reflow/reactivity";
@@ -190,7 +194,9 @@ export const OnDemo = () => {
 
   return html`
     <div>
-      <button ${on({ click: () => listeners.click = sayHi })}>Add sayHi</button>
+      <button ${on({
+        click: () => listeners.click = [sayHi, { once: true }],
+      })}>Add sayHi</button>
       <button ${on({
         click: () => delete listeners.click,
       })}>Remove sayHi</button>
@@ -213,6 +219,9 @@ export const OnDemo = () => {
 
 Handles attributes on an `Element`. Creates a functorial mapping with the
 element `setAttribute` and `removeAttribute` methods.
+
+> [TIP!] You can pass `attr` and `AttrSink` a tag name as a type parameter for
+> stronger type safety. All HTML, SVG and MathML tags are supported
 
 ```ts
 import { attr, type AttrSink, html, on } from "@f-stack/reflow";
