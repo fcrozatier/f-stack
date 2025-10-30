@@ -4,6 +4,7 @@ import {
   type ReactiveLeaf,
 } from "@f-stack/functorial";
 import type { Primitive } from "@f-stack/functorial/utils";
+import type { DOMAttributesTagNameMap } from "./elements.d.ts";
 
 /**
  * The type of an element sink
@@ -92,14 +93,26 @@ export const isAttachSink = (value: unknown): value is AttachSink => {
 const ATTR_SINK = Symbol.for("attr sink");
 
 /**
+ * All tag names of HTML, SVG and MathML elements
+ */
+export type TagName =
+  | keyof HTMLElementTagNameMap
+  | keyof SVGElementTagNameMap
+  | keyof MathMLElementTagNameMap;
+
+/**
  * Type of an {@linkcode attr} sink
  */
-export type AttrSink = Record<string, Primitive>;
+export type AttrSink<T extends TagName = "div"> = T extends
+  keyof DOMAttributesTagNameMap ? DOMAttributesTagNameMap[T]
+  : never;
 
 /**
  * Creates an {@linkcode attr} sink that manages attributes on an `Element`
  */
-export function attr(attributes: AttrSink): AttrSink {
+export function attr<T extends TagName>(
+  attributes: AttrSink<T>,
+): AttrSink<T> {
   const attrSink = reactive(attributes);
   Object.defineProperty(attrSink, ATTR_SINK, { value: true });
   return attrSink;
