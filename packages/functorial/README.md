@@ -56,6 +56,36 @@ listeners etc.) yourself.
 These common functorial mappings are provided in [Reflow](../reflow/README.md)
 which is the natural companion and recommended way to use Functorial.
 
+### CDN
+
+```html
+<script type="importmap">
+  {
+    "imports": {
+      "@f-stack/functorial": "https://esm.sh/jsr/@f-stack/functorial"
+    }
+  }
+</script>
+
+<button id="btn">Increment</button>
+
+<script type="module">
+  import { listen, reactive } from "@f-stack/functorial";
+
+  const state = reactive({ value: 1 });
+
+  listen(state, (e) => {
+    console.log(e);
+  });
+
+  btn.onclick = () => {
+    state.value++;
+  };
+</script>
+```
+
+### Installation
+
 ```sh
 deno add jsr:@f-stack/functorial
 pnpm i jsr:@f-stack/functorial
@@ -72,13 +102,17 @@ real life examples and usage with Reflow.
 
 Create a reactive state with `reactive`. Listen to its updates with `listen`.
 
+> [TIP!] You can create a reactive array, Map or Set by directly wrapping them
+> like `reactive([])` or `reactive(new Map())`. With functorial reactivity we
+> can reflect operations directly, with the `listen` callback being the source
+> of truth for the DOM synchronisation logic. So we don't need to reimplement
+> every data structure with a reactive variant
+
 ```ts
 import { listen, reactive } from "@f-stack/functorial";
 
 // Creates a Proxy around any data structure (object, array, Map etc)
-const state = reactive({
-  count: 0,
-});
+const state = reactive({ count: 0 });
 
 listen(state, (e) => {
   // types are "create", "update", "delete", "apply" and "relabel" (experimental)
@@ -93,7 +127,8 @@ state.count = 1;
 
 ### Derived values
 
-Use getters to cache derived values, or create them directly with `derived`
+Use getters to cache derived values, or create them directly with `derived`.
+These derived values are cached for performance.
 
 ```ts
 import { derived, listen, reactive } from "@f-stack/functorial";
@@ -108,8 +143,7 @@ const state = reactive({
 // `derived` is just a shorthand to create a reactive with a .value getter
 const double = derived(() => state.count * 2);
 
-double.value;
-// 2
+console.log(double.value); // 2
 
 listen(state, (e) => {
   console.log(e);
@@ -130,7 +164,7 @@ state.count = 4;
 // }
 ```
 
-### Listen to method calls
+### Listen to operations
 
 You can think of `listen` as a way to hook into the Proxy and get the full
 picture of what's going on.
@@ -141,6 +175,7 @@ import { listen, reactive } from "@f-stack/functorial";
 const array = reactive([1, 2, 3]);
 
 listen(array, (e) => {
+  // e tells you everything about what happened to `array`
   console.log(e);
 });
 
@@ -151,6 +186,26 @@ array.push(4);
 //   path: ".push",
 //   args: [4]
 // }
+```
+
+### Writable derived values
+
+Some derived values are also writable, like the `Array.length` property. Add a
+setter next to a getter to create a writable derived.
+
+```js
+import { listen, reactive } from "@f-stack/functorial";
+
+const price = reactive({
+  _value: 10,
+  _override: null,
+  get total() {
+    return this._override || this._value * 1.2;
+  },
+  set total(v) {
+    this._override = v;
+  },
+});
 ```
 
 ## [Playground](../../playground/README.md)
