@@ -102,8 +102,11 @@ real life examples and usage with Reflow.
 
 Create a reactive state with `reactive`. Listen to its updates with `listen`.
 
-> [TIP!]
-> You can create a reactive array, Map or Set by directly wrapping them like `reactive([])` or `reactive(new Map())`. With functorial reactivity we can reflect operations directly, with the `listen` callback being the source of truth for the DOM synchronisation logic. So we don't need to reimplement every data structure with a reactive variant
+> [TIP!] You can create a reactive array, Map or Set by directly wrapping them
+> like `reactive([])` or `reactive(new Map())`. With functorial reactivity we
+> can reflect operations directly, with the `listen` callback being the source
+> of truth for the DOM synchronisation logic. So we don't need to reimplement
+> every data structure with a reactive variant
 
 ```ts
 import { listen, reactive } from "@f-stack/functorial";
@@ -124,7 +127,8 @@ state.count = 1;
 
 ### Derived values
 
-Use getters to cache derived values, or create them directly with `derived`. These derived values are cached for performance.
+Use getters to cache derived values, or create them directly with `derived`.
+These derived values are cached for performance.
 
 ```ts
 import { derived, listen, reactive } from "@f-stack/functorial";
@@ -186,8 +190,8 @@ array.push(4);
 
 ### Writable derived values
 
-Some derived values are also writable, like the `Array.length` property.
-Add a setter next to a getter to create a writable derived.
+Some derived values are also writable, like the `Array.length` property. Add a
+setter next to a getter to create a writable derived.
 
 ```ts
 import { listen, reactive } from "@f-stack/functorial";
