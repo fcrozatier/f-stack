@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { attach, attr, map, on, show } from "@f-stack/reflow";
 import { derived, reactive } from "@f-stack/functorial";
+import { attr, html, map, on, show } from "@f-stack/reflow";
 
 type Item = { name: string; price: number; quantity: number };
 
@@ -16,24 +15,18 @@ export const ObjectPage = () => {
           input: function () {
             newItem.name = this.value;
           },
-        })} ${attach((i: HTMLInputElement) => {
-          i.defaultValue = "";
         })}>
         </label>
         <label>Price <input type="number" ${on<HTMLInputElement>({
           input: function () {
             newItem.price = this.valueAsNumber;
           },
-        })} ${attach((i: HTMLInputElement) => {
-          i.defaultValue = "0";
         })}>
         </label>
         <label>Quantity <input type="number" ${on<HTMLInputElement>({
           input: function () {
             newItem.quantity = this.valueAsNumber;
           },
-        })} ${attach((i: HTMLInputElement) => {
-          i.defaultValue = "0";
         })}>
         </label>
         <button type="reset" ${on({
@@ -46,53 +39,55 @@ export const ObjectPage = () => {
 
     <section>
       <ul>
-        ${map(items, (item) => {
+        ${map(items, (item, index) => {
           const state = reactive({ editing: false });
 
           return html`
             <li>
-              <h3>Item ${derived(() => item.index + 1)}</h3>
+              <h3>Item ${derived(() => index.value + 1)}</h3>
               <ul>
                 <li>Name: ${show(() => state.editing, () =>
                   html`
                     <input type="text" ${attr({
-                      value: item.value.name,
+                      value: item.name,
                     })} ${on<HTMLInputElement>({
                       input: function () {
-                        item.value.name = this.value;
+                        item.name = this.value;
                       },
                     })}>
-                  `, () => item.value.name)}</li>
+                  `, () => item.name)}</li>
                 <li>
                   Price: ${show(() => state.editing, () =>
                     html`
                       <input type="number" ${attr({
-                        value: item.value.price,
+                        value: item.price,
                       })} ${on<HTMLInputElement>({
                         input: function () {
-                          item.value.price = this.valueAsNumber;
+                          item.price = this.valueAsNumber;
                         },
                       })}>
-                    `, () => item.value.price)}
+                    `, () => item.price)}
                 </li>
                 <li>Quantity: ${show(() => state.editing, () =>
                   html`
-                    <input type="number" ${attach<HTMLInputElement>((i) => {
-                      i.defaultValue = String(item.value.quantity);
+                    <input type="number" ${attr({
+                      value: item.quantity,
                     })} ${on<HTMLInputElement>({
                       input: function () {
-                        item.value.quantity = this.valueAsNumber;
+                        item.quantity = this.valueAsNumber;
                       },
                     })}>
-                  `, () => item.value.quantity)}</li>
+                  `, () => item.quantity)}</li>
               </ul>
-              <button ${on({
-                click: () => {
-                  state.editing = !state.editing;
-                },
-              })}>
-                ${derived(() => state.editing ? "Save" : "Update")}
-              </button>
+              <p>
+                <button ${on({
+                  click: () => {
+                    state.editing = !state.editing;
+                  },
+                })}>
+                  ${derived(() => state.editing ? "Save" : "Update")}
+                </button>
+              </p>
             </li>
           `;
         })}

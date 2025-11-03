@@ -179,7 +179,7 @@ const MAP_SINK = Symbol.for("map sink");
  */
 export type MapSink<T = any> = {
   values: T[];
-  mapper: (reactive: { value: T; index: number }) => DocumentFragment;
+  mapper: (value: T, index: ReactiveLeaf<number>) => DocumentFragment;
 };
 
 /**
@@ -207,15 +207,14 @@ export type MapSink<T = any> = {
  */
 export function map<T>(
   values: T[],
-  mapper: (reactive: { value: T; index: number }) => DocumentFragment,
+  mapper: (value: T, index: ReactiveLeaf<number>) => DocumentFragment,
 ): MapSink<T> {
-  const mapSink = {
+  return {
     values,
     mapper,
+    // @ts-ignore internal
     [MAP_SINK]: true,
   };
-  Object.defineProperty(mapSink, MAP_SINK, { value: true });
-  return mapSink;
 }
 
 /**

@@ -21,7 +21,7 @@ const Thing = (props: { name: Name }) => {
   `;
 };
 
-export const ArrayMutationPage = () => {
+export const ShiftPage = () => {
   const things = reactive([
     { id: 1, name: "apple" },
     { id: 2, name: "banana" },
@@ -35,7 +35,7 @@ export const ArrayMutationPage = () => {
       click: () => things.shift(),
     })}>Remove the first thing</button>
 
-    ${map(things, ({ value: thing }) =>
+    ${map(things, (thing) =>
       html`
         ${Thing({ name: thing.name as Name })}
       `)}

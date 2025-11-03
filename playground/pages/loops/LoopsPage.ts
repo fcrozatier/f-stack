@@ -22,7 +22,7 @@ export const LoopsPage = () => {
     })}>Pick a color</h1>
 
     <div>
-      ${map(colors, ({ value: color, index: i }) =>
+      ${map(colors, (color, index) =>
         html`
           <button
             ${attr({
@@ -34,7 +34,7 @@ export const LoopsPage = () => {
             ${on({ click: () => selected.value = color })}
             ${style({ "background": color })}
           >
-            ${i + 1}
+            ${index.value + 1}
           </button>
         `)}
     </div>
