@@ -183,7 +183,7 @@ export type MapSink<T = any> = {
 };
 
 /**
- * Creates a {@linkcode map} sink that handles iterations
+ * Creates a {@linkcode map} sink for iterating over a {@linkcode reactive} array
  *
  * @example
  *
@@ -195,15 +195,15 @@ export type MapSink<T = any> = {
  *
  *   return html`
  *   <ul>
- *     ${map(arr, (letter) => {
- *       return html`<li>${letter.index}: ${letter.value}<li>`
+ *     ${map(arr, (letter, index) => {
+ *       return html`<li>${index}: ${letter}<li>`
  *     })}
  *   </ul>`
  * }
  * ```
  *
- * @param values The array to iterate on
- * @param mapper A callback taking as input an object with a `value` and `index` property
+ * @param values The {@linkcode reactive} array to iterate on
+ * @param mapper A callback taking as input a single `value` from the array and its `index`
  */
 export function map<T>(
   values: T[],
