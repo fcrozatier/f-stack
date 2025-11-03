@@ -42,11 +42,6 @@ export const TodosPage = () => {
         Swap and insert
       </button>
       <button ${on({
-        click: () => todos.splice(0, 3, todos[2]!, todos[0]!),
-      })}>
-        Swap and delete
-      </button>
-      <button ${on({
         click: () => todos.reverse(),
       })}>
         Reverse
