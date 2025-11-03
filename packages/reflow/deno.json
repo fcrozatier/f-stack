@@ -2,8 +2,15 @@
   "name": "@f-stack/reflow",
   "version": "0.3.0",
   "license": "MIT",
+  "tasks": {
+    "e2e": "deno run -A npm:playwright test",
+    "e2e:show-report": "deno run -A npm:playwright show-report"
+  },
   "exports": {
     ".": "./src/mod.ts",
     "./reactivity": "./src/reactivity.ts"
+  },
+  "imports": {
+    "playwright": "npm:playwright@^1.56.1"
   }
 }
