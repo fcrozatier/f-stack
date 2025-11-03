@@ -135,7 +135,13 @@ export class Boundary {
     } else if (isMapSink(data)) {
       const thisEnd = this.end;
       const values = data.values;
-      const boundaries: [{ index: number; value: any }, Boundary][] = [];
+      const mapper = data.mapper;
+
+      const boundaries: {
+        index: { value: number };
+        data: any;
+        boundary: Boundary;
+      }[] = [];
       let labels: [string, string][] = [];
 
       type SpliceOptions<T = any> = {
@@ -153,45 +159,158 @@ export class Boundary {
         ...values: any[]
       ) => {
         for (
-          const [_, boundary] of boundaries.slice(start, start + deleteCount)
+          const { boundary } of boundaries.slice(
+            start,
+            start + deleteCount,
+          )
         ) boundary.remove();
 
-        const newBoundaries: [{ index: number; value: any }, Boundary][] = [];
+        const newBoundaries: {
+          index: { value: number };
+          data: any;
+          boundary: Boundary;
+        }[] = [];
 
         for (const value of values) {
-          const args = reactive({
-            index: start + newBoundaries.length,
-            value: snapshot(value),
-          });
-          const newBoundary = new Boundary(data.mapper(args));
-          newBoundaries.push([args, newBoundary]);
+          const index = reactive({ value: start + newBoundaries.length });
+          const newBoundary = new Boundary(mapper(value, index));
+          newBoundaries.push({ index, data: value, boundary: newBoundary });
         }
 
-        const next = boundaries[start + deleteCount]?.[1]?.start ?? thisEnd;
+        const next = boundaries[start + deleteCount]
+          ?.boundary?.start ?? thisEnd;
 
-        for (const [args] of boundaries.slice(start + deleteCount)) {
-          args.index += newBoundaries.length - deleteCount;
+        for (const { index } of boundaries.slice(start + deleteCount)) {
+          index.value += newBoundaries.length - deleteCount;
         }
 
         boundaries.splice(start, deleteCount, ...newBoundaries);
 
-        for (const [_, boundary] of newBoundaries) {
+        for (const { boundary } of newBoundaries) {
           next.before(boundary.start);
           next.before(boundary.end);
           boundary.render();
         }
       };
 
-      // partitions the splice operation into a minimal set of moves (relabels) and adjacent insertions/deletions (sub) splices
+      // partitions the splice operation into a minimal set of moves (relabels) and adjacent (atomic) insertions/deletions (sub) splices
       const moveAndSpliceBoundaries = (
         start: number,
         deleteCount = 0,
         ...values: any[]
       ) => {
-        const moves: [number, number][] = [];
         const splices: SpliceOptions[] = [];
 
-        let missing = 0;
+        type Tag =
+          | { type: "insert" | "delete" | "swap" }
+          | { type: "move"; from: number; to: number };
+
+        const tags: { deleteRange: Tag[]; insertRange: Tag[] } = {
+          deleteRange: Array.from({ length: deleteCount }),
+          insertRange: Array.from({ length: values.length }),
+        };
+
+        const deleteRange = boundaries.slice(start, start + deleteCount);
+
+        // tag values from the insert range
+        for (let index = 0; index < values.length; index++) {
+          const value = values[index];
+
+          /**
+           * Moves are values from the insert range that also appear in the delete range
+           *
+           * m
+           * ● • •   (delete range)
+           *   ↘︎
+           * • • ● • (insert range)
+           *     m
+           */
+          const isMoveIndex = deleteRange.findIndex(({ data }) =>
+            data === value
+          );
+
+          if (isMoveIndex !== -1) {
+            tags.insertRange[index] = {
+              type: "move",
+              from: isMoveIndex,
+              to: index,
+            };
+            tags.deleteRange[isMoveIndex] = {
+              type: "move",
+              from: isMoveIndex,
+              to: index,
+            };
+          } else {
+            // it could be a swap or a pure insert we don't know yet
+            /**
+             * A pure insert
+             *
+             *  ●      (delete range)
+             *    ↘︎
+             *  ○   ●  (insert range)
+             *  i
+             */
+            tags.insertRange[index] = { type: "insert" };
+          }
+        }
+
+        // tag values from the delete range
+
+        for (let index = 0; index < deleteRange.length; index++) {
+          // Moves are already tagged from the previous pass
+          if (tags.deleteRange[index]?.type === "move") continue;
+
+          const insertTag = tags.insertRange[index];
+          if (insertTag?.type === "insert") {
+            /**
+             * It's a swap if it's not a move and there's a corresponding deletion in the delete range
+             *
+             *   d
+             * • ✕ •   (delete range)
+             *   ↓
+             * • ○ • • (insert range)
+             *   i
+             */
+            insertTag.type = "swap";
+            tags.deleteRange[index] = {
+              type: "swap",
+            };
+          } else {
+            tags.deleteRange[index] = {
+              type: "delete",
+            };
+          }
+        }
+
+        // at this point we know all moves, swaps, pure insertions and deletions
+
+        /**
+         * Pure insertions and pure deletions need to be taken care of before computing permutations. Here the transposition is 0 ↔︎ 1 before the insert is done
+         *
+         * ● ●    (delete range)
+         *  ↙︎↘︎
+         * ● ○ ●  (insert range)
+         *   i
+         *
+         * becomes:
+         *
+         * Transposition  0 ↔︎ 1      +       Atomic splice (pure insert)
+         * ●  ●   (delete range)
+         *  ↙︎↘︎
+         * ●  ●   (insert range)             ○
+         *                                   i (insert at index 1)
+         *
+         * Swaps keep the arrays balanced (1 deletion paired with one insert) with no impact on permutations.
+         *
+         * So the order of operations is:
+         * 1. Pure deletions
+         * 2. Moves
+         * 3. Swaps and pure insertions
+         */
+
+        // adjust move indices to take into account pure deletions
+
+        let pureDeletions = 0;
         let lastIndex = -1;
         let currentAtomicSplice: SpliceOptions = {
           start,
@@ -199,72 +318,101 @@ export class Boundary {
           values: [],
         };
 
-        const deleteRange = boundaries.slice(start, start + deleteCount);
+        for (let index = 0; index < deleteRange.length; index++) {
+          const tag = tags.deleteRange[index];
 
-        for (let index = 0; index < values.length; index++) {
-          const value = values[index];
-          // moves are elements from `values` that also appear in the delete range
-          const isMove = deleteRange.findIndex(([data]) =>
-            data.value === value
-          );
+          if (tag?.type === "delete") {
+            pureDeletions++;
 
-          if (isMove === -1) {
-            // it's a swap if there's a corresponding deletion in the delete range
-            // implicitly checks index < deleteCount
-            const isSwap = values.every((v) =>
-              deleteRange[index]?.[0].value !== v
-            );
-
-            // inserts or swaps influence move indices
-            if (!isSwap) {
-              missing++;
+            // it's an atomic (adjacent) splice: group all deletions
+            if (index === lastIndex + 1) {
+              currentAtomicSplice.deleteCount++;
+            } else {
+              if (currentAtomicSplice.deleteCount > 0) {
+                const { start, deleteCount } = currentAtomicSplice;
+                // perform deletions
+                updates.push(
+                  spliceBoundaries.bind(null, start, deleteCount),
+                );
+              }
+              currentAtomicSplice = {
+                start: start + index,
+                deleteCount: 1,
+                values: [],
+              };
             }
 
-            // it's an atomic (adjacent) splice
+            lastIndex = index;
+          } else if (tag?.type === "move") {
+            // Account for pure deletions in moves indices
+            tag.from -= pureDeletions;
+
+            // @ts-ignore update the corresponding tag in the insertRange
+            tags.insertRange[tag.to]!.from -= pureDeletions;
+          }
+        }
+
+        if (currentAtomicSplice.deleteCount > 0) {
+          const { start, deleteCount } = currentAtomicSplice;
+          updates.push(
+            spliceBoundaries.bind(null, start, deleteCount),
+          );
+        }
+
+        // all pure deletions are done, go ahead with moves
+        // to compute moves we also need to take into account pure insertions to adjust indices
+        // in the same loop we can also compute the remaining splices for swaps and inserts
+
+        const moves: [from: number, to: number][] = [];
+        let pureInsertions = 0;
+        lastIndex = -1;
+        currentAtomicSplice = { start, deleteCount: 0, values: [] };
+
+        for (let index = 0; index < values.length; index++) {
+          const tag = tags.insertRange[index];
+          const type = tag?.type;
+
+          if (type === "insert" || type === "swap") {
+            const value = values[index];
+
+            if (type === "insert") {
+              pureInsertions++;
+            }
+
+            // it's an atomic (adjacent) splice: group all inserts
             if (index === lastIndex + 1) {
               currentAtomicSplice.values.push(value);
 
-              if (isSwap) {
+              if (type === "swap") {
                 currentAtomicSplice.deleteCount++;
               }
             } else {
               if (currentAtomicSplice.values.length > 0) {
                 splices.push(currentAtomicSplice);
               }
+
               currentAtomicSplice = {
                 start: start + index,
-                deleteCount: isSwap ? 1 : 0,
+                deleteCount: type === "swap" ? 1 : 0,
                 values: [value],
               };
             }
 
-            // track adjacent groups
             lastIndex = index;
-          } else {
-            // densely account for pure inserts so we can do all the moves first
-            const to = start + index - missing;
-            const from = start + isMove;
-
-            if (from !== to) {
-              moves.push([from, to]);
-            }
+          } else if (tag?.type === "move") {
+            // Account for pure deletions in moves indices
+            tag.to -= pureInsertions;
+            moves.push([start + tag.from, start + tag.to]);
           }
         }
 
-        if (deleteCount > values.length) {
-          currentAtomicSplice.deleteCount += deleteCount - values.length;
-          splices.push(currentAtomicSplice);
-        } else if (currentAtomicSplice.values.length > 0) {
+        if (currentAtomicSplice.values.length > 0) {
           splices.push(currentAtomicSplice);
         }
 
-        if (moves.length === 0) {
-          return updates.push(
-            spliceBoundaries.bind(null, start, deleteCount, ...values),
-          );
+        if (moves.length > 0) {
+          updates.push(moveBoundaries.bind(null, moves));
         }
-
-        updates.push(moveBoundaries.bind(null, moves));
 
         for (const { start, deleteCount, values } of splices) {
           updates.push(
@@ -297,19 +445,20 @@ export class Boundary {
         boundaries[to] = boundaryFrom;
 
         // update indices
-        boundaryTo[0].index = from;
-        boundaryFrom[0].index = to;
+        boundaryTo.index.value = from;
+        boundaryFrom.index.value = to;
 
         // for adjacent swaps only move `to` before `from`
         const isAdjacentSwap = to === from + 1;
 
         // compute the non adjacent target before doing the first move
-        const nonAdjacentSwapTarget = boundaryTo[1].end.nextSibling ?? thisEnd;
+        const nonAdjacentSwapTarget = boundaryTo.boundary.end.nextSibling ??
+          thisEnd;
 
-        boundaryTo[1].moveBefore(boundaryFrom[1].start);
+        boundaryTo.boundary.moveBefore(boundaryFrom.boundary.start);
 
         if (!isAdjacentSwap) {
-          boundaryFrom[1].moveBefore(nonAdjacentSwapTarget);
+          boundaryFrom.boundary.moveBefore(nonAdjacentSwapTarget);
         }
       };
 
@@ -328,10 +477,18 @@ export class Boundary {
             // Ignore derived updates of the length property
             if (e.path === ".length") return;
             const index = Number(e.path.split(".")[1]);
-            const [args] = boundaries[index]!;
+            const b = boundaries[index];
+            assertExists(b);
+
             // updates are already handled are the reactive object level for non primitive types
-            if (typeof args.value !== "object") {
-              args.value = e.newValue;
+            if (isPrimitive(b.data)) {
+              b.data = e.newValue;
+              b.boundary.data = mapper(
+                e.newValue,
+                reactive({ value: index }),
+              );
+              b.boundary.deleteContents();
+              b.boundary.render();
             }
             break;
           }
@@ -378,8 +535,8 @@ export class Boundary {
               }
               case ".fill": {
                 const [value, start, end] = e.args;
-                for (const [args] of boundaries.slice(start, end)) {
-                  args.value = value;
+                for (const b of boundaries.slice(start, end)) {
+                  b.data = value;
                 }
                 break;
               }
@@ -393,16 +550,16 @@ export class Boundary {
                   assertExists(targetBoundary);
                   assertExists(sourceBoundary);
 
-                  targetBoundary[0].value = sourceBoundary[0].value;
+                  targetBoundary.data = sourceBoundary.data;
                 }
                 break;
               }
               case ".reverse":
               case ".sort": {
                 if (labels.length > 0) {
-                  const moves: [number, number][] = labels.map((
-                    [a, b],
-                  ) => [+a * 10, +b * 10]);
+                  const moves: [number, number][] = labels.map(
+                    ([a, b]) => [+a.slice(1), +b.slice(1)],
+                  );
 
                   updates.push(moveBoundaries.bind(null, moves));
                   labels = [];
