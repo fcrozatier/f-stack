@@ -28,6 +28,9 @@ const template = (path: string) => `
 </html>
 `;
 
+/**
+ * Test server
+ */
 export default {
   fetch(req) {
     const url = new URL(req.url);
