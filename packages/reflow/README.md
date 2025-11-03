@@ -120,7 +120,7 @@ const Demo = () => {
 
 ## Features
 
-- Structured and super granular approach thanks to functorial reactivity
+- Structured and super granular approach base on [functorial reactivity](../functorial/README.md)
 - Corollary: Optimal node reuse
 - Supports all common web mappings (attributes, listeners etc)
 - Supports all namespaces with `html`, `svg` and `math` template tags
@@ -132,7 +132,7 @@ const Demo = () => {
 
 ## Mental model
 
-The Reflow template tags let us insert reactive data in our templates inside
+With Reflow we insert reactive data in our templates inside
 holes (sinks) to declaratively and reactively manipulate web APIs (`Attr`,
 `EventListener`, `DOMTokenList` etc). This is done in a very structured way.
 
@@ -220,7 +220,8 @@ export const OnDemo = () => {
 Handles attributes on an `Element`. Creates a functorial mapping with the
 element `setAttribute` and `removeAttribute` methods.
 
-> [TIP!] You can pass `attr` and `AttrSink` a tag name as a type parameter for
+> [TIP!]
+> You can pass `attr` and `AttrSink` a tag name as a type parameter for
 > stronger type safety. All HTML, SVG and MathML tags are supported
 
 ```ts
@@ -605,7 +606,8 @@ export const StyleDemo = () => {
 
 Handles raw HTML.
 
-> [!WARNING] Only use this sink with trusted inputs
+> [!WARNING]
+> Only use this sink with trusted inputs
 
 ```ts
 import { html, on, unsafeHTML } from "@f-stack/reflow";
