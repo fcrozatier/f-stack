@@ -458,13 +458,14 @@ export const ShowDemo = () => {
 
 ### `map`
 
-Handles iterations over a reactive array. This sink creates a funtorial mapping that allows
-mutating the array directly with `push`, `unshift`, `splice`, `sort` or any
-other `Array` method to respectively have the effect and granularity of `append`, `prepend`, `insertBefore`, `moveBefore` etc.
+Handles iterations over a reactive array. This sink creates a funtorial mapping
+that allows mutating the array directly with `push`, `unshift`, `splice`, `sort`
+or any other `Array` method to respectively have the effect and granularity of
+`append`, `prepend`, `insertBefore`, `moveBefore` etc.
 
 > [!TIP]
-> The `map` functor updates its data in a `ViewTransition` so you can easily
-> add some flair to your list updates with a few lines of CSS like below, no
+> The `map` functor updates its data in a `ViewTransition` so you can easily add
+> some flair to your list updates with a few lines of CSS like below, no
 > animation library required.
 
 ```ts
