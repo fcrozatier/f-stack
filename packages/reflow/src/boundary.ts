@@ -226,7 +226,8 @@ export class Boundary {
            *     m
            */
           const isMoveIndex = deleteRange.findIndex(({ data }) =>
-            data === value
+            // ensure we compare refs
+            snapshot(data) === snapshot(value)
           );
 
           if (isMoveIndex !== -1) {
@@ -254,36 +255,6 @@ export class Boundary {
           }
         }
 
-        // tag values from the delete range
-
-        for (let index = 0; index < deleteRange.length; index++) {
-          // Moves are already tagged from the previous pass
-          if (tags.deleteRange[index]?.type === "move") continue;
-
-          const insertTag = tags.insertRange[index];
-          if (insertTag?.type === "insert") {
-            /**
-             * It's a swap if it's not a move and there's a corresponding deletion in the delete range
-             *
-             *   d
-             * • ✕ •   (delete range)
-             *   ↓
-             * • ○ • • (insert range)
-             *   i
-             */
-            insertTag.type = "swap";
-            tags.deleteRange[index] = {
-              type: "swap",
-            };
-          } else {
-            tags.deleteRange[index] = {
-              type: "delete",
-            };
-          }
-        }
-
-        // at this point we know all moves, swaps, pure insertions and deletions
-
         /**
          * Pure insertions and pure deletions need to be taken care of before computing permutations. Here the transposition is 0 ↔︎ 1 before the insert is done
          *
@@ -308,8 +279,6 @@ export class Boundary {
          * 3. Swaps and pure insertions
          */
 
-        // adjust move indices to take into account pure deletions
-
         let pureDeletions = 0;
         let lastIndex = -1;
         let currentAtomicSplice: SpliceOptions = {
@@ -318,21 +287,56 @@ export class Boundary {
           values: [],
         };
 
+        // 1. tag values from the delete range
+        // 2. also adjust move indices to take into account pure deletions
+        // 3. and perform pure deletions
         for (let index = 0; index < deleteRange.length; index++) {
           const tag = tags.deleteRange[index];
+          // Moves are already tagged from the previous pass
+          if (tag?.type === "move") {
+            // Account for pure deletions in moves indices
+            tag.from -= pureDeletions;
 
-          if (tag?.type === "delete") {
+            // @ts-ignore update the corresponding tag in the insertRange
+            tags.insertRange[tag.to]!.from -= pureDeletions;
+            continue;
+          }
+
+          const insertTag = tags.insertRange[index];
+          if (insertTag?.type === "insert") {
+            /**
+             * It's a swap if it's not a move and there's a corresponding deletion in the delete range
+             *
+             *   d
+             * • ✕ •   (delete range)
+             *   ↓
+             * • ○ • • (insert range)
+             *   i
+             */
+            insertTag.type = "swap";
+            tags.deleteRange[index] = {
+              type: "swap",
+            };
+          } else {
+            // it's a pure deletion
             pureDeletions++;
 
-            // it's an atomic (adjacent) splice: group all deletions
+            tags.deleteRange[index] = {
+              type: "delete",
+            };
+
+            // if it's an atomic (adjacent) splice: group all deletions
             if (index === lastIndex + 1) {
               currentAtomicSplice.deleteCount++;
             } else {
               if (currentAtomicSplice.deleteCount > 0) {
-                const { start, deleteCount } = currentAtomicSplice;
                 // perform deletions
                 updates.push(
-                  spliceBoundaries.bind(null, start, deleteCount),
+                  spliceBoundaries.bind(
+                    null,
+                    currentAtomicSplice.start,
+                    currentAtomicSplice.deleteCount,
+                  ),
                 );
               }
               currentAtomicSplice = {
@@ -343,31 +347,29 @@ export class Boundary {
             }
 
             lastIndex = index;
-          } else if (tag?.type === "move") {
-            // Account for pure deletions in moves indices
-            tag.from -= pureDeletions;
-
-            // @ts-ignore update the corresponding tag in the insertRange
-            tags.insertRange[tag.to]!.from -= pureDeletions;
           }
         }
 
         if (currentAtomicSplice.deleteCount > 0) {
-          const { start, deleteCount } = currentAtomicSplice;
           updates.push(
-            spliceBoundaries.bind(null, start, deleteCount),
+            spliceBoundaries.bind(
+              null,
+              currentAtomicSplice.start,
+              currentAtomicSplice.deleteCount,
+            ),
           );
         }
 
-        // all pure deletions are done, go ahead with moves
-        // to compute moves we also need to take into account pure insertions to adjust indices
-        // in the same loop we can also compute the remaining splices for swaps and inserts
+        // at this point everything is correctly tagged
 
         const moves: [from: number, to: number][] = [];
         let pureInsertions = 0;
         lastIndex = -1;
         currentAtomicSplice = { start, deleteCount: 0, values: [] };
 
+        // 1. compute moves
+        // 2. take into account pure insertions to adjust move indices
+        // 3. and perform swaps and inserts
         for (let index = 0; index < values.length; index++) {
           const tag = tags.insertRange[index];
           const type = tag?.type;
@@ -379,7 +381,7 @@ export class Boundary {
               pureInsertions++;
             }
 
-            // it's an atomic (adjacent) splice: group all inserts
+            // it's an atomic (adjacent) splice: group all inserts or swaps
             if (index === lastIndex + 1) {
               currentAtomicSplice.values.push(value);
 
