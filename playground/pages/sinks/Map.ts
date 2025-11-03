@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { attr, map, on, text } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
+import { attr, html, map, on } from "@f-stack/reflow";
 
 const rand = () => {
   return Math.round(Math.random() * 100) / 100;
@@ -90,9 +89,9 @@ export const MapPage = () => {
       })}>copyWithin (0,2,4)</button>
       <button ${on({ click: () => arr.reverse() })}>reverse</button>
     </p>
-    <ul>${map(arr, (d) => {
+    <ul>${map(arr, (d, index) => {
       return html`
-        <li>index ${text(d, "index")}: ${text(d, "value")}</li>
+        <li>index ${index}: ${d}</li>
       `;
     })}</ul>
 

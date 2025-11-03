@@ -62,8 +62,8 @@ const Demo = () => {
           <circle ${attr({
             cx: randint(),
             cy: randint(),
-            r: circle.value.radius,
-            fill: circle.value.color,
+            r: circle.radius,
+            fill: circle.color,
           })} />
         `;
       })}
@@ -458,20 +458,14 @@ export const ShowDemo = () => {
 
 ### `map`
 
-Handles iterations over an array. Creates a funtorial mapping that allows
-mutating the array directly with `push`, `unshift`, `splice`, `sort` or any
-other `Array` method to respectively append, prepend, insert or move items etc.
-
-> [!NOTE]
-> Notice that we don't destructure items in the `map` callback of the below
-> example. That's because we want to pass the references and not the values for
-> reactivity. You'll find this refreshing: there's no magic, the passed by
-> reference / value semantics is the same as in JS, it's easy to reason about
-> and coherent throughout.
+Handles iterations over a reactive array. This sink creates a funtorial mapping
+that allows mutating the array directly with `push`, `unshift`, `splice`, `sort`
+or any other `Array` method to respectively have the effect and granularity of
+`append`, `prepend`, `insertBefore`, `moveBefore` etc.
 
 > [!TIP]
-> The `map` functor updates it's data in a `ViewTransition` so you can easily
-> add some flair to your list updates with a few lines of CSS like below, no
+> The `map` functor updates its data in a `ViewTransition` so you can easily add
+> some flair to your list updates with a few lines of CSS like below, no
 > animation library required.
 
 ```ts
@@ -513,9 +507,9 @@ export const MapDemo = () => {
       <button ${on({ click: () => numbers.sort() })}>sort</button>
       <button ${on({ click: () => numbers.reverse() })}>reverse</button>
     </p>
-    <ul>${map(numbers, (item) => {
+    <ul>${map(numbers, (item, index) => {
       return html`
-        <li>index ${text(item, "index")}: ${text(item, "value")}</li>
+        <li>index ${index}: ${item}</li>
       `;
     })}</ul>
 

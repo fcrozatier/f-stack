@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
-import { map, on, text } from "@f-stack/reflow";
+import { html, map, on } from "@f-stack/reflow";
 
 export const UnshiftPage = () => {
   const arr = reactive([1, 2, 3]);
@@ -11,9 +10,9 @@ export const UnshiftPage = () => {
     })}>unshift</button></p>
 
     <ul>
-      ${map(arr, (item) =>
+      ${map(arr, (item, index) =>
         html`
-          <li>index ${text(item, "index")}: ${text(item, "value")}</li>
+          <li>index ${index}: ${item}</li>
         `)}
     </ul>
   `;

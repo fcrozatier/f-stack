@@ -105,14 +105,14 @@ export const TodosPage = () => {
 
     <div>
       <ul>
-        ${map(todos, (todo) => {
+        ${map(todos, (todo, index) => {
           return html`
             <li>
-              <h3>Number ${derived(() => todo.index)}</h3>
-              <p>${derived(() => todo.value.number)}</p>
+              <h3>Number ${index}</h3>
+              <p>${derived(() => todo.number)}</p>
               <div>
                 <button class="action" ${on({
-                  click: () => todos.splice(todo.index, 1),
+                  click: () => todos.splice(index.value, 1),
                 })}>🗑️</button>
               </div>
             </li>

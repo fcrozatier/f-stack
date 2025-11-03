@@ -22,11 +22,11 @@ export const TextPage = () => {
       </style>
 
       ${map(Object.entries(user), (pair) => {
-        const key = pair.value[0] as keyof typeof user;
+        const key = pair[0] as keyof typeof user;
         return html`
           <label>${key}</label>
           <input type="text" ${attach<HTMLInputElement>((i) => {
-            i.defaultValue = pair.value[1];
+            i.defaultValue = pair[1];
           })} ${on<HTMLInputElement>({
             input: function () {
               user[key] = this.value;
@@ -46,7 +46,7 @@ export const TextPage = () => {
       })}>
         ${map(Object.keys(user), (key) => {
           return html`
-            <option>${key.value}</option>
+            <option>${key}</option>
           `;
         })}
       </select>
