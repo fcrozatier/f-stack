@@ -38,5 +38,6 @@
     "@std/async": "jsr:@std/async@^1.0.15",
     "@std/fs": "jsr:@std/fs@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.2"
-  }
+  },
+  "nodeModulesDir": "auto"
 }
