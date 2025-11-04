@@ -1,6 +1,6 @@
 import { reactive } from "@f-stack/functorial";
+import type { StyleSink } from "@f-stack/reflow";
 import { html, on, style } from "@f-stack/reflow";
-import type { StyleSink } from "@f-stack/reflow/types";
 
 export const Style = () => {
   const weight = reactive({ value: 4 });

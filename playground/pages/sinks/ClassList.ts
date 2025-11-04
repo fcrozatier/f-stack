@@ -1,6 +1,6 @@
 import { reactive } from "@f-stack/functorial";
 import { classList, html, on } from "@f-stack/reflow";
-import type { ClassListSink } from "@f-stack/reflow/types";
+import type { ClassListSink } from "@f-stack/reflow";
 
 export const ClassListPage = () => {
   const classes: ClassListSink = reactive({
