@@ -197,12 +197,12 @@ array.push(4);
 Some derived values are also writable, like the `Array.length` property. Add a
 setter next to a getter to create a writable derived.
 
-```js
+```ts
 import { listen, reactive } from "@f-stack/functorial";
 
 const price = reactive({
   _value: 10,
-  _override: null,
+  _override: 0,
   get total() {
     return this._override || this._value * 1.2;
   },
