@@ -1,5 +1,5 @@
 import { reactive } from "@f-stack/reflow/reactivity";
-import { attr, html, on } from "@f-stack/reflow";
+import { attr, html, on } from "../../src/html.d.ts";
 
 export default () => {
   const id = reactive({ value: "green" });

@@ -1,4 +1,4 @@
-import { html, on } from "@f-stack/reflow";
+import { html, on } from "../../src/html.d.ts";
 import { reactive } from "@f-stack/reflow/reactivity";
 
 export default () => {
