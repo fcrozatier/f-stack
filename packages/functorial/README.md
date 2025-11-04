@@ -49,14 +49,16 @@ reactivity, as well as a few examples:
 
 ## Usage
 
-Functorial is a low-level, framework-independent reactivity system. You can use
-it directly but will have to implement common web mappings (attributes,
-listeners etc.) yourself.
+Functorial is a low-level, framework-independent reactivity system with
+zero-dependencies. You can use it directly but will have to implement common web
+mappings (attributes, listeners etc.) yourself.
 
 These common functorial mappings are provided in [Reflow](../reflow/README.md)
 which is the natural companion and recommended way to use Functorial.
 
 ### CDN
+
+The library's single `.js` file can be load directly from a CDN
 
 ```html
 <script type="importmap">
@@ -85,6 +87,8 @@ which is the natural companion and recommended way to use Functorial.
 ```
 
 ### Installation
+
+Depending on your package manager:
 
 ```sh
 deno add jsr:@f-stack/functorial
@@ -193,12 +197,12 @@ array.push(4);
 Some derived values are also writable, like the `Array.length` property. Add a
 setter next to a getter to create a writable derived.
 
-```js
+```ts
 import { listen, reactive } from "@f-stack/functorial";
 
 const price = reactive({
   _value: 10,
-  _override: null,
+  _override: 0,
   get total() {
     return this._override || this._value * 1.2;
   },

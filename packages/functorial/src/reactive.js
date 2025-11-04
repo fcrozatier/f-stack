@@ -1,54 +1,97 @@
-import { assert } from "@std/assert/assert";
-import { assertExists } from "@std/assert/exists";
-import { isPrimitive, type Primitive } from "./utils.ts";
-
-type AnyConstructor = new (...args: any[]) => any;
+/* @ts-self-types="./types.d.ts" */
 
 /**
- * Represents the type of a {@linkcode ReactiveEvent}
+ * @import {ReactiveEvent, ReactiveEventCallback, AnyConstructor,  ReactiveLeaf} from "./types.d.ts"
  */
-export type ReactiveEventType =
-  | "create"
-  | "update"
-  | "delete"
-  | "apply"
-  | "relabel";
 
 /**
- * A `ReactiveEvent` is fired every time a change or method call is detected on a {@linkcode reactive} data
+ * @typedef {object} NotificationTarget
+ * @property {Record<PropertyKey, any>} subscriber
+ * @property {string} rootPath
+ * @property {boolean} isDerived
+ * @property {string[]|undefined} [deps]
  */
-export type ReactiveEvent =
-  | {
-    type: "create";
-    path: string | symbol;
-    newValue: any;
-    // A writable derived set manually can have an old value
-    oldValue?: any;
-  }
-  | {
-    type: "update";
-    path: string | symbol;
-    newValue: any;
-    oldValue?: any;
-  }
-  | {
-    type: "delete";
-    path: string | symbol;
-    oldValue: any;
-  }
-  | { type: "apply"; path: string | symbol; args: any[] }
-  | { type: "relabel"; labels: [string, string][] };
 
 /**
- * Represents the callbacks of the {@linkcode listen} function
+ * Main Functorial exports
+ *
+ * @module
  */
-export type ReactiveEventCallback = (event: ReactiveEvent) => void;
+
+class AssertionError extends Error {
+  /** Constructs a new instance.
+   *
+   * @param {string} message The error message.
+   * @param {ErrorOptions} [options] Additional options.
+   */
+  constructor(message, options) {
+    super(message, options);
+    this.name = "AssertionError";
+  }
+}
+
+/**
+ * Make an assertion, error will be thrown if `expr` does not have truthy value.
+ *
+ * @example Usage
+ * ```ts ignore
+ * import { assert } from "@std/assert";
+ *
+ * assert("hello".includes("ello")); // Doesn't throw
+ * assert("hello".includes("world")); // Throws
+ * ```
+ *
+ * @param {unknown} expr The expression to test.
+ * @param msg The optional message to display if the assertion fails.
+ * @return {asserts expr}
+ */
+function assert(expr, msg = "") {
+  if (!expr) {
+    throw new AssertionError(msg);
+  }
+}
+
+/**
+ * Make an assertion that actual is not null or undefined.
+ * If not then throw.
+ *
+ * @example Usage
+ * ```ts ignore
+ * import { assertExists } from "@std/assert";
+ *
+ * assertExists("something"); // Doesn't throw
+ * assertExists(undefined); // Throws
+ * ```
+ *
+ * @template T
+ * @param {T} actual The actual value to check.
+ * @param {string} [msg] The optional message to include in the error if the assertion fails.
+ * @return {asserts actual is NonNullable<T>}
+ */
+function assertExists(actual, msg) {
+  if (actual === undefined || actual === null) {
+    const msgSuffix = msg ? `: ${msg}` : ".";
+    msg =
+      `Expected actual: "${actual}" to not be null or undefined${msgSuffix}`;
+    throw new Error(msg);
+  }
+}
 
 class Scheduler {
-  #callback: () => void;
-  #pending: Map<Record<PropertyKey, any>, ReactiveEvent[]> = new Map();
+  /**
+   * @type {() => void}
+   */
+  #callback;
 
-  constructor(callback: () => void) {
+  /**
+   * @type {Map<Record<PropertyKey, any>, ReactiveEvent[]>}
+   */
+  #pending = new Map();
+
+  /**
+   * @param {()=>void} callback
+   */
+  constructor(callback) {
     this.#callback = callback;
   }
 
@@ -58,7 +101,11 @@ class Scheduler {
     return pending;
   }
 
-  schedule(proxy: Record<PropertyKey, any>, event: ReactiveEvent) {
+  /**
+   * @param {Record<PropertyKey, any>} proxy
+   * @param {ReactiveEvent} event
+   */
+  schedule(proxy, event) {
     insert(this.#pending, proxy, event);
     this.#callback();
   }
@@ -73,11 +120,12 @@ const scheduler = new Scheduler(() => {
   }
 });
 
-const insert = (
-  map: Map<Record<PropertyKey, any>, ReactiveEvent[]>,
-  proxy: Record<PropertyKey, any>,
-  event: ReactiveEvent,
-) => {
+/**
+ * @param {Map<Record<PropertyKey, any>, ReactiveEvent[]>} map
+ * @param {Record<PropertyKey, any>} proxy
+ * @param {ReactiveEvent} event
+ */
+const insert = (map, proxy, event) => {
   const proxyEvents = map.get(proxy);
   if (proxyEvents) {
     const index = proxyEvents.findIndex((e) => {
@@ -151,32 +199,18 @@ const ns = {
 };
 
 /**
- * All data structures are faithfully representable as labelled directed multigraphs.
- * We model the labelled multigraph capability of this topos by storing data on the edges.
+ * @type {NotificationTarget | undefined}
  */
-type Edge = {
-  label: string;
-  isDerivedLabel?: boolean | undefined;
-  isDerivedValue?: boolean | undefined;
-  isWritableDerivedValue?: boolean | undefined;
-  updateChannels?: string[] | undefined;
-};
-
-type NotificationTarget = {
-  subscriber: Record<PropertyKey, any>;
-  rootPath: string;
-  isDerived: boolean;
-  deps?: string[] | undefined;
-};
-
-let current: NotificationTarget | undefined;
+let current;
 
 /**
  * Creates a `reactive` data structure
  *
- * @param object Can be an object, an array, a `Map` etc.
+ * @template {object} T
+ * @param {T} object Can be an object, an array, a `Map` etc.
+ * @returns {T}
  */
-export function reactive<T extends object>(object: T): T {
+export function reactive(object) {
   // avoids double proxying
   if (isReactive(object)) return object;
 
@@ -184,17 +218,31 @@ export function reactive<T extends object>(object: T): T {
   if (reactiveCache.has(object)) return reactiveCache.get(object);
 
   // will be notified of updates
-  const subscribers: Map<
-    Record<PropertyKey, any>,
-    Map<string, Omit<NotificationTarget, "subscriber">>
-  > = new Map();
+  /**
+   * @type {Map<Record<PropertyKey, any>,Map<string, Omit<NotificationTarget, "subscriber">>>}
+   */
+  const subscribers = new Map();
 
-  const proxyOwnProperties = new Map<string | symbol, PropertyDescriptor>();
-  const derivedValues = new Map<string, any>();
-  const derivedLabels = new Map<string, any>();
-  const callbacks: Set<ReactiveEventCallback> = new Set();
+  /**
+   * @type {Map<string | symbol, PropertyDescriptor>}
+   */
+  const proxyOwnProperties = new Map();
+  /**
+   * @type {Map<string, any>}
+   */
+  const derivedValues = new Map();
 
-  function emit(e: ReactiveEvent) {
+  /** @type {Map<string, any>} */
+  const derivedLabels = new Map();
+  /**
+   * @type {Set<ReactiveEventCallback>}
+   */
+  const callbacks = new Set();
+
+  /**
+   * @param {ReactiveEvent} e
+   */
+  function emit(e) {
     // recompute to ensure the correct newValue in the case of batched updates
     bubble({
       ...e,
@@ -203,7 +251,10 @@ export function reactive<T extends object>(object: T): T {
     });
   }
 
-  function bubble(e: ReactiveEvent) {
+  /**
+   * @param {ReactiveEvent} e
+   */
+  function bubble(e) {
     const type = e.type;
     const path = "path" in e ? e.path : "";
 
@@ -279,7 +330,10 @@ export function reactive<T extends object>(object: T): T {
     }
   }
 
-  function recompute(e: ReactiveEvent) {
+  /**
+   * @param {ReactiveEvent} e
+   */
+  function recompute(e) {
     assert(RECOMPUTE in e, "Expected RECOMPUTE property in e");
 
     const type = e.type;
@@ -347,7 +401,8 @@ export function reactive<T extends object>(object: T): T {
           );
           // recompute is a covariant prefixing in the relabelling case
           const rootPath = e[RECOMPUTE].rootPath;
-          e.labels = e.labels.map(([o, n]) => [rootPath + o, rootPath + n]);
+          e.labels = (/**@type {[string, string][]} */ (e.labels))
+            .map(([o, n]) => [rootPath + o, rootPath + n]);
           break;
         }
         default:
@@ -358,23 +413,35 @@ export function reactive<T extends object>(object: T): T {
     delete e[RECOMPUTE];
   }
 
-  function notify(e: ReactiveEvent) {
+  /**
+   * @param {ReactiveEvent} e
+   */
+  function notify(e) {
     for (const callback of callbacks) {
       callback(e);
     }
   }
 
-  function readPath(path: string) {
+  /**
+   * @param {string} path
+   */
+  function readPath(path) {
     return path.split(".").slice(1).reduce(
       (acc, curr) => {
         return acc instanceof Map ? acc.get(curr) : acc[curr];
       },
-      proxy as Record<string, any>,
+      /** @type {any} */ (proxy),
     );
   }
 
-  function updateLabels(): [string, string][] {
-    const labels: [string, string][] = [];
+  /**
+   * @returns {[string, string][]}
+   */
+  function updateLabels() {
+    /**
+     * @type {[string, string][]}
+     */
+    const labels = [];
 
     for (const [oldLabel, value] of derivedLabels.entries()) {
       let newLabel = ".";
@@ -402,7 +469,7 @@ export function reactive<T extends object>(object: T): T {
         (getOwn(
           maybeReactive,
           ns.UPDATE_SUBSCRIBER,
-        ) as typeof updateSubscriber)(proxy, "." + oldLabel, "." + newLabel);
+        ))(proxy, "." + oldLabel, "." + newLabel);
       }
     }
 
@@ -411,12 +478,18 @@ export function reactive<T extends object>(object: T): T {
     return labels;
   }
 
-  function addListener(callback: ReactiveEventCallback) {
+  /**
+   * @param {ReactiveEventCallback} callback
+   */
+  function addListener(callback) {
     callbacks.add(callback);
     return () => callbacks.delete(callback);
   }
 
-  function addSubscriber(options: NotificationTarget) {
+  /**
+   * @param {NotificationTarget} options
+   */
+  function addSubscriber(options) {
     const { subscriber, rootPath, isDerived, deps } = options;
     const dependencies = deps ?? [];
 
@@ -453,7 +526,11 @@ export function reactive<T extends object>(object: T): T {
     }
   }
 
-  function hasSubscriber(subscriber: Record<PropertyKey, any>): boolean {
+  /**
+   * @param {Record<PropertyKey, any>} subscriber
+   * @returns {boolean}
+   */
+  function hasSubscriber(subscriber) {
     for (const [other] of subscribers.entries()) {
       if (
         other === subscriber || getOwn(other, ns.HAS_SUBSCRIBER)(subscriber)
@@ -462,16 +539,20 @@ export function reactive<T extends object>(object: T): T {
     return false;
   }
 
-  function removeSubscriber(subscriber: Record<PropertyKey, any>) {
+  /**
+   * @param {Record<PropertyKey, any>} subscriber
+   */
+  function removeSubscriber(subscriber) {
     subscribers.delete(subscriber);
   }
 
   // relabels a parent path
-  function updateSubscriber(
-    subscriber: Record<PropertyKey, any>,
-    oldPath: string,
-    newPath: string,
-  ) {
+  /**
+   * @param {Record<PropertyKey, any>} subscriber
+   * @param {string} oldPath
+   * @param {string} newPath
+   */
+  function updateSubscriber(subscriber, oldPath, newPath) {
     const parentEntry = subscribers.get(subscriber);
     assertExists(parentEntry);
 
@@ -537,7 +618,7 @@ export function reactive<T extends object>(object: T): T {
                 (getOwn(
                   proxiedValue,
                   ns.ADD_SUBSCRIBER,
-                ) as typeof addSubscriber)(
+                ))(
                   {
                     subscriber: proxy,
                     rootPath: "." + key,
@@ -553,7 +634,7 @@ export function reactive<T extends object>(object: T): T {
                 (getOwn(
                   proxiedMethod,
                   ns.ADD_SUBSCRIBER,
-                ) as typeof addSubscriber)({
+                ))({
                   subscriber: proxy,
                   rootPath: "." + key,
                   isDerived: false,
@@ -569,13 +650,17 @@ export function reactive<T extends object>(object: T): T {
 
               return {
                 done,
-                value: (object as any) instanceof Map ? [key, value] : value,
+                value: /**@type {any}*/ (object) instanceof Map
+                  ? [key, value]
+                  : value,
               };
             },
-            return(value: any) {
+            /** @param {any} value */
+            return(value) {
               return { done: true, value };
             },
-            throw(value: any) {
+            /** @param {any} value */
+            throw(value) {
               return iterator.throw(value);
             },
           });
@@ -624,7 +709,7 @@ export function reactive<T extends object>(object: T): T {
         const proxiedValue = reactive(value);
 
         // subscribe
-        (getOwn(proxiedValue, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
+        (getOwn(proxiedValue, ns.ADD_SUBSCRIBER))({
           subscriber: proxy,
           rootPath: path,
           isDerived: false,
@@ -638,7 +723,7 @@ export function reactive<T extends object>(object: T): T {
         const bound = value.bind(object);
         const proxiedMethod = reactive(bound);
 
-        (getOwn(proxiedMethod, ns.ADD_SUBSCRIBER) as typeof addSubscriber)({
+        (getOwn(proxiedMethod, ns.ADD_SUBSCRIBER))({
           subscriber: proxy,
           rootPath: path,
           isDerived: false,
@@ -756,20 +841,22 @@ export function reactive<T extends object>(object: T): T {
     },
   });
 
-  const proxyOwnPropertiesMap = new Map<symbol, any>([
-    [ns.ADD_LISTENER, addListener],
-    [ns.ADD_SUBSCRIBER, addSubscriber],
-    [ns.REMOVE_SUBSCRIBER, removeSubscriber],
-    [ns.UPDATE_SUBSCRIBER, updateSubscriber],
-    [ns.HAS_SUBSCRIBER, hasSubscriber],
-    [ns.READ_PATH, readPath],
-    [ns.NOTIFY, notify],
-    [ns.BUBBLE_EVENT, bubble],
-    [ns.RECOMPUTE, recompute],
-    [ns.UPDATE_LABELS, updateLabels],
-    [ns.IS_REACTIVE, true],
-    [ns.TARGET, object],
-  ]);
+  const proxyOwnPropertiesMap = new Map(
+    /** @type {[symbol, any][]} */ ([
+      [ns.ADD_LISTENER, addListener],
+      [ns.ADD_SUBSCRIBER, addSubscriber],
+      [ns.REMOVE_SUBSCRIBER, removeSubscriber],
+      [ns.UPDATE_SUBSCRIBER, updateSubscriber],
+      [ns.HAS_SUBSCRIBER, hasSubscriber],
+      [ns.READ_PATH, readPath],
+      [ns.NOTIFY, notify],
+      [ns.BUBBLE_EVENT, bubble],
+      [ns.RECOMPUTE, recompute],
+      [ns.UPDATE_LABELS, updateLabels],
+      [ns.IS_REACTIVE, true],
+      [ns.TARGET, object],
+    ]),
+  );
 
   for (const [key, value] of proxyOwnPropertiesMap.entries()) {
     Object.defineProperty(proxy, key, {
@@ -783,65 +870,92 @@ export function reactive<T extends object>(object: T): T {
   return proxy;
 }
 
-const stringifyKey = (key: string | symbol) => {
+/**
+ * @param {string | symbol} key
+ */
+function stringifyKey(key) {
   return typeof key === "symbol" ? key.description ?? String(key) : key;
-};
+}
 
-const dynamicLabelMap = new Map<AnyConstructor, RegExp>([[Array, /\d+/]]);
+/**
+ * @type {Map<AnyConstructor, RegExp>}
+ */
+const dynamicLabelMap = new Map([[Array, /\d+/]]);
 
-const mutationMethods = new Map<AnyConstructor, string[]>([
-  [Array, [
-    ".concat",
-    ".copyWithin",
-    ".fill",
-    ".pop",
-    ".push",
-    ".reverse",
-    ".shift",
-    ".sort",
-    ".splice",
-    ".unshift",
-  ]],
-  [Map, [
-    ".clear",
-    ".delete",
-    ".set",
-  ]],
-]);
+const mutationMethods = new Map(
+  /** @type {[AnyConstructor, string[]][]} */ ([
+    [Array, [
+      ".concat",
+      ".copyWithin",
+      ".fill",
+      ".pop",
+      ".push",
+      ".reverse",
+      ".shift",
+      ".sort",
+      ".splice",
+      ".unshift",
+    ]],
+    [Map, [
+      ".clear",
+      ".delete",
+      ".set",
+    ]],
+  ]),
+);
 
 // we grab the proxy's virtual properties by [[GetOwnProperty]] semantics instead of [[Get]] to avoid having to add logic to the main get trap that would have to be executed for every property access of the target
-const getOwn = (proxy: Record<string, any>, symbol: symbol): any => {
+/**
+ * @param {Record<string, any>} proxy
+ * @param {symbol} symbol
+ */
+function getOwn(proxy, symbol) {
   return Object.getOwnPropertyDescriptor(proxy, symbol)?.value;
-};
+}
 
 /**
  * Returns the underlying target object of a {@linkcode reactive} `Proxy`
+ *
+ * @template T
+ * @param {T} p
+ * @returns {T}
  */
-export function snapshot<T>(p: T): T {
+export function snapshot(p) {
   return isReactive(p) ? getOwn(p, ns.TARGET) : p;
 }
 
 /**
  * Checks whether `data` is reactive
+ *
+ * @param {unknown} data
+ * @returns {data is Record<PropertyKey, any>}
  */
-export const isReactive = (data: unknown): data is Record<PropertyKey, any> => {
+export function isReactive(data) {
   return (data !== null && typeof data === "object" &&
     ns.IS_REACTIVE in data) ||
     (typeof data === "function" && ns.IS_REACTIVE in data);
-};
-
-/**
- * A `ReactiveLeaf` is a {@linkcode reactive} object with a `value` property having a {@linkcode Primitive} type
- */
-export type ReactiveLeaf<T extends Primitive = Primitive> = { value: T };
+}
 
 /**
  * Checks whether `data` is a {@linkcode ReactiveLeaf}
+ *
+ * @param {unknown} data
+ * @returns {data is ReactiveLeaf}
  */
-export const isReactiveLeaf = (data: unknown): data is ReactiveLeaf => {
+export function isReactiveLeaf(data) {
   return (data !== null && typeof data === "object" &&
     ns.IS_REACTIVE in data && "value" in data && isPrimitive(data.value));
-};
+}
+
+/**
+ * Checks whether a value is a primitive
+ *
+ * @param {unknown} value
+ */
+export function isPrimitive(value) {
+  return value === null ||
+    ["string", "number", "boolean", "undefined"].includes(typeof value);
+}
 
 function noop() {}
 
@@ -850,56 +964,30 @@ function noop() {}
  *
  * Does nothing if the argument is not reactive
  *
- * @example
- *
- * ```ts
- * import { reactive, listen } from "@f-stack/functorial";
- *
- * const state = reactive({ count: 0 });
- *
- * listen(state, (e) => {
- *   // types are "create", "update", "delete", "apply" and "relabel"
- *   if(e.type === "update" && e.path === ".count") {
- *     console.log(`old: ${e.oldValue}, new: ${e.newValue}`);
- *   }
- * });
- *
- * state.count = 1;
- * // old: 0, new: 1
- * ```
- *
- * @return A cleanup function to remove the listener
+ * @template T
+ * @param {T} node
+ * @param {ReactiveEventCallback} callback
+ * @return {() => void} A cleanup function to remove the listener
  */
-export const listen = <T>(
-  node: T,
-  callback: ReactiveEventCallback,
-): () => void => {
+export function listen(node, callback) {
   // doing the sanity check here to avoid spreading these checks all over the codebase
   if (!isReactive(node)) return noop;
   return getOwn(node, ns.ADD_LISTENER)(callback);
-};
+}
 
 // derived
 
 /**
  * Creates a derived {@linkcode reactive} with a `value` getter
  *
- * @example
- *
- * ```ts
- * import { reactive, derived } from "@f-stack/functorial";
- * import { assertEquals } from "@std/assert";
- *
- * const count = reactive({ value: 1 });
- * const double = derived(() => count.value * 2);
- *
- * assertEquals(double.value, 2);
- * ```
+ * @template T
+ * @param {()=>T} fn
+ * @returns {{ value: T }}
  */
-export const derived = <T>(fn: () => T): { value: T } => {
+export function derived(fn) {
   return reactive({
     get value() {
       return fn();
     },
   });
-};
+}
