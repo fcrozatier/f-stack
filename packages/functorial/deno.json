@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts",
-    "./utils": "./src/utils.ts"
+    ".": "./src/reactive.js",
+    "./types": "./src/types.d.ts"
   }
 }
