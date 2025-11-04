@@ -9,9 +9,9 @@ import {
   isReactive,
   listen,
   reactive,
+  type ReactiveEvent,
   snapshot,
 } from "./reactive.js";
-import type { ReactiveEvent } from "./types.d.ts";
 
 // Fundamentals
 
