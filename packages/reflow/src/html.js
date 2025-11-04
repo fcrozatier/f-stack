@@ -1,7 +1,7 @@
+// @ts-self-types="./types.d.ts"
+
 import { listen, snapshot } from "@f-stack/functorial";
-import { assert } from "@std/assert/assert";
-import { assertExists } from "@std/assert/exists";
-import { Boundary } from "./boundary.ts";
+import { Boundary } from "./boundary.js";
 import {
   isAttachSink,
   isAttrSink,
@@ -9,24 +9,45 @@ import {
   isOnSink,
   isPropSink,
   isStyleSink,
-  type Sink,
-} from "./sinks.ts";
-
-type Mode = "html" | "svg" | "math";
+} from "./sinks.js";
 
 /**
- * Type of the template tag functions
- *
- * @see {@linkcode html}
- * @see {@linkcode svg}
- * @see {@linkcode math}
+ * @import {Sink, TemplateTag} from "./types.d.ts"
  */
-export type TemplateTag = (
-  strings: TemplateStringsArray,
-  ...sinks: Sink[]
-) => DocumentFragment;
 
-const templateCache = new WeakMap<TemplateStringsArray, Template>();
+/**
+ * Makes an assertion and throws if `expr` does not have a truthy value.
+ *
+ * @param {unknown} expr The expression to test.
+ * @param msg The optional message to display if the assertion fails.
+ * @return {asserts expr}
+ */
+function assert(expr, msg = "") {
+  if (!expr) throw new Error(msg);
+}
+
+/**
+ * Makes an assertion that `actual` is not null or undefined.
+ * If not then throws.
+ *
+ * @template T
+ * @param {T} actual The actual value to check.
+ * @param {string} [msg] The optional message to include in the error if the assertion fails.
+ * @return {asserts actual is NonNullable<T>}
+ */
+function assertExists(actual, msg) {
+  if (actual === undefined || actual === null) {
+    const msgSuffix = msg ? `: ${msg}` : ".";
+    msg =
+      `Expected actual: "${actual}" to not be null or undefined${msgSuffix}`;
+    throw new Error(msg);
+  }
+}
+
+/**
+ * @type {WeakMap<TemplateStringsArray, Template>}
+ */
+const templateCache = new WeakMap();
 
 const ATTACH_SINK = "attach-🚰";
 const ATTR_SINK = "attr-🚰";
@@ -41,44 +62,66 @@ const BOUNDARY_ELEMENT = "boundary";
 let elementSinkId = 0;
 let fragmentSinkId = 0;
 
-function makeTemplateTag(mode: Mode): TemplateTag {
-  return ((strings, ...sinks) => {
+/**
+ * @typedef {"html" | "svg" | "math"} Mode
+ */
+
+/**
+ * @param {Mode} mode
+ * @returns {TemplateTag}
+ */
+function makeTemplateTag(mode) {
+  return (strings, ...sinks) => {
     const template = getTemplate(mode, strings, ...sinks);
     return template.hydrate(sinks);
-  });
+  };
 }
 
 /**
  * The `HTML` template tag
+ *
+ * @type {TemplateTag}
  */
-export const html: TemplateTag = makeTemplateTag("html");
+export const html = makeTemplateTag("html");
 
 /**
  * The `SVG` template tag
+ *
+ * @type {TemplateTag}
  */
-export const svg: TemplateTag = makeTemplateTag("svg");
+export const svg = makeTemplateTag("svg");
 
 /**
  * The `MathML` template tag
+ *
+ * @type {TemplateTag}
  */
-export const math: TemplateTag = makeTemplateTag("math");
+export const math = makeTemplateTag("math");
 
-function getTemplate(
-  mode: Mode,
-  strings: TemplateStringsArray,
-  ...sinks: Sink[]
-) {
+/**
+ * @param {Mode} mode
+ * @param {TemplateStringsArray} strings
+ * @param {...Sink} sinks
+ */
+function getTemplate(mode, strings, ...sinks) {
   let template = templateCache.get(strings);
 
   if (!template) {
     let innerHTML = mode !== "html" ? `<${mode}>` : "";
 
     // sink id - sink index
-    const elementSinks = new Map<number, number>();
-    const fragmentSinks = new Map<number, number>();
+    /**
+     * @type {Map<number, number>}
+     */
+    const elementSinks = new Map();
+
+    /**
+     * @type {Map<number, number>}
+     */
+    const fragmentSinks = new Map();
 
     for (let index = 0; index < sinks.length; index++) {
-      const string = strings[index]!;
+      const string = strings[index];
 
       innerHTML += string;
       const data = sinks[index];
@@ -135,16 +178,29 @@ function getTemplate(
 }
 
 class Template {
-  mode: Mode;
-  fragment: DocumentFragment;
-  elementSinks: Map<number, number>;
-  fragmentSinks: Map<number, number>;
+  /**  @type {Mode}   */
+  mode;
 
+  /** @type {DocumentFragment} */
+  fragment;
+
+  /** @type {Map<number, number>} */
+  elementSinks;
+
+  /** @type {Map<number, number>} */
+  fragmentSinks;
+
+  /**
+   * @param {Mode} mode
+   * @param {DocumentFragment} fragment
+   * @param {Map<number, number>} elementSinks
+   * @param {Map<number, number>} fragmentSinks
+   */
   constructor(
-    mode: Mode,
-    fragment: DocumentFragment,
-    elementSinks: Map<number, number>,
-    fragmentSinks: Map<number, number>,
+    mode,
+    fragment,
+    elementSinks,
+    fragmentSinks,
   ) {
     this.mode = mode;
     this.fragment = fragment;
@@ -152,12 +208,20 @@ class Template {
     this.fragmentSinks = fragmentSinks;
   }
 
-  hydrate(sinks: Sink[]) {
+  /**
+   * @param {Sink[]} sinks
+   */
+  hydrate(sinks) {
     const clone = document.importNode(this.fragment, true);
     const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
 
-    let currentElement: Element | null;
-    while ((currentElement = walker.nextNode() as Element | null)) {
+    /**
+     * @type {Element|null}
+     */
+    let currentElement;
+    while (
+      (currentElement = /** @type {Element | null} */ (walker.nextNode()))
+    ) {
       if (!currentElement) break;
 
       if (currentElement.tagName.toLowerCase() === BOUNDARY_ELEMENT) {
@@ -313,17 +377,15 @@ class Template {
           element.removeAttribute(ON_SINK);
           const elementListeners = new WeakMap();
 
-          type ListenerParams =
-            | EventListener
-            | [
-              EventListener,
-              options?: boolean | AddEventListenerOptions,
-            ];
+          /**
+           * @typedef {  EventListener | [EventListener,options?: boolean | AddEventListenerOptions]} ListenerParams
+           */
 
-          const addListener = (
-            type: string,
-            params: ListenerParams,
-          ) => {
+          /**
+           * @param {string} type
+           * @param {ListenerParams} params
+           */
+          const addListener = (type, params) => {
             const [listener, options] = Array.isArray(params)
               ? params
               : [params];
@@ -333,10 +395,11 @@ class Template {
             elementListeners.set(ref, bound);
           };
 
-          const removeListener = (
-            type: string,
-            params: ListenerParams,
-          ) => {
+          /**
+           * @param {string} type
+           * @param {ListenerParams} params
+           */
+          const removeListener = (type, params) => {
             const [listener, options] = Array.isArray(params)
               ? params
               : [params];
@@ -347,7 +410,7 @@ class Template {
           };
 
           for (const [key, val] of Object.entries(listeners)) {
-            addListener(key, val as ListenerParams);
+            addListener(key, /** @type {ListenerParams} */ (val));
           }
 
           listen(listeners, (e) => {
@@ -474,7 +537,7 @@ class Template {
 /**
  * All the HTML boolean attributes
  */
-export const booleanAttributes = [
+const booleanAttributes = [
   "allowfullscreen", // on <iframe>
   "async", // on <script>
   "autofocus", // on <button>, <input>, <select>, <textarea>
@@ -501,7 +564,11 @@ export const booleanAttributes = [
   "selected", // on <option>
 ];
 
-function isNonReflectedAttribute(element: Element, key: string) {
+/**
+ * @param {Element} element
+ * @param {string} key
+ */
+function isNonReflectedAttribute(element, key) {
   return element instanceof HTMLInputElement &&
     ["value", "checked"].includes(key);
 }

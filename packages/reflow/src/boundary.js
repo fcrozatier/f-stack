@@ -7,34 +7,37 @@ import {
 } from "@f-stack/functorial";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
-import {
-  type DerivedSink,
-  isMapSink,
-  isShowSink,
-  isTextSink,
-  isUnsafeHTML,
-  type Sink,
-} from "./sinks.ts";
+import { isMapSink, isShowSink, isTextSink, isUnsafeHTML } from "./sinks.js";
+
+/**
+ * @import {DerivedSink, Sink} from "./types.d.ts"
+ */
 
 /**
  * A {@linkcode Boundary} is a live `DocumentFragment` with a start and end `Comment` nodes.
  */
 export class Boundary {
-  #start: Comment;
-  #end: Comment;
+  /** @type {Comment} */
+  #start;
+  /** @type {Comment} */
+  #end;
 
-  /** @internal */
-  range: Range;
+  /** @type {Range} */
+  range;
 
   /**
    * Holds the data the {@linkcode Boundary} manages, which can be any of the different sorts of sinks, a {@linkcode ReactiveLeaf} or a {@linkcode Primitive}
+   *
+   * @type {Sink}
    */
-  data: Sink;
+  data;
 
   /**
    * Creates a new {@linkcode Boundary}
+   *
+   * @param {Sink} data
    */
-  constructor(data: Sink) {
+  constructor(data) {
     this.range = new Range();
     this.data = data;
     this.#start = document.createComment("");
@@ -43,23 +46,27 @@ export class Boundary {
 
   /**
    * Returns the start `Comment` of the {@linkcode Boundary}
+   *
+   * @return {Comment}
    */
-  get start(): Comment {
+  get start() {
     return this.#start;
   }
 
-  set start(comment: Comment) {
+  set start(comment) {
     this.#start = comment;
   }
 
   /**
    * Returns the end `Comment` of the {@linkcode Boundary}
+   *
+   * @returns {Comment}
    */
-  get end(): Comment {
+  get end() {
     return this.#end;
   }
 
-  set end(comment: Comment) {
+  set end(comment) {
     this.#end = comment;
   }
 
@@ -90,13 +97,16 @@ export class Boundary {
   /**
    * Moves the {@linkcode Boundary} before the target provided they have a common parent.
    *
-   * @param target The target `Node` where to move the {@linkcode Boundary} before
+   * @param {Node} target The target `Node` where to move the {@linkcode Boundary} before
    */
-  moveBefore(target: Node) {
+  moveBefore(target) {
     const start = this.start;
-    const nodes: Node[] = [start];
 
-    let currentNode: Node | null = start;
+    /** @type {Node[]} */
+    const nodes = [start];
+
+    /** @type {Node|null} */
+    let currentNode = start;
 
     while (true) {
       currentNode = currentNode.nextSibling;
@@ -105,7 +115,8 @@ export class Boundary {
       if (currentNode === this.end) break;
     }
 
-    const parentElement: Element | null = target.parentElement;
+    /** @type {Element | null} */
+    const parentElement = target.parentElement;
     assertExists(parentElement);
     for (const node of nodes) {
       // @ts-ignore moveBefore types missing
@@ -115,8 +126,10 @@ export class Boundary {
 
   /**
    * Returns the {@linkcode Boundary}'s parent `Element` or null
+   *
+   * @returns {HTMLElement | null}
    */
-  get parentElement(): HTMLElement | null {
+  get parentElement() {
     return this.start.parentElement;
   }
 
@@ -137,27 +150,31 @@ export class Boundary {
       const values = data.values;
       const mapper = data.mapper;
 
-      const boundaries: {
-        index: { value: number };
-        data: any;
-        boundary: Boundary;
-      }[] = [];
-      let labels: [string, string][] = [];
+      /**
+       * @type {{ index: { value: number };data: any;boundary: Boundary;}[]}
+       */
+      const boundaries = [];
+      /**
+       * @type { [string, string][]}
+       */
+      let labels = [];
 
-      type SpliceOptions<T = any> = {
-        start: number;
-        deleteCount: number;
-        values: T[];
-      };
+      /**
+       * @typedef {{        start: number;deleteCount: number;values: any[];      }} SpliceOptions
+       */
 
-      const updates: (() => void)[] = [];
+      /**
+       * @type {(() => void)[]}
+       */
+      const updates = [];
 
       // removes/inserts adjacent values by deleting/creating boundaries to trigger the right View Transitions
-      const spliceBoundaries = (
-        start: number,
-        deleteCount = 0,
-        ...values: any[]
-      ) => {
+      /**
+       * @param {number} start
+       * @param {number} deleteCount
+       * @param {...any} values
+       */
+      const spliceBoundaries = (start, deleteCount = 0, ...values) => {
         for (
           const { boundary } of boundaries.slice(
             start,
@@ -165,11 +182,10 @@ export class Boundary {
           )
         ) boundary.remove();
 
-        const newBoundaries: {
-          index: { value: number };
-          data: any;
-          boundary: Boundary;
-        }[] = [];
+        /**
+         * @type {{          index: { value: number };data: any;boundary: Boundary;}[]}
+         */
+        const newBoundaries = [];
 
         for (const value of values) {
           const index = reactive({ value: start + newBoundaries.length });
@@ -194,18 +210,25 @@ export class Boundary {
       };
 
       // partitions the splice operation into a minimal set of moves (relabels) and adjacent (atomic) insertions/deletions (sub) splices
-      const moveAndSpliceBoundaries = (
-        start: number,
-        deleteCount = 0,
-        ...values: any[]
-      ) => {
-        const splices: SpliceOptions[] = [];
+      /**
+       * @param {number} start
+       * @param {number} deleteCount
+       * @param {...any} values
+       */
+      const moveAndSpliceBoundaries = (start, deleteCount = 0, ...values) => {
+        /**
+         * @type {SpliceOptions[]}
+         */
+        const splices = [];
 
-        type Tag =
-          | { type: "insert" | "delete" | "swap" }
-          | { type: "move"; from: number; to: number };
+        /**
+         * @typedef {{ type: "insert" | "delete" | "swap" }          | { type: "move"; from: number; to: number }} Tag
+         */
 
-        const tags: { deleteRange: Tag[]; insertRange: Tag[] } = {
+        /**
+         * @type {{ deleteRange: Tag[]; insertRange: Tag[] }}
+         */
+        const tags = {
           deleteRange: Array.from({ length: deleteCount }),
           insertRange: Array.from({ length: values.length }),
         };
@@ -281,7 +304,10 @@ export class Boundary {
 
         let pureDeletions = 0;
         let lastIndex = -1;
-        let currentAtomicSplice: SpliceOptions = {
+        /**
+         * @type {SpliceOptions}
+         */
+        let currentAtomicSplice = {
           start,
           deleteCount: 0,
           values: [],
@@ -298,7 +324,7 @@ export class Boundary {
             tag.from -= pureDeletions;
 
             // @ts-ignore update the corresponding tag in the insertRange
-            tags.insertRange[tag.to]!.from -= pureDeletions;
+            tags.insertRange[tag.to].from -= pureDeletions;
             continue;
           }
 
@@ -362,7 +388,10 @@ export class Boundary {
 
         // at this point everything is correctly tagged
 
-        const moves: [from: number, to: number][] = [];
+        /**
+         * @type {[from: number, to: number][]}
+         */
+        const moves = [];
         let pureInsertions = 0;
         lastIndex = -1;
         currentAtomicSplice = { start, deleteCount: 0, values: [] };
@@ -423,7 +452,10 @@ export class Boundary {
         }
       };
 
-      const moveBoundaries = (relabels: [number, number][]) => {
+      /**
+       * @param {[number, number][]} relabels
+       */
+      const moveBoundaries = (relabels) => {
         const permutation = computeCycles(relabels);
         const transpositions = permutationDecomposition(permutation);
 
@@ -432,7 +464,11 @@ export class Boundary {
         }
       };
 
-      const swapBoundaries = (i: number, j: number) => {
+      /**
+       * @param {number} i
+       * @param {number} j
+       */
+      const swapBoundaries = (i, j) => {
         assert(i !== j, "Swap expected distinct elements");
         const from = Math.min(i, j);
         const to = Math.max(i, j);
@@ -559,7 +595,10 @@ export class Boundary {
               case ".reverse":
               case ".sort": {
                 if (labels.length > 0) {
-                  const moves: [number, number][] = labels.map(
+                  /**
+                   * @type {[number, number][]}
+                   */
+                  const moves = labels.map(
                     ([a, b]) => [+a.slice(1), +b.slice(1)],
                   );
 
@@ -593,9 +632,15 @@ export class Boundary {
         textNode.data = String(e.newValue ?? "");
       });
     } else if (isShowSink(data)) {
-      let cleanup: (() => void) | undefined;
+      /**
+       * @type {(() => void) | undefined}
+       */
+      let cleanup;
 
-      const setup = (currentCase: (() => DerivedSink) | undefined) => {
+      /**
+       * @param  {(() => DerivedSink) | undefined} currentCase
+       */
+      const setup = (currentCase) => {
         if (currentCase) {
           return this.renderDerivedSink(currentCase());
         }
@@ -631,8 +676,11 @@ export class Boundary {
 
   /**
    * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and also inserts nested `DocumentFragments` as-is
+   *
+   * @param {DerivedSink} data
+   * @returns {(() => void) | undefined}
    */
-  renderDerivedSink(data: DerivedSink): (() => void) | undefined {
+  renderDerivedSink(data) {
     const content = isReactiveLeaf(data) ? data.value : data;
 
     if (content instanceof DocumentFragment) {
@@ -667,8 +715,10 @@ export class Boundary {
   /**
    * Replaces the existing children of a Boundary with a specified new set of children.
    * These can be string or Node objects.
+   *
+   * @param {...(Node | string)} nodes
    */
-  replaceChildren(...nodes: (Node | string)[]) {
+  replaceChildren(...nodes) {
     if (this.parentElement) {
       this.range.setStartAfter(this.#start);
       this.range.setEndBefore(this.#end);
@@ -678,16 +728,21 @@ export class Boundary {
   }
 }
 
-type UpdateCallback = undefined | (() => void | Promise<void>);
-type StartViewTransitionOptions = {
-  types?: string[];
-  update?: UpdateCallback;
-};
+/**
+ * @typedef {undefined | (() => void | Promise<void>)} UpdateCallback
+ */
 
-function maybeViewTransition(
-  param: StartViewTransitionOptions | UpdateCallback,
-  element?: HTMLElement | null | undefined,
-) {
+/**
+ * @typedef  {object} StartViewTransitionOptions
+ * @property {string[]} [types]
+ * @property {UpdateCallback} [update]
+ */
+
+/**
+ * @param {StartViewTransitionOptions | UpdateCallback} param
+ * @param {HTMLElement | null | undefined} [element]
+ */
+function maybeViewTransition(param, element) {
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
     // @ts-ignore FUTUR
     if (element?.startViewTransition) {
@@ -713,24 +768,40 @@ function maybeViewTransition(
  *
  * @example
  * [[1,2], [2,3], [3,1], [4,5], [5,4]] -> [[1,2,3], [4,5]]
+ *
+ * @param {[number, number][]} permutation
  */
-function computeCycles(permutation: [number, number][]) {
+function computeCycles(permutation) {
   if (permutation.length === 0) return [];
 
-  const cycles: number[][] = [];
-  let from: number = permutation[0]![0];
-  let currentCycle: number[] = [from];
+  /**
+   * @type {number[][]}
+   */
+  const cycles = [];
+
+  const first = permutation[0];
+  assertExists(first);
+  let from = first[0];
+
+  /**
+   * @type {number[]}
+   */
+  let currentCycle = [from];
 
   while (permutation.length > 0) {
     const index = permutation.findIndex(([f]) => f === from);
-    const to = permutation[index]![1];
+    const target = permutation[index];
+    assertExists(target);
+    const to = target[1];
 
     if (currentCycle.includes(to)) {
       cycles.push(currentCycle);
       permutation.splice(index, 1);
 
       if (permutation.length === 0) break;
-      from = permutation[0]![0];
+      const first = permutation[0];
+      assertExists(first);
+      from = first[0];
       currentCycle = [from];
     } else {
       currentCycle.push(to);
@@ -748,9 +819,14 @@ function computeCycles(permutation: [number, number][]) {
  *
  * @example
  * [1,2,3] -> [[1,2], [1,3]]
+ *
+ * @param {number[][]} cycles
  */
-function permutationDecomposition(cycles: number[][]) {
-  const decomposition: [number, number][] = [];
+function permutationDecomposition(cycles) {
+  /**
+   * @type {[number, number][]}
+   */
+  const decomposition = [];
 
   for (const cycle of cycles) {
     const start = cycle[0];
