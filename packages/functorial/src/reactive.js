@@ -1,4 +1,16 @@
-/* @ts-self-types="./reactive.d.ts" */
+/* @ts-self-types="./types.d.ts" */
+
+/**
+ * @import {ReactiveEvent, ReactiveEventCallback, AnyConstructor,  ReactiveLeaf} from "./types.d.ts"
+ */
+
+/**
+ * @typedef {object} NotificationTarget
+ * @property {Record<PropertyKey, any>} subscriber
+ * @property {string} rootPath
+ * @property {boolean} isDerived
+ * @property {string[]|undefined} [deps]
+ */
 
 /**
  * Main Functorial exports
@@ -6,12 +18,64 @@
  * @module
  */
 
-import { assert } from "@std/assert/assert";
-import { assertExists } from "@std/assert/exists";
+class AssertionError extends Error {
+  /** Constructs a new instance.
+   *
+   * @param {string} message The error message.
+   * @param {ErrorOptions} [options] Additional options.
+   */
+  constructor(message, options) {
+    super(message, options);
+    this.name = "AssertionError";
+  }
+}
 
 /**
- * @import {ReactiveEvent, NotificationTarget, ReactiveEventCallback, AnyConstructor, Primitive, ReactiveLeaf} from "./reactive.d.ts"
+ * Make an assertion, error will be thrown if `expr` does not have truthy value.
+ *
+ * @example Usage
+ * ```ts ignore
+ * import { assert } from "@std/assert";
+ *
+ * assert("hello".includes("ello")); // Doesn't throw
+ * assert("hello".includes("world")); // Throws
+ * ```
+ *
+ * @param {unknown} expr The expression to test.
+ * @param msg The optional message to display if the assertion fails.
+ * @return {asserts expr}
  */
+function assert(expr, msg = "") {
+  if (!expr) {
+    throw new AssertionError(msg);
+  }
+}
+
+/**
+ * Make an assertion that actual is not null or undefined.
+ * If not then throw.
+ *
+ * @example Usage
+ * ```ts ignore
+ * import { assertExists } from "@std/assert";
+ *
+ * assertExists("something"); // Doesn't throw
+ * assertExists(undefined); // Throws
+ * ```
+ *
+ * @template T
+ * @param {T} actual The actual value to check.
+ * @param {string} [msg] The optional message to include in the error if the assertion fails.
+ * @return {asserts actual is NonNullable<T>}
+ */
+function assertExists(actual, msg) {
+  if (actual === undefined || actual === null) {
+    const msgSuffix = msg ? `: ${msg}` : ".";
+    msg =
+      `Expected actual: "${actual}" to not be null or undefined${msgSuffix}`;
+    throw new Error(msg);
+  }
+}
 
 class Scheduler {
   /**
@@ -337,7 +401,8 @@ export function reactive(object) {
           );
           // recompute is a covariant prefixing in the relabelling case
           const rootPath = e[RECOMPUTE].rootPath;
-          e.labels = e.labels.map(([o, n]) => [rootPath + o, rootPath + n]);
+          e.labels = (/**@type {[string, string][]} */ (e.labels))
+            .map(([o, n]) => [rootPath + o, rootPath + n]);
           break;
         }
         default:
@@ -886,7 +951,6 @@ export function isReactiveLeaf(data) {
  * Checks whether a value is a primitive
  *
  * @param {unknown} value
- * @returns {value is Primitive}
  */
 export function isPrimitive(value) {
   return value === null ||
@@ -899,24 +963,6 @@ function noop() {}
  * Listens to a {@linkcode reactive} graph and runs the provided callback whenever a change or call is detected
  *
  * Does nothing if the argument is not reactive
- *
- * @example
- *
- * ```ts
- * import { reactive, listen } from "@f-stack/functorial";
- *
- * const state = reactive({ count: 0 });
- *
- * listen(state, (e) => {
- *   // types are "create", "update", "delete", "apply" and "relabel"
- *   if(e.type === "update" && e.path === ".count") {
- *     console.log(`old: ${e.oldValue}, new: ${e.newValue}`);
- *   }
- * });
- *
- * state.count = 1;
- * // old: 0, new: 1
- * ```
  *
  * @template T
  * @param {T} node
@@ -933,18 +979,6 @@ export function listen(node, callback) {
 
 /**
  * Creates a derived {@linkcode reactive} with a `value` getter
- *
- * @example
- *
- * ```ts
- * import { reactive, derived } from "@f-stack/functorial";
- * import { assertEquals } from "@std/assert";
- *
- * const count = reactive({ value: 1 });
- * const double = derived(() => count.value * 2);
- *
- * assertEquals(double.value, 2);
- * ```
  *
  * @template T
  * @param {()=>T} fn
