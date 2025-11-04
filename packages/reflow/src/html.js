@@ -1,4 +1,4 @@
-// @ts-self-types="./types.d.ts"
+// @ts-self-types="./html.d.ts"
 
 import {
   isPrimitive,
@@ -9,7 +9,7 @@ import {
 } from "@f-stack/functorial";
 
 /**
- * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink, TemplateTag } from "./types.d.ts"
+ * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink, TemplateTag } from "./html.d.ts"
  *
  * @import { ReactiveLeaf } from "@f-stack/functorial/types"
  */
@@ -583,7 +583,7 @@ function isNonReflectedAttribute(element, key) {
 /**
  * A {@linkcode Boundary} is a live `DocumentFragment` with a start and end `Comment` nodes.
  */
-export class Boundary {
+class Boundary {
   /** @type {Comment} */
   #start;
   /** @type {Comment} */
@@ -1420,34 +1420,6 @@ const ATTACH_SINK = Symbol.for("attach sink");
  *
  * The callback hook runs on the element it is attached to.
  *
- * @example
- *
- * ```ts
- * import { attach, html, on } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
- *
- * export const UseDemo = () => {
- *   const form = reactive({ value: "Bob" });
- *
- *   return html`
- *     <form>
- *       <label>username:
- *         <input type="text"
- *           ${attach((i: HTMLInputElement) => {
- *             i.defaultValue = form.value;
- *           })}
- *           ${on<HTMLInputElement>({
- *             input: function () {
- *               form.value = this.value;
- *             },
- *           })}>
- *       </label>
- *       <button type="reset">Reset</button>
- *     </form>
- *   `;
- * };
- * ```
- *
  * @template {Node} T
  * @param {AttachSink<T>} hook
  * @returns {AttachSink<T>}
@@ -1503,24 +1475,6 @@ const CLASSLIST_SINK = Symbol.for("classList sink");
 /**
  * Creates a {@linkcode classList} sink that handles conditional classes on an `Element`
  *
- * @example
- *
- * ```ts
- * import { html, classList } from "@f-stack/reflow";
- *
- * export const ClassListDemo = () => {
- *   return html`
- *     <span ${classList({ highlight: true })}>Hi</span>
- *
- *     <style>
- *       .highlight {
- *         color: red;
- *       }
- *     </style>
- *   `
- * }
- * ```
- *
  * @param {ClassListSink} classes
  * @return {ClassListSink}
  */
@@ -1549,22 +1503,6 @@ const MAP_SINK = Symbol.for("map sink");
 /**
  * Creates a {@linkcode map} sink for iterating over a {@linkcode reactive} array
  *
- * @example
- *
- * ```ts
- * import { html, map } from "@f-stack/reflow";
- *
- * export const MapDemo = () => {
- *   const arr = ["a", "b", "c"];
- *
- *   return html`
- *   <ul>
- *     ${map(arr, (letter, index) => {
- *       return html`<li>${index}: ${letter}<li>`
- *     })}
- *   </ul>`
- * }
- * ```
  * @template T
  * @param {T[]} values The {@linkcode reactive} array to iterate on
  * @param {(value: T, index: ReactiveLeaf<number>) => DocumentFragment} mapper A callback taking as input a single `value` from the array and its `index`
@@ -1601,34 +1539,6 @@ const ON_SINK = Symbol.for("on sink");
 /**
  * Creates an {@linkcode on} sink that manages event handlers on an `Element`
  *
- * @example Simple click listener
- *
- * ```ts
- * import { html, on } from "@f-stack/reflow";
- *
- * export const ClickDemo = () => {
- *   return html`<button ${on({
- *     click: () => console.log('hi')
- *   })}>Click</button>`
- * }
- * ```
- *
- * @example Type parameter and `this` keyword
- *
- * Pass a type parameter to the {@linkcode on} sink for a more accurate typing of `this`
- *
- * ```ts
- * import { html, on } from "@f-stack/reflow";
- *
- * export const ThisDemo = () => {
- *   return html`<input ${on<HTMLInputElement>({
- *     input: function () {
- *       console.log(this.value)
- *     }
- *   })}>`
- * }
- * ```
- *
  * @param {DefaultedOn} listeners
  * @returns {DefaultedOn}
  */
@@ -1655,27 +1565,6 @@ const PROP_SINK = Symbol.for("prop sink");
 
 /**
  * Creates a {@linkcode prop} sink that manages an `Element` properties
- *
- * @example
- *
- * ```ts
- * import { html, prop } from "@f-stack/reflow";
- *
- * export const PropDemo = () => {
- *   return html`
- *     <form>
- *       <input type="checkbox" ${prop<HTMLInputElement>({
- *         indeterminate: true,
- *       })}>
- *       <input type="text" ${prop<HTMLInputElement>({ defaultValue: "Bob" })}>
- *       <p>
- *         <button type="reset">Reset</button>
- *       </p>
- *     </form>
- *   `;
- * };
- *
- * ```
  *
  * @template {Element} T
  * @param {Prop<T>} props
@@ -1748,20 +1637,6 @@ const STYLE_SINK = Symbol.for("style sink");
 /**
  * Creates a `style` sink that handles inline styles on an `Element`
  *
- * @example
- *
- * ```ts
- * import { html, style } from "@f-stack/reflow";
- *
- * export const StyleDemo = () => {
- *   return html`
- *     <div ${style({
- *       "--bg": 'red',
- *       color: "var(--bg)"
- *     })}>Hello</div>`
- * }
- * ```
- *
  * @param {StyleSink} styles
  * @return {StyleSink}
  */
@@ -1790,28 +1665,6 @@ const TEXT_SINK = Symbol.for("text sink");
 /**
  * Creates a text sink from a {@linkcode reactive} object reference and a key
  *
- * __`text` sink vs `derived` sink__
- *
- * A {@linkcode derived} sink is more powerful than a {@linkcode text} sink but creates an additional `Proxy`, which is not always necessary: when the key is dynamic or you need to compute an expression from the returned value use a {@linkcode derived} sink, otherwise use a {@linkcode text} sink when just reading values
- *
- * @example
- *
- * ```ts
- * import { html, text } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
- *
- * export const TextDemo = () => {
- *   const user = reactive({
- *     name: "Bob",
- *     age: 21
- *   })
- *
- *   return html`
- *     Name: ${text(user, "name")} Age: ${text(user, "age")}
- *   `
- * }
- * ```
- *
  * @template {Record<string, any>} T
  * @param {T} node the {@linkcode reactive} object reference
  * @param {keyof T & string} key the key to read as text. Defaults to `value`
@@ -1819,10 +1672,7 @@ const TEXT_SINK = Symbol.for("text sink");
  *
  * @see {@linkcode derived}
  */
-export function text(
-  node,
-  key = "value",
-) {
+export function text(node, key = "value") {
   const textSink = { data: node, key, [TEXT_SINK]: true };
   return textSink;
 }
@@ -1849,19 +1699,6 @@ const UNSAFE_SINK = Symbol.for("unsafe sink");
  * The passed-in string or {@linkcode ReactiveLeaf<string>} is parsed as HTML and written to the DOM.
  *
  * Only use this with trusted inputs.
- *
- * @example
- *
- * ```ts
- * import { html, unsafeHTML } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
- *
- * export const UnsafeDemo = () => {
- *   const unsafeInput = reactive({ value: "<em>Raw HTML</em>" });
- *
- *   return html`${unsafeHTML(unsafeInput)}`
- * }
- * ```
  *
  * @param {string | ReactiveLeaf<string>} unsafe
  * @returns {UnsafeSink}
