@@ -1,7 +1,7 @@
 /* @ts-self-types="./reactive.d.ts" */
 
 /**
- * @import {ReactiveEvent, ReactiveEventCallback, AnyConstructor,  ReactiveLeaf} from "./reactive.d.ts"
+ * @import {ReactiveEvent, ReactiveEventCallback, AnyConstructor, ReactiveLeaf} from "./reactive.d.ts"
  */
 
 /**

@@ -1,7 +1,7 @@
 /**
  * This type can be assigned to any constructor
  */
-export type AnyConstructor = new (...args: any[]) => any;
+type AnyConstructor = new (...args: any[]) => any;
 
 /**
  * Describes primitives
