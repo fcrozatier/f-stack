@@ -10,7 +10,7 @@ import { dirname, extname, globToRegExp, join } from "@std/path";
  * @prop {RegExp} skip Regular expression pattern used to skip entries
  */
 export const buildConfig = {
-  exts: [".ts", ".css"],
+  exts: [".js", ".ts", ".css"],
   matcher: globToRegExp("+(packages|playground)/**"),
   skip: /(\.d|\.test|\.spec)\.ts$/,
 };
@@ -25,6 +25,7 @@ export const buildPath = (path: string) => {
 
   let content = Deno.readTextFileSync(path);
   switch (extname(path)) {
+    case ".js":
     case ".ts":
       content = stripTypes(content, {
         pathRewriting: true,
@@ -34,8 +35,7 @@ export const buildPath = (path: string) => {
           imports: {
             "@f-stack/reflow/reactivity": "./packages/reflow/src/reactivity.js",
             "@f-stack/reflow": "./packages/reflow/src/mod.js",
-            "@f-stack/functorial/utils": "./packages/functorial/src/utils.js",
-            "@f-stack/functorial": "./packages/functorial/src/mod.js",
+            "@f-stack/functorial": "./packages/functorial/src/reactive.js",
           },
         },
       });
