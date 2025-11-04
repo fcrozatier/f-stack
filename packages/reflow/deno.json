@@ -7,7 +7,7 @@
     "e2e:show-report": "deno run -A npm:playwright show-report"
   },
   "exports": {
-    ".": "./src/mod.ts",
+    ".": "./src/html.js",
     "./reactivity": "./src/reactivity.ts"
   },
   "imports": {
