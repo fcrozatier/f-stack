@@ -1,3 +1,5 @@
+/* @ts-self-types="./reactive.d.ts" */
+
 /**
  * Main Functorial exports
  *
@@ -8,7 +10,7 @@ import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 
 /**
- * @import {ReactiveEvent, NotificationTarget, ReactiveEventCallback, AnyConstructor, Primitive, ReactiveLeaf} from "./types.d.ts"
+ * @import {ReactiveEvent, NotificationTarget, ReactiveEventCallback, AnyConstructor, Primitive, ReactiveLeaf} from "./reactive.d.ts"
  */
 
 class Scheduler {

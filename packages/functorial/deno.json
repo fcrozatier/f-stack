@@ -4,6 +4,6 @@
   "license": "MIT",
   "exports": {
     ".": "./src/reactive.js",
-    "./types": "./src/types.d.ts"
+    "./types": "./src/reactive.d.ts"
   }
 }

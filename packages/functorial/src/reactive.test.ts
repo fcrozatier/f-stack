@@ -11,7 +11,7 @@ import {
   reactive,
   snapshot,
 } from "./reactive.js";
-import type { ReactiveEvent } from "./types.d.ts";
+import type { ReactiveEvent } from "./reactive.d.ts";
 
 // Fundamentals
 
