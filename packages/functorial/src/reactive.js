@@ -31,37 +31,19 @@ class AssertionError extends Error {
 }
 
 /**
- * Make an assertion, error will be thrown if `expr` does not have truthy value.
- *
- * @example Usage
- * ```ts ignore
- * import { assert } from "@std/assert";
- *
- * assert("hello".includes("ello")); // Doesn't throw
- * assert("hello".includes("world")); // Throws
- * ```
+ * Makes an assertion and throws if `expr` does not have a truthy value.
  *
  * @param {unknown} expr The expression to test.
  * @param msg The optional message to display if the assertion fails.
  * @return {asserts expr}
  */
 function assert(expr, msg = "") {
-  if (!expr) {
-    throw new AssertionError(msg);
-  }
+  if (!expr) throw new AssertionError(msg);
 }
 
 /**
- * Make an assertion that actual is not null or undefined.
- * If not then throw.
- *
- * @example Usage
- * ```ts ignore
- * import { assertExists } from "@std/assert";
- *
- * assertExists("something"); // Doesn't throw
- * assertExists(undefined); // Throws
- * ```
+ * Makes an assertion that `actual` is not null or undefined.
+ * If not then throws.
  *
  * @template T
  * @param {T} actual The actual value to check.
@@ -73,7 +55,7 @@ function assertExists(actual, msg) {
     const msgSuffix = msg ? `: ${msg}` : ".";
     msg =
       `Expected actual: "${actual}" to not be null or undefined${msgSuffix}`;
-    throw new Error(msg);
+    throw new AssertionError(msg);
   }
 }
 
