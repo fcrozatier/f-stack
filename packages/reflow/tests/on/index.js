@@ -1,4 +1,4 @@
-import { html, on } from "../../src/html.d.ts";
+import { html, on } from "@f-stack/reflow";
 import { reactive } from "@f-stack/reflow/reactivity";
 
 export default () => {
@@ -14,7 +14,7 @@ export default () => {
       })} data-testid="decrement">decrement</button>
       <button ${on({
         click: [() => count.value *= 10, { once: true }],
-      })} data-testid="boost">boos</button>
+      })} data-testid="boost">boost</button>
     </p>
 
     <output data-testid="output">${count}</output>

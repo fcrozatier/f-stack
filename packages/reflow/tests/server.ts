@@ -1,6 +1,7 @@
 import { basename, dirname, extname, fromFileUrl, join } from "@std/path";
 
 const moduleDir = dirname(fromFileUrl(import.meta.url));
+const packagesDir = join(moduleDir, "..", "..", "..");
 
 const template = (path: string) => `
 <!DOCTYPE html>
@@ -12,9 +13,9 @@ const template = (path: string) => `
     <script type="importmap">
       {
         "imports": {
-          "@std/assert/": "https://esm.sh/jsr/@std/assert/",
-          "@f-stack/reflow/reactivity": "/build/packages/functorial/src/reactive.js",
-          "@f-stack/reflow": "/build/packages/reflow/src/mod.js"
+          "@f-stack/functorial": "/packages/functorial/src/reactive.js",
+          "@f-stack/reflow/reactivity": "/packages/functorial/src/reactive.js",
+          "@f-stack/reflow": "/packages/reflow/src/html.js"
         }
       }
     </script>
@@ -45,11 +46,9 @@ export default {
     }
 
     if (extension === ".js") {
-      const dest = path.startsWith("/build")
-        ? join(moduleDir, "..", "..", "..", path)
-        : !path.startsWith("/functorial")
-        ? join(moduleDir, path)
-        : "";
+      const dest = path.startsWith("/packages")
+        ? join(packagesDir, path)
+        : join(moduleDir, path);
 
       const file = Deno.readTextFileSync(dest);
 
