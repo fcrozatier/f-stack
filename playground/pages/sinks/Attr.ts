@@ -1,5 +1,6 @@
 import { reactive } from "@f-stack/functorial";
-import { attr, type AttrSink, html, on } from "@f-stack/reflow";
+import type { AttrSink } from "@f-stack/reflow";
+import { attr, html, on } from "@f-stack/reflow";
 
 export const Attr = () => {
   const disabled = reactive({ value: false });

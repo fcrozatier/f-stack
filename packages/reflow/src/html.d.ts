@@ -1,6 +1,22 @@
-import { isReactiveLeaf, reactive } from "@f-stack/functorial";
-import type { Primitive, ReactiveLeaf } from "@f-stack/functorial/types";
+import type { Primitive, ReactiveLeaf } from "@f-stack/functorial";
 import type { DOMAttributesTagNameMap } from "./elements.d.ts";
+
+/**
+ * Type of the template tag functions
+ *
+ * @see {@linkcode html}
+ * @see {@linkcode svg}
+ * @see {@linkcode math}
+ */
+export type TemplateTag = (
+  strings: TemplateStringsArray,
+  ...sinks: Sink[]
+) => DocumentFragment;
+
+/**
+ * A sink is either an {@linkcode ElementSink} or a {@linkcode FragmentSink}
+ */
+export type Sink = ElementSink | FragmentSink;
 
 /**
  * The type of an element sink
@@ -24,13 +40,21 @@ export type FragmentSink =
   | UnsafeSink;
 
 /**
- * A sink is either an {@linkcode ElementSink} or a {@linkcode FragmentSink}
+ * The `HTML` template tag
  */
-export type Sink = ElementSink | FragmentSink;
+export const html: TemplateTag;
+
+/**
+ * The `SVG` template tag
+ */
+export const svg: TemplateTag;
+
+/**
+ * The `MathML` template tag
+ */
+export const math: TemplateTag;
 
 // attach
-
-const ATTACH_SINK = Symbol.for("attach sink");
 
 /**
  * Type of a {@linkcode attach} sink
@@ -72,21 +96,14 @@ export interface AttachSink<T extends Node = Element> {
  * };
  * ```
  */
-export function attach<T extends Node>(hook: AttachSink<T>): AttachSink<T> {
-  Object.defineProperty(hook, ATTACH_SINK, { value: true });
-  return hook;
-}
+export function attach<T extends Node>(hook: AttachSink<T>): AttachSink<T>;
 
 /**
  * Checks whether a sink is an {@linkcode attach} sink
  */
-export const isAttachSink = (value: unknown): value is AttachSink => {
-  return typeof value === "function" && Object.hasOwn(value, ATTACH_SINK);
-};
+export function isAttachSink(value: unknown): value is AttachSink;
 
 // attr
-
-const ATTR_SINK = Symbol.for("attr sink");
 
 /**
  * All tag names of HTML, SVG and MathML elements
@@ -105,25 +122,22 @@ export type AttrSink<T extends TagName = "div"> = T extends
 
 /**
  * Creates an {@linkcode attr} sink that manages attributes on an `Element`
+ *
+ * @template {TagName} T
+ * @param {AttrSink<T>} attributes
+ * @returns {AttrSink<T>}
  */
-export function attr<T extends TagName>(attributes: AttrSink<T>): AttrSink<T> {
-  const attrSink = reactive(attributes);
-  Object.defineProperty(attrSink, ATTR_SINK, { value: true });
-  return attrSink;
-}
+export function attr<T extends TagName>(attributes: AttrSink<T>): AttrSink<T>;
 
 /**
  * Checks whether a sink is an {@linkcode attr} sink
+ *
+ * @param {unknown} value
+ * @returns {value is AttrSink}
  */
-export function isAttrSink(value: unknown): value is AttrSink {
-  return value !== null &&
-    typeof value === "object" &&
-    Object.hasOwn(value, ATTR_SINK);
-}
+export function isAttrSink(value: unknown): value is AttrSink;
 
 // classList
-
-const CLASSLIST_SINK = Symbol.for("classList sink");
 
 /**
  * Type of the {@linkcode classList} sink
@@ -151,24 +165,14 @@ export type ClassListSink = Record<string, boolean | null | undefined>;
  * }
  * ```
  */
-export function classList(classes: ClassListSink): ClassListSink {
-  const classSink = reactive(classes);
-  Object.defineProperty(classSink, CLASSLIST_SINK, { value: true });
-  return classSink;
-}
+export function classList(classes: ClassListSink): ClassListSink;
 
 /**
  * Checks whether a sink is a {@linkcode classList} sink
  */
-export function isClassSink(value: unknown): value is ClassListSink {
-  return value !== null &&
-    typeof value === "object" &&
-    Object.hasOwn(value, CLASSLIST_SINK);
-}
+export function isClassSink(value: unknown): value is ClassListSink;
 
 // map
-
-const MAP_SINK = Symbol.for("map sink");
 
 /**
  * Type of a {@linkcode map} sink
@@ -197,33 +201,18 @@ export type MapSink<T = any> = {
  *   </ul>`
  * }
  * ```
- *
- * @param values The {@linkcode reactive} array to iterate on
- * @param mapper A callback taking as input a single `value` from the array and its `index`
  */
 export function map<T>(
   values: T[],
   mapper: (value: T, index: ReactiveLeaf<number>) => DocumentFragment,
-): MapSink<T> {
-  return {
-    values,
-    mapper,
-    // @ts-ignore internal
-    [MAP_SINK]: true,
-  };
-}
+): MapSink<T>;
 
 /**
  * Checks whether a sink is a {@linkcode map} sink
  */
-export function isMapSink(value: unknown): value is MapSink {
-  return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, MAP_SINK);
-}
+export function isMapSink(value: unknown): value is MapSink;
 
 // on
-
-const ON_SINK = Symbol.for("on sink");
 
 /**
  * Type of the {@linkcode on} sink
@@ -274,23 +263,14 @@ export type On<U = HTMLElement, V = HTMLElementEventMap> = {
  */
 export function on<U = HTMLElement, V = HTMLElementEventMap>(
   listeners: On<U, V>,
-): On<U, V> {
-  const onSink = reactive(listeners);
-  Object.defineProperty(onSink, ON_SINK, { value: true });
-  return onSink;
-}
+): On<U, V>;
 
 /**
  * Checks whether a sink is an {@linkcode on} sink
  */
-export function isOnSink(value: unknown): value is On {
-  return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, ON_SINK);
-}
+export function isOnSink(value: unknown): value is On;
 
 // prop
-
-const PROP_SINK = Symbol.for("prop sink");
 
 // https://github.com/Microsoft/TypeScript/issues/27024
 type Equals<X, Y> = (<T>() => T extends X ? 1 : 0) extends
@@ -334,23 +314,14 @@ export type Prop<T extends Element = Element> = {
  *
  * ```
  */
-export function prop<U extends Element = HTMLElement>(props: Prop<U>): Prop {
-  const propSink = reactive(props);
-  Object.defineProperty(propSink, PROP_SINK, { value: true });
-  return propSink;
-}
+export function prop<T extends Element>(props: Prop<T>): Prop;
 
 /**
  * Checks whether a sink is an {@linkcode on} sink
  */
-export function isPropSink(value: unknown): value is Prop {
-  return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, PROP_SINK);
-}
+export function isPropSink(value: unknown): value is Prop;
 
 // show
-
-const SHOW_SINK = Symbol.for("show sink");
 
 /**
  * Type of a {@linkcode show} sink
@@ -373,44 +344,23 @@ export type ShowSink = {
 export function show(
   condition: () => boolean,
   ifCase: () => DerivedSink,
-  elseCase?:
-    | (() => DerivedSink)
-    | undefined,
-): ShowSink {
-  return reactive({
-    get cond() {
-      return condition();
-    },
-    ifCase,
-    elseCase,
-    [SHOW_SINK]: true,
-  });
-}
+  elseCase?: () => DerivedSink,
+): ShowSink;
 
 /**
  * Checks whether a sink is a {@linkcode show} sink
  */
-export function isShowSink(value: unknown): value is ShowSink {
-  return value !== null && typeof value === "object" &&
-    Object.hasOwn(value, SHOW_SINK);
-}
+export function isShowSink(value: unknown): value is ShowSink;
 
 // style
-
-/**
- * CSS Typed Object Model is not implemented in Firefox
- * https://bugzilla.mozilla.org/show_bug.cgi?id=1278697
- */
-
-const STYLE_SINK = Symbol.for("style sink");
 
 /**
  * Type helper converting camel case to kebab case
  *
  * @internal
  */
-export type CamelToKebab<T extends string> = T extends
-  `${infer First}${infer Rest}` ? Rest extends "" ? Lowercase<First>
+type CamelToKebab<T extends string> = T extends `${infer First}${infer Rest}`
+  ? Rest extends "" ? Lowercase<First>
   : Rest extends Capitalize<Rest> ? `${Lowercase<First>}-${CamelToKebab<Rest>}`
   : `${Lowercase<First>}${CamelToKebab<Rest>}`
   : T;
@@ -445,24 +395,14 @@ export type StyleSink = {
  * }
  * ```
  */
-export function style(styles: StyleSink): StyleSink {
-  const styleSink = reactive(styles);
-  Object.defineProperty(styleSink, STYLE_SINK, { value: true });
-  return styleSink;
-}
+export function style(styles: StyleSink): StyleSink;
 
-/** Checks whether a sink is a {@linkcode style} sink */
-export function isStyleSink(
-  value: unknown,
-): value is StyleSink {
-  return value !== null &&
-    typeof value === "object" &&
-    Object.hasOwn(value, STYLE_SINK);
-}
+/**
+ * Checks whether a sink is a {@linkcode style} sink
+ */
+export function isStyleSink(value: unknown): value is StyleSink;
 
 // text
-
-const TEXT_SINK = Symbol.for("text sink");
 
 /**
  * Type of a {@linkcode text} sink
@@ -472,8 +412,6 @@ export interface TextSink {
   data: Record<string, any>;
   /** The key to read from `data` */
   key: string;
-  /** @internal */
-  [TEXT_SINK]?: true;
 }
 
 /**
@@ -501,38 +439,29 @@ export interface TextSink {
  * }
  * ```
  *
- * @param node the {@linkcode reactive} object reference
- * @param key the key to read as text. Defaults to `value`
+
+ * @param  node the {@linkcode reactive} object reference
+ * @param  key the key to read as text. Defaults to `value`
+
  *
  * @see {@linkcode derived}
  */
 export function text<T extends Record<string, any>>(
   node: T,
-  key: keyof T & string = "value",
-): TextSink {
-  return { data: node, key, [TEXT_SINK]: true };
-}
+  key: keyof T & string,
+): TextSink;
 
 /**
  * Checks whether a sink is a {@linkcode text} sink
  */
-export function isTextSink(value: unknown): value is TextSink {
-  return value !== null &&
-    typeof value === "object" &&
-    Object.hasOwn(value, TEXT_SINK);
-}
+export function isTextSink(value: unknown): value is TextSink;
 
 // unsafe
-
-const UNSAFE_SINK = Symbol.for("unsafe sink");
 
 /**
  * Type of the {@linkcode unsafeHTML} sink
  */
-export interface UnsafeSink extends ReactiveLeaf<string> {
-  /** @internal */
-  [UNSAFE_SINK]?: true;
-}
+export type UnsafeSink = ReactiveLeaf<string>;
 
 /**
  * Creates a raw HTML sink.
@@ -554,22 +483,12 @@ export interface UnsafeSink extends ReactiveLeaf<string> {
  * }
  * ```
  */
-export function unsafeHTML(unsafe: string | ReactiveLeaf<string>): UnsafeSink {
-  const unsafeSink = typeof unsafe === "string" || !isReactiveLeaf(unsafe)
-    ? reactive({ value: unsafe })
-    : unsafe;
-  Object.defineProperty(unsafeSink, UNSAFE_SINK, { value: true });
-  return unsafeSink;
-}
+export function unsafeHTML(unsafe: string | ReactiveLeaf<string>): UnsafeSink;
 
 /**
  * Checks whether a sink is an {@link unsafeHTML} sink
  */
-export function isUnsafeHTML(value: unknown): value is UnsafeSink {
-  return typeof value === "object" &&
-    value !== null &&
-    Object.hasOwn(value, UNSAFE_SINK);
-}
+export function isUnsafeHTML(value: unknown): value is UnsafeSink;
 
 /**
  * Return type of the {@linkcode derived} sink callback when inlined in the template

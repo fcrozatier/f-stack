@@ -1,5 +1,6 @@
 import { listen, reactive, snapshot } from "@f-stack/functorial";
-import { html, type On, on, text } from "@f-stack/reflow";
+import type { On } from "@f-stack/reflow";
+import { html, on, text } from "@f-stack/reflow";
 
 export const OnPage = () => {
   const increment = () => {

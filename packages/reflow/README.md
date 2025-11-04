@@ -130,6 +130,7 @@ const Demo = () => {
 - Template caching
 - Strong type safety with no extension required
 - Supports type parameters for even stronger type safety
+- Zero 3rd-party runtime dependencies
 
 ## Mental model
 
