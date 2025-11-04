@@ -1,4 +1,7 @@
-import type { Primitive, ReactiveLeaf } from "@f-stack/functorial/types";
+import type {
+  Primitive,
+  ReactiveLeaf,
+} from "../../functorial/src/reactive.d.ts";
 import type { DOMAttributesTagNameMap } from "./elements.d.ts";
 
 /**

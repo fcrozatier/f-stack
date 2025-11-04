@@ -9,9 +9,9 @@ import {
 } from "@f-stack/functorial";
 
 /**
- * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink, TemplateTag } from "./html.d.ts"
+ * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink } from "./html.d.ts"
  *
- * @import { ReactiveLeaf } from "@f-stack/functorial/types"
+ * @import { ReactiveLeaf, ReactiveEvent } from "@f-stack/functorial"
  */
 
 /**
@@ -71,6 +71,13 @@ let fragmentSinkId = 0;
 
 /**
  * @typedef {"html" | "svg" | "math"} Mode
+ */
+
+/**
+ * @callback TemplateTag
+ * @param {TemplateStringsArray} strings
+ * @param {...Sink} sinks
+ * @return {DocumentFragment}
  */
 
 /**
@@ -289,7 +296,7 @@ class Template {
             }
           }
 
-          listen(attr, (e) => {
+          listen(attr, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
             assertExists(key);
@@ -347,7 +354,7 @@ class Template {
             }
           }
 
-          listen(classList, (e) => {
+          listen(classList, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
             assertExists(key);
@@ -420,7 +427,7 @@ class Template {
             addListener(key, /** @type {ListenerParams} */ (val));
           }
 
-          listen(listeners, (e) => {
+          listen(listeners, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
             assertExists(key);
@@ -465,7 +472,7 @@ class Template {
             element[key] = value;
           }
 
-          listen(props, (e) => {
+          listen(props, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
             assertExists(key);
@@ -508,7 +515,7 @@ class Template {
             currentElement.style.setProperty(key, String(value));
           }
 
-          listen(style, (e) => {
+          listen(style, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || (typeof e.path !== "string")) return;
             const key = e.path.split(".")[1];
             assertExists(key);
@@ -1071,7 +1078,7 @@ class Boundary {
       spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
-      listen(values, (e) => {
+      listen(values, (/** @type {ReactiveEvent} */ e) => {
         switch (e.type) {
           case "relabel": {
             labels = e.labels;
@@ -1193,7 +1200,7 @@ class Boundary {
       const textNode = new Text(String(content[key] ?? ""));
       this.#end.before(textNode);
 
-      listen(content, (e) => {
+      listen(content, (/** @type {ReactiveEvent} */ e) => {
         if (e.type !== "update") return;
         if (e.path !== `.${key}`) return;
         textNode.data = String(e.newValue ?? "");
@@ -1215,7 +1222,7 @@ class Boundary {
 
       cleanup = setup(data.cond ? data.ifCase : data.elseCase);
 
-      listen(data, (e) => {
+      listen(data, (/** @type {ReactiveEvent} */ e) => {
         // ensure we're in the right case before cleanup
         if (e.type !== "update" || e.path !== ".cond") return;
         cleanup?.();
@@ -1228,7 +1235,7 @@ class Boundary {
       template.innerHTML = data.value;
       this.replaceChildren(template.content);
 
-      listen(data, (e) => {
+      listen(data, (/** @type {ReactiveEvent} */ e) => {
         switch (e.type) {
           case "update":
             template.innerHTML = e.newValue;
@@ -1257,7 +1264,7 @@ class Boundary {
       this.#end.before(String(content ?? ""));
     }
 
-    return listen(data, (e) => {
+    return listen(data, (/** @type {ReactiveEvent} */ e) => {
       if (e.type !== "update" && e.type !== "delete") return;
       if (e.path !== ".value") return;
 
