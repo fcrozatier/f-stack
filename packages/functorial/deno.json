@@ -3,7 +3,6 @@
   "version": "0.1.2",
   "license": "MIT",
   "exports": {
-    ".": "./src/reactive.js",
-    "./types": "./src/types.d.ts"
+    ".": "./src/reactive.js"
   }
 }
