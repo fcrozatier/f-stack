@@ -1,10 +1,10 @@
 import {
+  isPrimitive,
   isReactiveLeaf,
   listen,
   reactive,
   snapshot,
 } from "@f-stack/functorial";
-import { isPrimitive } from "@f-stack/functorial/utils";
 import { assert } from "@std/assert/assert";
 import { assertExists } from "@std/assert/exists";
 import {
