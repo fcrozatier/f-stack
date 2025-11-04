@@ -1,7 +1,4 @@
-import type {
-  Primitive,
-  ReactiveLeaf,
-} from "../../functorial/src/reactive.d.ts";
+import type { Primitive, ReactiveLeaf } from "@f-stack/functorial";
 import type { DOMAttributesTagNameMap } from "./elements.d.ts";
 
 /**
@@ -464,8 +461,7 @@ export function isTextSink(value: unknown): value is TextSink;
 /**
  * Type of the {@linkcode unsafeHTML} sink
  */
-export interface UnsafeSink extends ReactiveLeaf<string> {
-}
+export type UnsafeSink = ReactiveLeaf<string>;
 
 /**
  * Creates a raw HTML sink.
