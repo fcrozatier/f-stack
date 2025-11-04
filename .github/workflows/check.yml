@@ -30,7 +30,7 @@ jobs:
         run: deno doc --lint ./packages/**/src/*.ts
 
       - name: Type check
-        run: deno check
+        run: deno check (packages|playground)/**/*.(js|ts)
 
       - name: Type check docs
         run: deno test --doc
