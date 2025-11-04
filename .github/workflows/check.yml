@@ -30,7 +30,8 @@ jobs:
         run: deno doc --lint ./packages/**/src/*.ts
 
       - name: Type check
-        run: deno check (packages|playground)/**/*.(js|ts)
+        # CI doesn't like parens in (packages|playground)/**/*.(js|ts)
+        run: deno check packages/**/*.(js|ts)
 
       - name: Type check docs
         run: deno test --doc
