@@ -1,4 +1,4 @@
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 import { attr, html, on } from "@f-stack/reflow";
 
 export default () => {

@@ -72,7 +72,7 @@ export interface AttachSink<T extends Node = Element> {
  *
  * ```ts
  * import { attach, html, on } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
+ * import { reactive } from "@f-stack/functorial";
  *
  * export const UseDemo = () => {
  *   const form = reactive({ value: "Bob" });
@@ -425,7 +425,7 @@ export interface TextSink {
  *
  * ```ts
  * import { html, text } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
+ * import { reactive } from "@f-stack/functorial";
  *
  * export const TextDemo = () => {
  *   const user = reactive({
@@ -474,7 +474,7 @@ export type UnsafeSink = ReactiveLeaf<string>;
  *
  * ```ts
  * import { html, unsafeHTML } from "@f-stack/reflow";
- * import { reactive } from "@f-stack/reflow/reactivity";
+ * import { reactive } from "@f-stack/functorial";
  *
  * export const UnsafeDemo = () => {
  *   const unsafeInput = reactive({ value: "<em>Raw HTML</em>" });

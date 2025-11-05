@@ -1,5 +1,5 @@
+import { reactive } from "@f-stack/functorial";
 import { html, on } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
 
 export default () => {
   const count = reactive({ value: 0 });

@@ -6,20 +6,15 @@
 
 ```ts
 import { attr, html, map, on, svg } from "@f-stack/reflow";
-import { derived, reactive } from "@f-stack/reflow/reactivity";
-
-type Circle = {
-  radius: number;
-  color: string;
-};
+import { derived, reactive } from "@f-stack/functorial";
 
 const randint = () => {
   return Math.random() * 200;
 };
 
 const Demo = () => {
-  const newCircle: Circle = { radius: 10, color: "#00ffff" };
-  const circles: Circle[] = reactive([
+  const newCircle = { radius: 10, color: "#00ffff" };
+  const circles = reactive([
     { radius: 100, color: "#ff00ff" },
     { radius: 20, color: "#ffff00" },
   ]);
@@ -68,35 +63,6 @@ const Demo = () => {
         `;
       })}
     </svg>
-
-    <math xmlns="http://www.w3.org/1998/Math/MathML">
-      <mrow>
-        <mtext>Total area = </mtext>
-        <munderover>
-          <mo>∑</mo>
-          <mrow>
-            <mi>i</mi><mo>=</mo><mn>0</mn>
-          </mrow>
-          <mn>${derived(() => circles.length)}</mn>
-        </munderover>
-        <mrow>
-          <mi>π</mi>
-          <msup>
-            <msub><mi>r</mi><mi>i</mi></msub>
-            <mn>2</mn>
-          </msup>
-          <mo>=</mo>
-          <mn>${derived(() =>
-            Math.round(
-              circles.reduce(
-                (acc, curr) => acc + Math.PI * curr.radius ** 2,
-                0,
-              ),
-            )
-          )}</mn>
-        </mrow>
-      </mrow>
-    </math>
 
     <style>
     body {
@@ -188,7 +154,7 @@ element `addEventListener` and `removeEventListener` methods
 
 ```ts
 import { html, type On, on } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const OnDemo = () => {
   const sayHi = () => console.log("hi");
@@ -227,7 +193,7 @@ element `setAttribute` and `removeAttribute` methods.
 
 ```ts
 import { attr, type AttrSink, html, on } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const AttrDemo = () => {
   const attributes: AttrSink = reactive({});
@@ -279,7 +245,7 @@ export const PropPage = () => {
 Runs a callback hook on the `Element` it is attached to.
 
 ```ts
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 import { attach, html, on } from "@f-stack/reflow";
 
 export const AttachDemo = () => {
@@ -313,7 +279,7 @@ with the element `classList.add` and `classList.remove` methods.
 
 ```ts
 import { attr, classList, html, on } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const ClassListDemo = () => {
   const state = reactive({ notAllowed: true });
@@ -351,7 +317,7 @@ Handles the creation and update of `Text` nodes.
 
 ```ts
 import { html, on, text } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const TextDemo = () => {
   const primitive =
@@ -384,7 +350,7 @@ wrapper.
 
 ```ts
 import { html, on, text } from "@f-stack/reflow";
-import { derived, reactive } from "@f-stack/reflow/reactivity";
+import { derived, reactive } from "@f-stack/functorial";
 
 export const DerivedDemo = () => {
   const state = reactive({ count: 0 });
@@ -472,7 +438,7 @@ or any other `Array` method to respectively have the effect and granularity of
 
 ```ts
 import { html, map, on, text } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 const randint = () => {
   return Math.round(Math.random() * 100);
@@ -563,7 +529,7 @@ element `style.setProperty` and `style.removeProperty` methods.
 
 ```ts
 import { attr, html, on, style, type StyleSink } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const StyleDemo = () => {
   const styles: StyleSink = reactive({
@@ -612,7 +578,7 @@ Handles raw HTML.
 
 ```ts
 import { html, on, unsafeHTML } from "@f-stack/reflow";
-import { reactive } from "@f-stack/reflow/reactivity";
+import { reactive } from "@f-stack/functorial";
 
 export const UnsafeHTMLDemo = () => {
   const unsafeInput = reactive({ value: "" });

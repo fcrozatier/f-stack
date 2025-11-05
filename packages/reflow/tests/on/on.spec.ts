@@ -1,7 +1,7 @@
 import { expect, test } from "playwright/test";
 
 test("on sink", async ({ page }) => {
-  await page.goto("http://localhost:8000/on.html");
+  await page.goto("http://localhost:8000/on/index.html");
 
   const increment = page.getByTestId("increment");
   const decrement = page.getByTestId("decrement");
