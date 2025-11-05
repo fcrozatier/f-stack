@@ -1,7 +1,7 @@
-import { basename, dirname, extname, fromFileUrl, join } from "@std/path";
+import { dirname, extname, fromFileUrl, join } from "@std/path";
 
 const moduleDir = dirname(fromFileUrl(import.meta.url));
-const packagesDir = join(moduleDir, "..", "..", "..");
+const rootDir = join(moduleDir, "..", "..", "..");
 
 const template = (path: string) => `
 <!DOCTYPE html>
@@ -14,7 +14,6 @@ const template = (path: string) => `
       {
         "imports": {
           "@f-stack/functorial": "/packages/functorial/src/reactive.js",
-          "@f-stack/reflow/reactivity": "/packages/functorial/src/reactive.js",
           "@f-stack/reflow": "/packages/reflow/src/html.js"
         }
       }
@@ -22,7 +21,7 @@ const template = (path: string) => `
   </head>
   <body>
     <script type="module">
-      import test from "./${path}/index.js";
+      import test from "${path}/index.js";
       document.body.append(test());
     </script>
   </body>
@@ -39,15 +38,15 @@ export default {
     const extension = extname(path);
 
     if (extension === ".html") {
-      const filename = basename(path, extension);
-      return new Response(template(filename), {
+      const templateDir = dirname(path);
+      return new Response(template(templateDir), {
         headers: { "content-type": "text/html" },
       });
     }
 
     if (extension === ".js") {
       const dest = path.startsWith("/packages")
-        ? join(packagesDir, path)
+        ? join(rootDir, path)
         : join(moduleDir, path);
 
       const file = Deno.readTextFileSync(dest);

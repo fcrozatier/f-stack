@@ -1,7 +1,7 @@
 import { expect, test } from "playwright/test";
 
 test("attr", async ({ page }) => {
-  await page.goto("http://localhost:8000/attr.html");
+  await page.goto("http://localhost:8000/attr/index.html");
 
   const green = page.getByTestId("green");
   const red = page.getByTestId("red");
