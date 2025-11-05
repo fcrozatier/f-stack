@@ -64,7 +64,7 @@ The library's single `.js` file can be load directly from a CDN
 <script type="importmap">
   {
     "imports": {
-      "@f-stack/functorial": "https://esm.sh/jsr/@f-stack/functorial"
+      "@f-stack/functorial": "https://cdn.jsdelivr.net/gh/fcrozatier/f-stack@main/packages/functorial/src/reactive.js"
     }
   }
 </script>
