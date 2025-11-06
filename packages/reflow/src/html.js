@@ -1802,9 +1802,8 @@ export function component(callback) {
     /** @type {EffectScope} */
     const scope = {
       disposer,
-      /**
-       * @type {typeof listen}
-       */
+      // wtf
+      // @ts-ignore
       listen: (node, callback) => disposer.use(listen(node, callback)),
       [Symbol.dispose]() {
         disposer.dispose();
