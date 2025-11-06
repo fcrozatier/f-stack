@@ -12,6 +12,6 @@ export default () => {
       get indeterminate() {
         return bool.value;
       },
-    })} data-testid="input"></span>
+    })} data-testid="input">
   `;
 };
