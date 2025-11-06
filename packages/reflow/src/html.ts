@@ -10,6 +10,7 @@ import {
   isPropSink,
   isStyleSink,
   type Sink,
+  TEMPLATE_SINK,
   type TemplateSink,
   type TemplateTag,
 } from "./sinks.ts";

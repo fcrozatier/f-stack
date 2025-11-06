@@ -486,7 +486,10 @@ export interface TemplateSink extends Disposable {
   fragment: DocumentFragment;
 }
 
-const TEMPLATE_SINK = Symbol.for("template sink");
+/**
+ * @internal
+ */
+export const TEMPLATE_SINK = Symbol.for("template sink");
 
 /**
  * Checks whether a sink is an {@linkcode attach} sink
