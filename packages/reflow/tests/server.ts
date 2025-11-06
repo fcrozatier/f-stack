@@ -13,8 +13,8 @@ const template = (path: string) => `
     <script type="importmap">
       {
         "imports": {
-          "@f-stack/functorial": "/packages/reactive.ts",
-          "@f-stack/reflow": "/packages/html.js"
+          "@f-stack/functorial": "/packages/functorial.ts",
+          "@f-stack/reflow": "/packages/reflow.ts"
         }
       }
     </script>
@@ -28,16 +28,13 @@ const template = (path: string) => `
 </html>
 `;
 
-const build: Record<string, string> = {};
+const libs: Record<string, string> = {
+  functorial: join(rootDir, "packages/functorial/src/reactive.ts"),
+  reflow: join(rootDir, "packages/reflow/src/mod.ts"),
+};
 
-const entrypoints = [
-  join(rootDir, "packages/functorial/src/reactive.ts"),
-  join(rootDir, "packages/reflow/src/html.js"),
-];
-
-for (const entrypoint of entrypoints) {
-  const filename = basename(entrypoint);
-  console.log("building", filename);
+for (const [lib, entrypoint] of Object.entries(libs)) {
+  console.log("building", lib);
 
   // @ts-ignore FUTUR `Deno.bundle` types missing
   const result = await Deno.bundle({
@@ -45,14 +42,15 @@ for (const entrypoint of entrypoints) {
     format: "esm",
     minify: false,
     codeSplitting: false,
-    inlineImports: false,
+    inlineImports: true,
     packages: "external",
+    external: ["@f-stack/functorial"],
     platform: "browser",
     write: false,
   });
 
   const [file] = result.outputFiles;
-  build[filename] = file.text();
+  libs[lib] = file.text();
 }
 
 /**
@@ -73,8 +71,8 @@ export default {
 
     if (extension === ".js" || extension === ".ts") {
       if (path.startsWith("/packages")) {
-        const filename = basename(path);
-        const file = build[filename];
+        const filename = basename(path, ".ts");
+        const file = libs[filename];
 
         if (!file) throw new Deno.errors.NotFound(`Not found: ${path}`);
 
