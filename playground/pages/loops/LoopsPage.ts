@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { attr, map, on, style } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
+import { attr, html, map, on, style } from "@f-stack/reflow";
 
 export const LoopsPage = () => {
   const colors = [

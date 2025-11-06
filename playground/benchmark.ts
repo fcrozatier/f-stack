@@ -1,4 +1,4 @@
-import { html } from "../packages/reflow/src/html.js";
+import { html } from "@f-stack/reflow";
 
 function median(arr: number[]) {
   const length = arr.length;

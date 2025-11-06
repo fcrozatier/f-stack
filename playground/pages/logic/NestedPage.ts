@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
 import { derived, reactive } from "@f-stack/functorial";
-import { on, show } from "@f-stack/reflow";
+import { html, on, show } from "@f-stack/reflow";
 
 export const NestedPage = () => {
   const count = reactive({ value: 0 });

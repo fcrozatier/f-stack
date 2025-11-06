@@ -1,5 +1,4 @@
-import { html } from "@f-stack/reflow";
-import { attr } from "@f-stack/reflow";
+import { attr, html } from "@f-stack/reflow";
 // @ts-ignore works in Chrome
 // import styles from "./hello.css" with { type: "css" };
 

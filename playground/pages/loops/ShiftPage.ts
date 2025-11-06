@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { map, on } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
+import { html, map, on } from "@f-stack/reflow";
 
 const emojis = {
   apple: "🍎",

@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { on, show } from "@f-stack/reflow";
 import { derived, reactive } from "@f-stack/functorial";
+import { html, on, show } from "@f-stack/reflow";
 
 export const LogicPage = () => {
   const count = reactive({ value: 0 });

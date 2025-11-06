@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { attr, map, on, text } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
+import { attr, html, map, on, text } from "@f-stack/reflow";
 
 export const DeepStatePage = () => {
   const numbers = reactive([1, 2, 3]);
