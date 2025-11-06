@@ -1,4 +1,4 @@
-import { dirname, extname, fromFileUrl, join } from "@std/path";
+import { basename, dirname, extname, fromFileUrl, join } from "@std/path";
 
 const moduleDir = dirname(fromFileUrl(import.meta.url));
 const rootDir = join(moduleDir, "..", "..", "..");
@@ -13,8 +13,8 @@ const template = (path: string) => `
     <script type="importmap">
       {
         "imports": {
-          "@f-stack/functorial": "/packages/functorial/src/reactive.js",
-          "@f-stack/reflow": "/packages/reflow/src/html.js"
+          "@f-stack/functorial": "/packages/reactive.ts",
+          "@f-stack/reflow": "/packages/html.js"
         }
       }
     </script>
@@ -27,6 +27,33 @@ const template = (path: string) => `
   </body>
 </html>
 `;
+
+const build: Record<string, string> = {};
+
+const entrypoints = [
+  join(rootDir, "packages/functorial/src/reactive.ts"),
+  join(rootDir, "packages/reflow/src/html.js"),
+];
+
+for (const entrypoint of entrypoints) {
+  const filename = basename(entrypoint);
+  console.log("building", filename);
+
+  // @ts-ignore FUTUR `Deno.bundle` types missing
+  const result = await Deno.bundle({
+    entrypoints: [entrypoint],
+    format: "esm",
+    minify: false,
+    codeSplitting: false,
+    inlineImports: false,
+    packages: "external",
+    platform: "browser",
+    write: false,
+  });
+
+  const [file] = result.outputFiles;
+  build[filename] = file.text();
+}
 
 /**
  * Test server
@@ -44,11 +71,19 @@ export default {
       });
     }
 
-    if (extension === ".js") {
-      const dest = path.startsWith("/packages")
-        ? join(rootDir, path)
-        : join(moduleDir, path);
+    if (extension === ".js" || extension === ".ts") {
+      if (path.startsWith("/packages")) {
+        const filename = basename(path);
+        const file = build[filename];
 
+        if (!file) throw new Deno.errors.NotFound(`Not found: ${path}`);
+
+        return new Response(file, {
+          headers: { "content-type": "application/javascript" },
+        });
+      }
+
+      const dest = join(moduleDir, path);
       const file = Deno.readTextFileSync(dest);
 
       return new Response(file, {

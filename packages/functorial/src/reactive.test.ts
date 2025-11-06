@@ -11,7 +11,7 @@ import {
   reactive,
   type ReactiveEvent,
   snapshot,
-} from "./reactive.js";
+} from "./reactive.ts";
 
 // Fundamentals
 
