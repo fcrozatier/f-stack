@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { on, unsafeHTML } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
+import { html, on, unsafeHTML } from "@f-stack/reflow";
 
 /**
  * `unsafeHTML` demo

@@ -1,6 +1,5 @@
-import { html } from "@f-stack/reflow";
-import { on } from "@f-stack/reflow";
 import { derived, reactive } from "@f-stack/functorial";
+import { html, on } from "@f-stack/reflow";
 
 const state = reactive({
   count: 0,

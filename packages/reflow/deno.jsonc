@@ -9,7 +9,7 @@
     "e2e:show-report": "deno run -A npm:playwright show-report"
   },
   "exports": {
-    ".": "./src/html.js"
+    ".": "./src/mod.ts"
   },
   "imports": {
     "playwright": "npm:playwright@^1.56.1"
