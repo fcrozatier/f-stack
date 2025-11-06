@@ -3,6 +3,8 @@
   "version": "0.4.0",
   "license": "MIT",
   "tasks": {
+    // Starts the test server
+    "start:e2e-server": "deno serve -A tests/server.ts",
     "e2e": "deno run -A npm:playwright test",
     "e2e:show-report": "deno run -A npm:playwright show-report"
   },
