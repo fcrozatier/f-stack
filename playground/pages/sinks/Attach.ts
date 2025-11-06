@@ -1,65 +1,48 @@
-import { listen, reactive } from "@f-stack/functorial";
-import { attach, attr, html, on, show } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
+import { attach, attr, component, html, on, show } from "@f-stack/reflow";
 
 export const AttachPage = () => {
-  const form = reactive({ value: "Bob" });
-  const color = reactive({ value: "#40E0D0" });
-  const display = reactive({ value: true });
+  const state = reactive({ color: "#40E0D0", show: true });
 
   return html`
-    <form>
-      <label>username:
-        <input type="text" ${attach((i: HTMLInputElement) => {
-          i.defaultValue = form.value;
-        })} ${on<HTMLInputElement>({
-          input: function () {
-            form.value = this.value;
-          },
-        })}>
-      </label>
-      <button type="reset">Reset</button>
-    </form>
-
     <div>
       <input type="color" ${attr({
-        get value() {
-          return color.value;
-        },
+        value: state.color,
       })} ${on<HTMLInputElement>({
         input: function () {
-          color.value = this.value;
+          state.color = this.value;
         },
       })}>
-      <button ${on({
-        click: () => {
-          display.value = !display.value;
-        },
-      })}>Show</button>
+      <button ${on({ click: () => state.show = !state.show })}>Toggle</button>
     </div>
 
-    ${show(() => display.value, () =>
-      html`
-        <canvas width="300" height="300" ${attach(
-          (canvas: HTMLCanvasElement) => {
-            const context = canvas.getContext("2d");
+    ${show(
+      () => state.show,
+      component(function () {
+        return html`
+          <canvas width="300" height="300" ${attach(
+            (canvas: HTMLCanvasElement) => {
+              const context = canvas.getContext("2d");
 
-            if (context) {
-              const draw = (color: string) => {
-                context.fillStyle = color;
-                context.fillRect(0, 0, 200, 200);
-              };
+              if (context) {
+                const draw = (color: string) => {
+                  context.fillStyle = color;
+                  context.fillRect(0, 0, 200, 200);
+                };
 
-              draw(color.value);
+                draw(state.color);
 
-              listen(color, (e) => {
-                console.log(e);
-                if (e.type !== "update") return;
-                draw(e.newValue);
-              });
-            }
-          },
-        )}>Enable JS</canvas>
-      `)}
+                this.listen(state, (e) => {
+                  console.log(e);
+                  if (e.type !== "update") return;
+                  draw(e.newValue);
+                });
+              }
+            },
+          )}>Enable JS</canvas>
+        `;
+      }),
+    )}
 
     <style>
     html { scrollbar-gutter: stable; }
