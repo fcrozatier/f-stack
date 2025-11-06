@@ -27,9 +27,6 @@ jobs:
         working-directory: packages/reflow
         run: deno run -A npm:playwright install chromium
 
-      - name: Build
-        run: deno task build
-
       - name: Run e2e tests
         working-directory: packages/reflow
         run: deno task e2e
