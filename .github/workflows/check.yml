@@ -31,7 +31,7 @@ jobs:
 
       # CI doesn't like parens in (packages|playground)/**/*.(js|ts) so it takes 2 steps
       - name: Type check ts files
-        run: deno check \(packages|playground\)/**/*.\(js|ts\)
+        run: deno check \(packages\|playground\)/**/*.\(js\|ts\)
         # run: deno check packages/**/*.ts
 
       # - name: Type check js files
