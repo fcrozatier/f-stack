@@ -4,6 +4,9 @@
  * @module
  */
 
+import { assert } from "@std/assert/assert";
+import { assertExists } from "@std/assert/exists";
+
 /**
  * This type can be assigned to any constructor
  */
@@ -76,47 +79,6 @@ interface NotificationTarget {
   rootPath: string;
   isDerived: boolean;
   deps?: string[] | undefined;
-}
-
-class AssertionError extends Error {
-  /** Constructs a new instance.
-   *
-   * @param message The error message.
-   * @param options Additional options.
-   */
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "AssertionError";
-  }
-}
-
-/**
- * Makes an assertion and throws if `expr` does not have a truthy value.
- *
- * @param expr The expression to test.
- * @param msg The optional message to display if the assertion fails.
- */
-function assert(expr: unknown, msg = ""): asserts expr {
-  if (!expr) throw new AssertionError(msg);
-}
-
-/**
- * Makes an assertion that `actual` is not null or undefined.
- * If not then throws.
- *
- * @param actual The actual value to check.
- * @param msg The optional message to include in the error if the assertion fails.
- */
-function assertExists<T>(
-  actual: T,
-  msg?: string,
-): asserts actual is NonNullable<T> {
-  if (actual === undefined || actual === null) {
-    const msgSuffix = msg ? `: ${msg}` : ".";
-    msg =
-      `Expected actual: "${actual}" to not be null or undefined${msgSuffix}`;
-    throw new AssertionError(msg);
-  }
 }
 
 class Scheduler {
