@@ -1,4 +1,4 @@
-import type { Primitive, ReactiveLeaf } from "@f-stack/functorial";
+import type { listen, Primitive, ReactiveLeaf } from "@f-stack/functorial";
 import type { DOMAttributesTagNameMap } from "./elements.d.ts";
 
 /**
@@ -11,7 +11,7 @@ import type { DOMAttributesTagNameMap } from "./elements.d.ts";
 export type TemplateTag = (
   strings: TemplateStringsArray,
   ...sinks: Sink[]
-) => DocumentFragment;
+) => TemplateSink;
 
 /**
  * A sink is either an {@linkcode ElementSink} or a {@linkcode FragmentSink}
@@ -36,6 +36,7 @@ export type FragmentSink =
   | DerivedSink
   | MapSink
   | ShowSink
+  | TemplateSink
   | TextSink
   | UnsafeSink;
 
@@ -179,7 +180,7 @@ export function isClassSink(value: unknown): value is ClassListSink;
  */
 export type MapSink<T = any> = {
   values: T[];
-  mapper: (value: T, index: ReactiveLeaf<number>) => DocumentFragment;
+  mapper: (value: T, index: ReactiveLeaf<number>) => TemplateSink;
 };
 
 /**
@@ -204,7 +205,7 @@ export type MapSink<T = any> = {
  */
 export function map<T>(
   values: T[],
-  mapper: (value: T, index: ReactiveLeaf<number>) => DocumentFragment,
+  mapper: (value: T, index: ReactiveLeaf<number>) => TemplateSink,
 ): MapSink<T>;
 
 /**
@@ -402,6 +403,28 @@ export function style(styles: StyleSink): StyleSink;
  */
 export function isStyleSink(value: unknown): value is StyleSink;
 
+// template
+
+/**
+ * A `TemplateSink` is a type of sink that's `Disposable`
+ *
+ * @see {@linkcode TemplateTag}
+ */
+export interface TemplateSink extends Disposable {
+  /**
+   * The `DocumentFragment` template to mount into the DOM
+   */
+  fragment: DocumentFragment;
+}
+
+/**
+ * Checks whether a sink is a template sink
+ *
+ * @param {unknown} value
+ * @returns {value is TemplateSink}
+ */
+export function isTemplateSink(value: unknown): value is TemplateSink;
+
 // text
 
 /**
@@ -493,4 +516,27 @@ export function isUnsafeHTML(value: unknown): value is UnsafeSink;
 /**
  * Return type of the {@linkcode derived} sink callback when inlined in the template
  */
-export type DerivedSink = Primitive | ReactiveLeaf | DocumentFragment;
+export type DerivedSink = Primitive | ReactiveLeaf | TemplateSink;
+
+/**
+ * An `EffectScope` is a disposable scope used in components that provides a local {@linkcode listen} function.
+ */
+export interface EffectScope extends Disposable {
+  /**
+   * A `DisposableStack` that holds the component unmount logic
+   */
+  disposer: DisposableStack;
+  /**
+   * The component local {@linkcode listen} function which is cleaned up automatically when the component is unmounted
+   */
+  listen: typeof listen;
+}
+
+/**
+ * Creates a component
+ *
+ * Provides a local {@linkcode listen} function that's automatically cleaned up when the component unmounts
+ */
+export function component<T extends any[]>(
+  callback: (this: EffectScope, ...args: T) => TemplateSink,
+): (...args: NoInfer<T>) => TemplateSink;

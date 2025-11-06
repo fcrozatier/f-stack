@@ -22,7 +22,7 @@ const template = (path: string) => `
   <body>
     <script type="module">
       import test from "${path}/index.js";
-      document.body.append(test());
+      document.body.append(test().fragment);
     </script>
   </body>
 </html>

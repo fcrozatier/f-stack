@@ -138,9 +138,9 @@ export function isPrimitive(value: unknown): value is Primitive;
  * @template T
  * @param {T} node
  * @param {ReactiveEventCallback} callback
- * @return {() => void} A cleanup function to remove the listener
+ * @return {Disposable} A disposable object to cleanup the listener
  */
-export function listen<T>(node: T, callback: ReactiveEventCallback): () => void;
+export function listen<T>(node: T, callback: ReactiveEventCallback): Disposable;
 
 /**
  * Creates a derived {@linkcode reactive} with a `value` getter

@@ -462,10 +462,15 @@ export function reactive(object) {
 
   /**
    * @param {ReactiveEventCallback} callback
+   * @return {Disposable}
    */
   function addListener(callback) {
     callbacks.add(callback);
-    return () => callbacks.delete(callback);
+    return {
+      [Symbol.dispose]() {
+        callbacks.delete(callback);
+      },
+    };
   }
 
   /**
@@ -939,8 +944,6 @@ export function isPrimitive(value) {
     ["string", "number", "boolean", "undefined"].includes(typeof value);
 }
 
-function noop() {}
-
 /**
  * Listens to a {@linkcode reactive} graph and runs the provided callback whenever a change or call is detected
  *
@@ -949,11 +952,11 @@ function noop() {}
  * @template T
  * @param {T} node
  * @param {ReactiveEventCallback} callback
- * @return {() => void} A cleanup function to remove the listener
+ * @return {Disposable} A cleanup function to remove the listener
  */
 export function listen(node, callback) {
   // doing the sanity check here to avoid spreading these checks all over the codebase
-  if (!isReactive(node)) return noop;
+  if (!isReactive(node)) return { [Symbol.dispose]() {} };
   return getOwn(node, ns.ADD_LISTENER)(callback);
 }
 

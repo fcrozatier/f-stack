@@ -9,7 +9,7 @@ import {
 } from "@f-stack/functorial";
 
 /**
- * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink } from "./html.d.ts"
+ * @import { AttachSink, AttrSink, ClassListSink, MapSink, TagName, On, Prop, ShowSink,DerivedSink, StyleSink, TextSink, UnsafeSink, Sink, TemplateSink, EffectScope } from "./html.d.ts"
  *
  * @import { ReactiveLeaf, ReactiveEvent } from "@f-stack/functorial"
  */
@@ -77,7 +77,7 @@ let fragmentSinkId = 0;
  * @callback TemplateTag
  * @param {TemplateStringsArray} strings
  * @param {...Sink} sinks
- * @return {DocumentFragment}
+ * @return {TemplateSink}
  */
 
 /**
@@ -224,10 +224,12 @@ class Template {
 
   /**
    * @param {Sink[]} sinks
+   * @return {TemplateSink}
    */
   hydrate(sinks) {
     const clone = document.importNode(this.fragment, true);
     const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
+    const disposer = new DisposableStack();
 
     /**
      * @type {Element|null}
@@ -240,62 +242,65 @@ class Template {
 
       if (currentElement.tagName.toLowerCase() === BOUNDARY_ELEMENT) {
         const boundaryId = currentElement.getAttribute(BOUNDARY_MARKER);
-        if (boundaryId !== null) {
-          const index = this.fragmentSinks.get(+boundaryId);
-          if (index !== undefined) {
-            const sink = sinks[index];
-            const start = document.createComment("");
-            const end = document.createComment("");
-            const boundary = new Boundary(sink);
+        assertExists(boundaryId, "Unexpected boundary without a boundary-id");
 
-            boundary.start = start;
-            boundary.end = end;
+        const index = this.fragmentSinks.get(+boundaryId);
+        assertExists(index, "Couldn't find boundary data");
 
-            currentElement.replaceWith(start, end);
-            boundary.render();
-            walker.currentNode = end;
+        const sink = sinks[index];
+        const start = document.createComment("");
+        const end = document.createComment("");
+        const boundary = new Boundary(sink);
 
-            continue;
-          }
-        }
+        boundary.start = start;
+        boundary.end = end;
+
+        currentElement.replaceWith(start, end);
+        boundary.render();
+        walker.currentNode = end;
+
+        disposer.use(boundary);
+        continue;
       }
 
       // Attach
       const attachId = currentElement.getAttribute(ATTACH_MARKER);
       if (attachId !== null) {
         const index = this.elementSinks.get(+attachId);
-        if (index !== undefined) {
-          const attach = sinks[index];
-          assert(isAttachSink(attach));
+        assertExists(index, "Couldn't find attach sink data");
 
-          currentElement.removeAttribute(ATTACH_MARKER);
-          attach(currentElement);
-        }
+        const attach = sinks[index];
+        assert(isAttachSink(attach));
+
+        currentElement.removeAttribute(ATTACH_MARKER);
+        attach(currentElement);
       }
 
       // Attr
       const attrId = currentElement.getAttribute(ATTR_MARKER);
       if (attrId !== null) {
         const index = this.elementSinks.get(+attrId);
-        if (index !== undefined) {
-          const attr = sinks[index];
-          assert(isAttrSink(attr));
+        assertExists(index, "Couldn't find attr sink data");
 
-          const element = currentElement;
-          element.removeAttribute(ATTR_MARKER);
+        const attr = sinks[index];
+        assert(isAttrSink(attr));
 
-          for (const [key, value] of Object.entries(attr)) {
-            if (booleanAttributes.includes(key)) {
-              if (value) {
-                element.setAttribute(key, "");
-              } else {
-                element.removeAttribute(key);
-              }
+        const element = currentElement;
+        element.removeAttribute(ATTR_MARKER);
+
+        for (const [key, value] of Object.entries(attr)) {
+          if (booleanAttributes.includes(key)) {
+            if (value) {
+              element.setAttribute(key, "");
             } else {
-              element.setAttribute(key, String(value));
+              element.removeAttribute(key);
             }
+          } else {
+            element.setAttribute(key, String(value));
           }
+        }
 
+        disposer.use(
           listen(attr, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -329,31 +334,33 @@ class Template {
                 element.removeAttribute(key);
                 break;
             }
-          });
-        }
+          }),
+        );
       }
 
       // ClassList
       const classlistId = currentElement.getAttribute(CLASSLIST_MARKER);
       if (classlistId !== null) {
         const index = this.elementSinks.get(+classlistId);
-        if (index !== undefined) {
-          const classList = sinks[index];
-          assert(isClassSink(classList));
+        assertExists(index, "Couldn't find classList sink data");
 
-          const element = currentElement;
-          element.removeAttribute(CLASSLIST_MARKER);
+        const classList = sinks[index];
+        assert(isClassSink(classList));
 
-          for (const [key, value] of Object.entries(classList)) {
-            const classes = key.split(" ");
+        const element = currentElement;
+        element.removeAttribute(CLASSLIST_MARKER);
 
-            if (value) {
-              element.classList.add(...classes);
-            } else {
-              element.classList.remove(...classes);
-            }
+        for (const [key, value] of Object.entries(classList)) {
+          const classes = key.split(" ");
+
+          if (value) {
+            element.classList.add(...classes);
+          } else {
+            element.classList.remove(...classes);
           }
+        }
 
+        disposer.use(
           listen(classList, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -375,58 +382,56 @@ class Template {
                 element.classList.remove(...classes);
                 break;
             }
-          });
-        }
+          }),
+        );
       }
 
       // On
       const onId = currentElement.getAttribute(ON_MARKER);
       if (onId !== null) {
         const index = this.elementSinks.get(+onId);
-        if (index !== undefined) {
-          const listeners = sinks[index];
-          assert(isOnSink(listeners));
+        assertExists(index, "Couldn't find on sink data");
 
-          const element = currentElement;
-          element.removeAttribute(ON_MARKER);
-          const elementListeners = new WeakMap();
+        const listeners = sinks[index];
+        assert(isOnSink(listeners));
 
-          /**
-           * @typedef {  EventListener | [EventListener,options?: boolean | AddEventListenerOptions]} ListenerParams
-           */
+        const element = currentElement;
+        element.removeAttribute(ON_MARKER);
+        const elementListeners = new WeakMap();
 
-          /**
-           * @param {string} type
-           * @param {ListenerParams} params
-           */
-          const addListener = (type, params) => {
-            const [listener, options] = Array.isArray(params)
-              ? params
-              : [params];
-            const ref = snapshot(listener);
-            const bound = ref.bind(currentElement);
-            element.addEventListener(type, bound, options);
-            elementListeners.set(ref, bound);
-          };
+        /**
+         * @typedef {  EventListener | [EventListener,options?: boolean | AddEventListenerOptions]} ListenerParams
+         */
 
-          /**
-           * @param {string} type
-           * @param {ListenerParams} params
-           */
-          const removeListener = (type, params) => {
-            const [listener, options] = Array.isArray(params)
-              ? params
-              : [params];
-            const ref = snapshot(listener);
-            const bound = elementListeners.get(ref);
-            element.removeEventListener(type, bound, options);
-            elementListeners.delete(ref);
-          };
+        /**
+         * @param {string} type
+         * @param {ListenerParams} params
+         */
+        const addListener = (type, params) => {
+          const [listener, options] = Array.isArray(params) ? params : [params];
+          const ref = snapshot(listener);
+          const bound = ref.bind(currentElement);
+          element.addEventListener(type, bound, options);
+          elementListeners.set(ref, bound);
+        };
 
-          for (const [key, val] of Object.entries(listeners)) {
-            addListener(key, /** @type {ListenerParams} */ (val));
-          }
+        /**
+         * @param {string} type
+         * @param {ListenerParams} params
+         */
+        const removeListener = (type, params) => {
+          const [listener, options] = Array.isArray(params) ? params : [params];
+          const ref = snapshot(listener);
+          const bound = elementListeners.get(ref);
+          element.removeEventListener(type, bound, options);
+          elementListeners.delete(ref);
+        };
 
+        for (const [key, val] of Object.entries(listeners)) {
+          addListener(key, /** @type {ListenerParams} */ (val));
+        }
+
+        disposer.use(
           listen(listeners, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -452,26 +457,28 @@ class Template {
                 break;
               }
             }
-          });
-        }
+          }),
+        );
       }
 
       // Prop
       const propId = currentElement.getAttribute(PROP_MARKER);
       if (propId !== null) {
         const index = this.elementSinks.get(+propId);
-        if (index !== undefined) {
-          const props = sinks[index];
-          assert(isPropSink(props));
+        assertExists(index, "Couldn't find prop sink data");
 
-          const element = currentElement;
-          element.removeAttribute(PROP_MARKER);
+        const props = sinks[index];
+        assert(isPropSink(props));
 
-          for (const [key, value] of Object.entries(props)) {
-            // @ts-ignore key in element
-            element[key] = value;
-          }
+        const element = currentElement;
+        element.removeAttribute(PROP_MARKER);
 
+        for (const [key, value] of Object.entries(props)) {
+          // @ts-ignore key in element
+          element[key] = value;
+        }
+
+        disposer.use(
           listen(props, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -490,31 +497,33 @@ class Template {
                 element[key] = null;
                 break;
             }
-          });
-        }
+          }),
+        );
       }
 
       // Style
       const styleId = currentElement.getAttribute(STYLE_MARKER);
       if (styleId !== null) {
         const index = this.elementSinks.get(+styleId);
-        if (index !== undefined) {
-          const style = sinks[index];
-          assert(isStyleSink(style));
-          assert(
-            currentElement instanceof HTMLElement ||
-              currentElement instanceof SVGElement ||
-              currentElement instanceof MathMLElement,
-            "expected an html, svg or mathML element",
-          );
+        assertExists(index, "Couldn't find style sink data");
 
-          const element = currentElement;
-          element.removeAttribute(STYLE_MARKER);
+        const style = sinks[index];
+        assert(isStyleSink(style));
+        assert(
+          currentElement instanceof HTMLElement ||
+            currentElement instanceof SVGElement ||
+            currentElement instanceof MathMLElement,
+          "Expected an html, svg or mathML element",
+        );
 
-          for (const [key, value] of Object.entries(style)) {
-            currentElement.style.setProperty(key, String(value));
-          }
+        const element = currentElement;
+        element.removeAttribute(STYLE_MARKER);
 
+        for (const [key, value] of Object.entries(style)) {
+          currentElement.style.setProperty(key, String(value));
+        }
+
+        disposer.use(
           listen(style, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || (typeof e.path !== "string")) return;
             const key = e.path.split(".")[1];
@@ -530,21 +539,31 @@ class Template {
                 element.style.removeProperty(key);
                 break;
             }
-          });
-        }
+          }),
+        );
       }
     }
+
+    let fragment = clone;
 
     if (this.mode !== "html") {
       const wrapper = clone.firstElementChild;
       const result = document.createDocumentFragment();
-      if (!wrapper) return result;
+      assertExists(wrapper, "Unexpected null wrapper");
+
       // no `children` spreading to avoid array conversion from `HTMLCollection`
       while (wrapper.firstChild) result.append(wrapper.firstChild);
-      return result;
+      fragment = result;
     }
 
-    return clone;
+    return {
+      fragment,
+      [Symbol.dispose]() {
+        disposer.dispose();
+      },
+      // @ts-ignore
+      [TEMPLATE_SINK]: true,
+    };
   }
 }
 
@@ -588,16 +607,26 @@ function isNonReflectedAttribute(element, key) {
 }
 
 /**
- * A {@linkcode Boundary} is a live `DocumentFragment` with a start and end `Comment` nodes.
+ * A {@linkcode Boundary} is a disposable live `DocumentFragment` with a start and end `Comment` nodes.
+ *
+ * @internal
  */
 class Boundary {
-  /** @type {Comment} */
-  #start;
-  /** @type {Comment} */
-  #end;
+  #start = document.createComment("");
+  #end = document.createComment("");
 
-  /** @type {Range} */
-  range;
+  disposer = new DisposableStack();
+
+  cleanup() {
+    this.disposer.dispose();
+    this.disposer = new DisposableStack();
+  }
+
+  [Symbol.dispose]() {
+    this.disposer.dispose();
+  }
+
+  range = new Range();
 
   /**
    * Holds the data the {@linkcode Boundary} manages, which can be any of the different sorts of sinks, a {@linkcode ReactiveLeaf} or a {@linkcode Primitive}
@@ -612,10 +641,7 @@ class Boundary {
    * @param {Sink} data
    */
   constructor(data) {
-    this.range = new Range();
     this.data = data;
-    this.#start = document.createComment("");
-    this.#end = document.createComment("");
   }
 
   /**
@@ -666,6 +692,7 @@ class Boundary {
     this.range.setStartBefore(this.#start);
     this.range.setEndAfter(this.#end);
     this.range.deleteContents();
+    this.disposer.dispose();
   }
 
   /**
@@ -713,19 +740,20 @@ class Boundary {
   render() {
     const data = this.data;
 
-    if (data instanceof DocumentFragment) {
-      this.#end.before(data);
-    } else if (isPrimitive(data)) {
+    if (isPrimitive(data)) {
       this.#end.before(String(data ?? ""));
-    } else if (isReactiveLeaf(data) && !isUnsafeHTML(data)) {
-      this.renderDerivedSink(data);
+    } else if (
+      isTemplateSink(data) ||
+      (isReactiveLeaf(data) && !isUnsafeHTML(data))
+    ) {
+      this.disposer.use(this.renderDerivedSink(data));
     } else if (isMapSink(data)) {
       const thisEnd = this.end;
       const values = data.values;
       const mapper = data.mapper;
 
       /**
-       * @type {{ index: { value: number };data: any;boundary: Boundary;}[]}
+       * @type {{ index: ReactiveLeaf<number>; data: any; boundary: Boundary; }[]}
        */
       const boundaries = [];
       /**
@@ -734,7 +762,7 @@ class Boundary {
       let labels = [];
 
       /**
-       * @typedef {{        start: number;deleteCount: number;values: any[];      }} SpliceOptions
+       * @typedef {{ start: number; deleteCount: number; values: any[]; }} SpliceOptions
        */
 
       /**
@@ -757,7 +785,7 @@ class Boundary {
         ) boundary.remove();
 
         /**
-         * @type {{          index: { value: number };data: any;boundary: Boundary;}[]}
+         * @type {{ index: ReactiveLeaf<number>; data: any; boundary: Boundary; }[]}
          */
         const newBoundaries = [];
 
@@ -796,7 +824,7 @@ class Boundary {
         const splices = [];
 
         /**
-         * @typedef {{ type: "insert" | "delete" | "swap" }          | { type: "move"; from: number; to: number }} Tag
+         * @typedef {{ type: "insert" | "delete" | "swap" } | { type: "move"; from: number; to: number }} Tag
          */
 
         /**
@@ -1078,141 +1106,146 @@ class Boundary {
       spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
-      listen(values, (/** @type {ReactiveEvent} */ e) => {
-        switch (e.type) {
-          case "relabel": {
-            labels = e.labels;
-            return;
-          }
-          case "update": {
-            if (typeof e.path !== "string") return;
-            // Ignore derived updates of the length property
-            if (e.path === ".length") return;
-            const index = Number(e.path.split(".")[1]);
-            const b = boundaries[index];
-            assertExists(b);
-
-            // updates are already handled are the reactive object level for non primitive types
-            if (isPrimitive(b.data)) {
-              b.data = e.newValue;
-              b.boundary.data = mapper(
-                e.newValue,
-                reactive({ value: index }),
-              );
-              b.boundary.deleteContents();
-              b.boundary.render();
+      this.disposer.use(
+        listen(values, (/** @type {ReactiveEvent} */ e) => {
+          switch (e.type) {
+            case "relabel": {
+              labels = e.labels;
+              return;
             }
-            break;
-          }
-          case "apply": {
-            if (![".reverse", ".sort", ".splice"].includes(String(e.path))) {
-              labels = [];
+            case "update": {
+              if (typeof e.path !== "string") return;
+              // Ignore derived updates of the length property
+              if (e.path === ".length") return;
+              const index = Number(e.path.split(".")[1]);
+              const b = boundaries[index];
+              assertExists(b);
+
+              // updates are already handled are the reactive object level for non primitive types
+              if (isPrimitive(b.data)) {
+                b.data = e.newValue;
+                b.boundary.data = mapper(
+                  e.newValue,
+                  reactive({ value: index }),
+                );
+                b.boundary.deleteContents();
+                b.boundary.render();
+              }
+              break;
             }
-
-            switch (e.path) {
-              case ".push":
-                updates.push(
-                  spliceBoundaries.bind(null, boundaries.length, 0, ...e.args),
-                );
-                break;
-              case ".unshift":
-                updates.push(
-                  spliceBoundaries.bind(null, 0, 0, ...e.args),
-                );
-                break;
-              case ".concat":
-                updates.push(
-                  spliceBoundaries.bind(
-                    null,
-                    boundaries.length,
-                    0,
-                    ...e.args[0],
-                  ),
-                );
-                break;
-
-              case ".pop":
-                updates.push(
-                  spliceBoundaries.bind(null, boundaries.length - 1, 1),
-                );
-                break;
-              case ".shift":
-                updates.push(spliceBoundaries.bind(null, 0, 1));
-                break;
-
-              case ".splice": {
-                const [start, deleteCount, ...values] = e.args;
-                moveAndSpliceBoundaries(start, deleteCount, ...values);
-                break;
+            case "apply": {
+              if (![".reverse", ".sort", ".splice"].includes(String(e.path))) {
+                labels = [];
               }
-              case ".fill": {
-                const [value, start, end] = e.args;
-                for (const b of boundaries.slice(start, end)) {
-                  b.data = value;
-                }
-                break;
-              }
-              case ".copyWithin": {
-                const [target, start, end] = e.args;
 
-                for (let index = 0; index < end - start; index++) {
-                  const targetBoundary = boundaries[target + index];
-                  const sourceBoundary = boundaries[start + index];
-
-                  assertExists(targetBoundary);
-                  assertExists(sourceBoundary);
-
-                  targetBoundary.data = sourceBoundary.data;
-                }
-                break;
-              }
-              case ".reverse":
-              case ".sort": {
-                if (labels.length > 0) {
-                  /**
-                   * @type {[number, number][]}
-                   */
-                  const moves = labels.map(
-                    ([a, b]) => [+a.slice(1), +b.slice(1)],
+              switch (e.path) {
+                case ".push":
+                  updates.push(
+                    spliceBoundaries.bind(
+                      null,
+                      boundaries.length,
+                      0,
+                      ...e.args,
+                    ),
                   );
+                  break;
+                case ".unshift":
+                  updates.push(
+                    spliceBoundaries.bind(null, 0, 0, ...e.args),
+                  );
+                  break;
+                case ".concat":
+                  updates.push(
+                    spliceBoundaries.bind(
+                      null,
+                      boundaries.length,
+                      0,
+                      ...e.args[0],
+                    ),
+                  );
+                  break;
 
-                  updates.push(moveBoundaries.bind(null, moves));
-                  labels = [];
+                case ".pop":
+                  updates.push(
+                    spliceBoundaries.bind(null, boundaries.length - 1, 1),
+                  );
+                  break;
+                case ".shift":
+                  updates.push(spliceBoundaries.bind(null, 0, 1));
+                  break;
+
+                case ".splice": {
+                  const [start, deleteCount, ...values] = e.args;
+                  moveAndSpliceBoundaries(start, deleteCount, ...values);
+                  break;
                 }
-                break;
+                case ".fill": {
+                  const [value, start, end] = e.args;
+                  for (const b of boundaries.slice(start, end)) {
+                    b.data = value;
+                  }
+                  break;
+                }
+                case ".copyWithin": {
+                  const [target, start, end] = e.args;
+
+                  for (let index = 0; index < end - start; index++) {
+                    const targetBoundary = boundaries[target + index];
+                    const sourceBoundary = boundaries[start + index];
+
+                    assertExists(targetBoundary);
+                    assertExists(sourceBoundary);
+
+                    targetBoundary.data = sourceBoundary.data;
+                  }
+                  break;
+                }
+                case ".reverse":
+                case ".sort": {
+                  if (labels.length > 0) {
+                    /**
+                     * @type {[number, number][]}
+                     */
+                    const moves = labels.map(
+                      ([a, b]) => [+a.slice(1), +b.slice(1)],
+                    );
+
+                    updates.push(moveBoundaries.bind(null, moves));
+                    labels = [];
+                  }
+                  break;
+                }
+              }
+
+              if (updates.length > 0) {
+                maybeViewTransition(() => {
+                  for (const update of updates) {
+                    update();
+                  }
+                  updates.length = 0;
+                });
               }
             }
-
-            if (updates.length > 0) {
-              maybeViewTransition(() => {
-                for (const update of updates) {
-                  update();
-                }
-                updates.length = 0;
-              });
-            }
           }
-        }
-      });
+        }),
+      );
     } else if (isTextSink(data)) {
       const content = data.data;
       const key = data.key;
       const textNode = new Text(String(content[key] ?? ""));
       this.#end.before(textNode);
 
-      listen(content, (/** @type {ReactiveEvent} */ e) => {
-        if (e.type !== "update") return;
-        if (e.path !== `.${key}`) return;
-        textNode.data = String(e.newValue ?? "");
-      });
+      this.disposer.use(
+        listen(content, (/** @type {ReactiveEvent} */ e) => {
+          if (e.type !== "update") return;
+          if (e.path !== `.${key}`) return;
+          textNode.data = String(e.newValue ?? "");
+        }),
+      );
     } else if (isShowSink(data)) {
       /**
-       * @type {(() => void) | undefined}
-       */
-      let cleanup;
-
-      /**
        * @param  {(() => DerivedSink) | undefined} currentCase
+       * @returns {DisposableStack | undefined}
        */
       const setup = (currentCase) => {
         if (currentCase) {
@@ -1220,70 +1253,80 @@ class Boundary {
         }
       };
 
-      cleanup = setup(data.cond ? data.ifCase : data.elseCase);
+      let cleanup = setup(data.cond ? data.ifCase : data.elseCase);
 
-      listen(data, (/** @type {ReactiveEvent} */ e) => {
-        // ensure we're in the right case before cleanup
-        if (e.type !== "update" || e.path !== ".cond") return;
-        cleanup?.();
-        this.deleteContents();
-        cleanup = setup(e.newValue ? data.ifCase : data.elseCase);
-      });
+      this.disposer.use(
+        listen(data, (/** @type {ReactiveEvent} */ e) => {
+          // ensure we're in the right case before cleaning up
+          if (e.type !== "update" || e.path !== ".cond") return;
+          cleanup?.[Symbol.dispose]();
+          this.deleteContents();
+          cleanup = setup(e.newValue ? data.ifCase : data.elseCase);
+        }),
+      );
     } else if (isUnsafeHTML(data)) {
       // unsafe sink
       const template = document.createElement("template");
       template.innerHTML = data.value;
       this.replaceChildren(template.content);
 
-      listen(data, (/** @type {ReactiveEvent} */ e) => {
-        switch (e.type) {
-          case "update":
-            template.innerHTML = e.newValue;
-            this.replaceChildren(template.content);
-            break;
-        }
-      });
+      this.disposer.use(
+        listen(data, (/** @type {ReactiveEvent} */ e) => {
+          switch (e.type) {
+            case "update":
+              template.innerHTML = e.newValue;
+              this.replaceChildren(template.content);
+              break;
+          }
+        }),
+      );
     } else {
       throw new Error(`Unexpected sink: ${data}`);
     }
   }
 
   /**
-   * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and also inserts nested `DocumentFragments` as-is
+   * Interpolates {@linkcode ReactiveLeaf | ReactiveLeaves} and {@linkcode Primitive | Primitives} as safe `Text` nodes and inserts nested {@linkcode TemplateSink}
    *
    * @param {DerivedSink} data
-   * @returns {(() => void) | undefined}
+   * @returns {DisposableStack}
    */
   renderDerivedSink(data) {
     const content = isReactiveLeaf(data) ? data.value : data;
+    const disposable = new DisposableStack();
 
-    if (content instanceof DocumentFragment) {
-      this.#end.before(content);
-    } else {
+    if (isPrimitive(content)) {
       // a text node is a safe sink
       this.#end.before(String(content ?? ""));
+    } else {
+      disposable.use(content);
+      this.#end.before(content.fragment);
     }
 
-    return listen(data, (/** @type {ReactiveEvent} */ e) => {
-      if (e.type !== "update" && e.type !== "delete") return;
-      if (e.path !== ".value") return;
+    disposable.use(
+      listen(data, (/** @type {ReactiveEvent} */ e) => {
+        if (e.type !== "update" && e.type !== "delete") return;
+        if (e.path !== ".value") return;
 
-      switch (e.type) {
-        case "update": {
-          const newValue = snapshot(e.newValue);
-          if (newValue instanceof DocumentFragment) {
-            this.replaceChildren(newValue);
-          } else {
-            this.replaceChildren(String(e.newValue ?? ""));
+        switch (e.type) {
+          case "update": {
+            const newValue = snapshot(e.newValue);
+            if (isPrimitive(newValue)) {
+              this.replaceChildren(String(e.newValue ?? ""));
+            } else {
+              this.replaceChildren(newValue);
+            }
+            break;
           }
-          break;
-        }
 
-        case "delete":
-          this.deleteContents();
-          break;
-      }
-    });
+          case "delete":
+            this.deleteContents();
+            break;
+        }
+      }),
+    );
+
+    return disposable;
   }
 
   /**
@@ -1512,7 +1555,7 @@ const MAP_SINK = Symbol.for("map sink");
  *
  * @template T
  * @param {T[]} values The {@linkcode reactive} array to iterate on
- * @param {(value: T, index: ReactiveLeaf<number>) => DocumentFragment} mapper A callback taking as input a single `value` from the array and its `index`
+ * @param {(value: T, index: ReactiveLeaf<number>) => TemplateSink} mapper A callback taking as input a single `value` from the array and its `index`
  * @returns {MapSink<T>}
  */
 export function map(values, mapper) {
@@ -1665,6 +1708,21 @@ export function isStyleSink(value) {
     Object.hasOwn(value, STYLE_SINK);
 }
 
+// template
+
+const TEMPLATE_SINK = Symbol.for("template sink");
+
+/**
+ * Checks whether a sink is an {@linkcode attach} sink
+ *
+ * @param {unknown} value
+ * @returns {value is TemplateSink}
+ */
+export function isTemplateSink(value) {
+  return value !== null && typeof value === "object" &&
+    Object.hasOwn(value, TEMPLATE_SINK);
+}
+
 // text
 
 const TEXT_SINK = Symbol.for("text sink");
@@ -1728,4 +1786,37 @@ export function isUnsafeHTML(value) {
   return typeof value === "object" &&
     value !== null &&
     Object.hasOwn(value, UNSAFE_SINK);
+}
+
+/**
+ * Creates a component
+ *
+ * @template {any[]} T
+ * @param {(this: EffectScope, ...args:T) => TemplateSink} callback
+ * @returns {(...args: T) => TemplateSink}
+ */
+export function component(callback) {
+  return (...args) => {
+    const disposer = new DisposableStack();
+
+    /** @type {EffectScope} */
+    const scope = {
+      disposer,
+      // wtf
+      // @ts-ignore
+      listen: (node, callback) => disposer.use(listen(node, callback)),
+      [Symbol.dispose]() {
+        disposer.dispose();
+      },
+    };
+
+    const templateSink = disposer.use(callback.apply(scope, args));
+
+    return {
+      fragment: templateSink.fragment,
+      [Symbol.dispose]() {
+        scope[Symbol.dispose]();
+      },
+    };
+  };
 }
