@@ -1,2 +1,34 @@
-export * from "./html.ts";
-export * from "./sinks.ts";
+export { html, math, svg } from "./html.ts";
+export {
+  attach,
+  attr,
+  classList,
+  component,
+  map,
+  on,
+  prop,
+  show,
+  style,
+  text,
+  unsafeHTML,
+} from "./sinks.ts";
+export type {
+  AttachSink,
+  AttrSink,
+  ClassListSink,
+  DerivedSink,
+  EffectScope,
+  ElementSink,
+  FragmentSink,
+  MapSink,
+  On,
+  Prop,
+  ShowSink,
+  Sink,
+  StyleSink,
+  TagName,
+  TemplateSink,
+  TemplateTag,
+  TextSink,
+  UnsafeSink,
+} from "./sinks.ts";
