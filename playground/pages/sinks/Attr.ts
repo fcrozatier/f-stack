@@ -11,7 +11,7 @@ export const Attr = () => {
       return disabled.value;
     },
   });
-  const input = reactive({ text: "hello", number: 10 });
+  const user = reactive({ name: "Bob" });
 
   return html`
     <p>
@@ -48,26 +48,18 @@ export const Attr = () => {
         },
       })}>Remove disabled attribute</button>
     </p>
-    <h2>Two-way bindings</h2>
-    <div>
-      <input type="text" ${attr({
-        get value() {
-          return input.text;
-        },
-      })} ${on<HTMLInputElement>({
-        input: function () {
-          input.text = this.value;
-        },
-      })}>
-      <input type="number" ${attr({
-        get value() {
-          return input.number;
-        },
-      })} ${on<HTMLInputElement>({
-        input: function () {
-          input.number = this.valueAsNumber;
-        },
-      })}>
-    </div>
+    <h2>Reset values</h2>
+    <form>
+      <label>username:
+        <input type="text" ${attr({
+          value: user.name,
+        })} ${on<HTMLInputElement>({
+          input: function () {
+            user.name = this.value;
+          },
+        })}>
+      </label>
+      <button type="reset">Reset</button>
+    </form>
   `;
 };
