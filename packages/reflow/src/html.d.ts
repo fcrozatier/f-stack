@@ -411,6 +411,9 @@ export function isStyleSink(value: unknown): value is StyleSink;
  * @see {@linkcode TemplateTag}
  */
 export interface TemplateSink extends Disposable {
+  /**
+   * The `DocumentFragment` template to mount into the DOM
+   */
   fragment: DocumentFragment;
 }
 
@@ -517,11 +520,15 @@ export type DerivedSink = Primitive | ReactiveLeaf | TemplateSink;
 
 /**
  * An `EffectScope` is a disposable scope used in components that provides a local {@linkcode listen} function.
- *
- * This `listen` function is cleaned up automatically when the scope is disposed of.
  */
 export interface EffectScope extends Disposable {
+  /**
+   * A `DisposableStack` that holds the component unmount logic
+   */
   disposer: DisposableStack;
+  /**
+   * The component local {@linkcode listen} function which is cleaned up automatically when the component is unmounted
+   */
   listen: typeof listen;
 }
 
