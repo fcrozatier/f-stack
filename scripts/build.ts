@@ -30,14 +30,6 @@ export const buildPath = (path: string) => {
       content = stripTypes(content, {
         pathRewriting: true,
         removeComments: true,
-        remapSpecifiers: {
-          filePath: path,
-          imports: {
-            "@f-stack/reflow/reactivity": "./packages/reflow/src/reactivity.js",
-            "@f-stack/reflow": "./packages/reflow/src/mod.js",
-            "@f-stack/functorial": "./packages/functorial/src/reactive.js",
-          },
-        },
       });
       break;
 
