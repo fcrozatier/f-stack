@@ -7,9 +7,7 @@ export const AttachPage = () => {
   return html`
     <div>
       <input type="color" ${attr({
-        get value() {
-          return state.color;
-        },
+        value: state.color,
       })} ${on<HTMLInputElement>({
         input: function () {
           state.color = this.value;
