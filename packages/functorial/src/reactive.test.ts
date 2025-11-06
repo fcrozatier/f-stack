@@ -459,23 +459,28 @@ Deno.test("nested listeners", () => {
   const MSG2 = "even";
   const MSG3 = "odd";
 
-  let cleanup: (() => void) | undefined;
+  let disposer: DisposableStack | undefined;
 
   listen(r, (e) => {
-    cleanup?.();
+    disposer?.dispose();
     events.push({ ...e, info: "root listener" });
 
     if (e.type === "update") {
+      disposer = new DisposableStack();
       if (e.newValue % 2 === 0) {
-        cleanup = listen(r, (e1) => {
-          events.push({ ...e1, info: "even listener" });
-          (e.newValue % 6 === 0) ? logs.push(MSG1) : logs.push(MSG2);
-        });
+        disposer.use(
+          listen(r, (e1) => {
+            events.push({ ...e1, info: "even listener" });
+            (e.newValue % 6 === 0) ? logs.push(MSG1) : logs.push(MSG2);
+          }),
+        );
       } else {
-        cleanup = listen(r, (e2) => {
-          events.push({ ...e2, info: "odd listener" });
-          logs.push(MSG3);
-        });
+        disposer.use(
+          listen(r, (e2) => {
+            events.push({ ...e2, info: "odd listener" });
+            logs.push(MSG3);
+          }),
+        );
       }
     }
   });
