@@ -611,6 +611,8 @@ export function isUnsafeHTML(value: unknown): value is UnsafeSink {
  */
 export type DerivedSink = Primitive | ReactiveLeaf | TemplateSink;
 
+function noop() {}
+
 /**
  * Creates a component
  *
@@ -624,7 +626,10 @@ export function component<T extends any[]>(
 
     const scope: EffectScope = {
       disposer,
-      listen: (node, callback) => disposer.use(listen(node, callback)),
+      listen: (node, callback) => {
+        disposer.defer(listen(node, callback));
+        return noop;
+      },
       [Symbol.dispose]() {
         disposer.dispose();
       },

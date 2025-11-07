@@ -58,9 +58,17 @@ export type ReactiveEvent =
   | { type: "relabel"; labels: [string, string][] };
 
 /**
- * Represents the callbacks of the {@linkcode listen} function
+ * A cleanup function
  */
-export type ReactiveEventCallback = (event: ReactiveEvent) => void;
+export type Cleanup = () => void;
+
+/**
+ * The callbacks of the {@linkcode listen} function
+ *
+ * @param event The {@linkcode ReactiveEvent}
+ * @returns Optionally returns a {@linkcode Cleanup} function that runs on the next call
+ */
+export type ReactiveEventCallback = (event: ReactiveEvent) => void | Cleanup;
 
 /**
  * All data structures are faithfully representable as labelled directed multigraphs.
@@ -210,6 +218,7 @@ export function reactive<T extends object>(object: T): T {
   const derivedValues = new Map<string, any>();
   const derivedLabels = new Map<string, any>();
   const callbacks = new Set<ReactiveEventCallback>();
+  const cleanups = new Map<ReactiveEventCallback, Cleanup | undefined>();
 
   function emit(e: ReactiveEvent) {
     // recompute to ensure the correct newValue in the case of batched updates
@@ -378,7 +387,11 @@ export function reactive<T extends object>(object: T): T {
 
   function notify(e: ReactiveEvent) {
     for (const callback of callbacks) {
-      callback(e);
+      let cleanup = cleanups.get(callback);
+      cleanup?.();
+      cleanup = callback(e) ?? undefined;
+      // if the cleanup is `undefined` this just removes it
+      cleanups.set(callback, cleanup);
     }
   }
 
@@ -429,12 +442,12 @@ export function reactive<T extends object>(object: T): T {
     return labels;
   }
 
-  function addListener(callback: ReactiveEventCallback): Disposable {
+  function addListener(callback: ReactiveEventCallback): Cleanup {
     callbacks.add(callback);
-    return {
-      [Symbol.dispose]() {
-        callbacks.delete(callback);
-      },
+    return () => {
+      cleanups.get(callback)?.();
+      callbacks.delete(callback);
+      cleanups.delete(callback);
     };
   }
 
@@ -873,8 +886,10 @@ export function isPrimitive(value: unknown): value is Primitive {
     ["string", "number", "boolean", "undefined"].includes(typeof value);
 }
 
+function noop() {}
+
 /**
- * Listens to a {@linkcode reactive} graph and runs the provided callback whenever a change or call is detected
+ * Listens to a {@linkcode reactive} and runs the provided callback whenever a change or method call is detected
  *
  * Does nothing if the argument is not reactive
  *
@@ -896,16 +911,16 @@ export function isPrimitive(value: unknown): value is Primitive {
  * // old: 0, new: 1
  * ```
  *
- * @param {T} node The structure to listen to
- * @param {ReactiveEventCallback} callback The callback to run on changes
- * @return {Disposable} A cleanup function to remove the listener
+ * @param node The structure to listen to
+ * @param callback The callback to run on changes
+ * @return A cleanup function to that removes the listener
  */
 export function listen<T>(
   node: T,
   callback: ReactiveEventCallback,
-): Disposable {
+): Cleanup {
   // doing the sanity check here to avoid having these checks all over the codebase
-  if (!isReactive(node)) return { [Symbol.dispose]() {} };
+  if (!isReactive(node)) return noop;
   return getOwn(node, ns.ADD_LISTENER)(callback);
 }
 
