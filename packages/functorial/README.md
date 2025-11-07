@@ -1,47 +1,97 @@
 # Functorial
 
-The reactivity primitive.
+_The reactivity primitive_
 
 ## Introduction
 
-_The problem: we want a way to interact with web APIs in a faithful, reactive
-and declarative manner._
+Functorial reactivity is an idiomatic way to interact with web APIs in a
+faithful, reactive and declarative manner. It's different from Signals as you
+not only map the data, but also the behaviors, in a structured way.
 
-Functorial reactivity achieves this by letting you not only map the data, but
-also the behaviors.
-
-For example, `delete` an object property to remove a listener, call `unshift()`
-on a list to prepend data in the DOM.
-
-We always mutate the DOM for performance, so the idea is to use mutable
-structures and reflect their changes (transport their operations) to update the
-DOM.
+For example, `delete` an object property to remove a listener or call
+`unshift()` on a list to prepend data in a DOM container.
 
 As a consequence, this approach yields
 
-- The highest level of granularity
+- The highest level of granularity: faithfulness
 - A cristal-clear [mental model](#mental-model)
-- A principled approach to manipulating web APIs declaratively
+- A principled approach to interacting with web APIs declaratively
+- A more natural reactivity primitive
 
 ## Mental Model
 
-Functorial reactivity creates a faithful communication between your templates
-and the DOM.
+### Mutation-first
 
-Faithful means that we both:
+The DOM is a mutable structure, and for performance we update the DOM by
+mutating it. Functorial reactivity reflects this in our templates with its focus
+on mutable structures. State is held inside mutable structures (_eg._ `Object`,
+`Array`) and their changes and operations are transported to corresponding DOM
+updates.
 
-- know the full story of what happens on the Template side
-- can reach whole APIs dynamically on the DOM side
+For example add a key-value pair to an object to add an attribute to a DOM
+`Element`, delete it to remove the attribue.
+
+### Mapping Templates to DOM...
+
+Templates are where we declare the relation between a piece of state and the
+DOM.
+
+With Functorial reactivity this relation is a faithful communication between our
+templates and the DOM:
+
+1. We create a piece of state and map it to the DOM (up arrow)
+2. We mutate the state or perform an operation on it (left arrow)
+3. Our state listener is triggered with an event letting us know what happened,
+   so we can perform the right DOM update dynamically without diffing (right
+   arrow)
+4. The DOM is in the same state as if we had directly applied this updated
+   state: the whole diagram commutes (down arrow)
 
 ![Mental Model](<assets/mental_model.png>)
 
-In practice, the `listen` callback gives us all the fine-grained details we need
-about the data update to perform the corresponding surgical DOM updates.
+### ... faithfully
+
+The relation between our templates and the DOM being faithful means that we
+both:
+
+- **know the full story of what happens on the Template side**
+- **can reach whole APIs dynamically on the DOM side**
+
+Since it's `Proxy`-based, the granularity on the left side is only constrained
+by the resolution provided by the `Proxy` traps: we can know wether a key was
+created, updated, deleted, or whether a method was called and with which
+arguments. This tells us the full story as an event, which can be accessed as
+the callback parameter of the `listen` function.
+
+> [!NOTE]
+> In particular this granularity means we don't need diffing: the `Proxy`
+> already knows what happens, so it would be a pure waste to discard this
+> information to then reconstruct it afterwards with diffing. Instead this data
+> is provided as a `ReactiveEvent` in the `listen` callback parameter.
+
+### Expressive, Structured approach
+
+Functorial reactivity focuses on mutable **structures**: the `listen` function
+takes a structure to listen to as its first parameter.
+
+This, combined with the granularity of the `ReactiveEvent` which tells us how
+the structure changes, let us create expressive mappings of semantics.
+
+For example, since all common web APIs all revolve around create and delete
+operations,
+
+- `setAttribute` and `removeAttribute`
+- `addEventListener` and `removeEventListener`
+- `.classList.add` and `.classList.remove`
+- `.style.setProperty` and `.style.removeProperty`
+
+the `delete` operation on a state object can be mapped to the expected
+corresponding operation in the DOM.
 
 ### Videos
 
-Here are a few videos explaining the concept and mental model behind functorial
-reactivity, as well as a few examples:
+Here are a few videos explaining the functorial reactivity mental model, with a
+few examples:
 
 - [Concept and granularity demo](https://bsky.app/profile/fred-crozatier.dev/post/3lyktxp75x22a)
 - [Mental model and difference with Signals](https://bsky.app/profile/fred-crozatier.dev/post/3m3ctprjykc25)
@@ -49,22 +99,22 @@ reactivity, as well as a few examples:
 
 ## Usage
 
-Functorial is a low-level, framework-independent reactivity system with
-zero-dependencies. You can use it directly but will have to implement common web
-mappings (attributes, listeners etc.) yourself.
+Functorial is a low-level, framework-independent reactivity system. You can use
+it directly but will have to implement common web mappings (attributes,
+listeners etc.) yourself.
 
-These common functorial mappings are provided in [Reflow](../reflow/README.md)
-which is the natural companion and recommended way to use Functorial.
+These common mappings are provided in [Reflow](../reflow/README.md) which is the
+recommended way to use Functorial.
 
 ### CDN
 
-The library's single `.js` file can be load directly from a CDN
+The library can be loaded directly from `esm.sh`
 
 ```html
 <script type="importmap">
   {
     "imports": {
-      "@f-stack/functorial": "https://cdn.jsdelivr.net/gh/fcrozatier/f-stack@main/packages/functorial/src/reactive.js"
+      "@f-stack/functorial": "https://esm.sh/jsr/@f-stack/functorial"
     }
   }
 </script>
@@ -98,19 +148,20 @@ npx jsr add @f-stack/functorial
 
 ## Examples
 
-Here are a few raw examples showcasing some of the basic Functorial features.
-You can also have a look at the [Playground](../../playground/README.md) for
-real life examples and usage with Reflow.
+Here are a few examples showcasing some basic features. You can also have a look
+at the [Playground](../../playground/README.md) for real life examples and usage
+with Reflow.
 
 ### Reactive objects
 
 Create a reactive state with `reactive`. Listen to its updates with `listen`.
 
-> [TIP!] You can create a reactive array, Map or Set by directly wrapping them
-> like `reactive([])` or `reactive(new Map())`. With functorial reactivity we
-> can reflect operations directly, with the `listen` callback being the source
-> of truth for the DOM synchronisation logic. So we don't need to reimplement
-> every data structure with a reactive variant
+> [!TIP]
+> You can create a reactive array, `Map` or `Set` by directly wrapping them like
+> `reactive([])` or `reactive(new Map())`. The `listen` callback being the
+> source of truth for the DOM synchronisation logic, we don't have to
+> reimplement every data structure as a reactive variant. This is a key
+> difference with Signals.
 
 ```ts
 import { listen, reactive } from "@f-stack/functorial";
@@ -132,7 +183,6 @@ state.count = 1;
 ### Derived values
 
 Use getters to cache derived values, or create them directly with `derived`.
-These derived values are cached for performance.
 
 ```ts
 import { derived, listen, reactive } from "@f-stack/functorial";
@@ -168,7 +218,7 @@ state.count = 4;
 // }
 ```
 
-### Listen to operations
+### Listen to changes and operations
 
 You can think of `listen` as a way to hook into the Proxy and get the full
 picture of what's going on.
@@ -179,7 +229,7 @@ import { listen, reactive } from "@f-stack/functorial";
 const array = reactive([1, 2, 3]);
 
 listen(array, (e) => {
-  // e tells you everything about what happened to `array`
+  // e tells us everything that happens to `array`
   console.log(e);
 });
 
@@ -192,7 +242,7 @@ array.push(4);
 // }
 ```
 
-### Writable derived values
+### Writable-derived values
 
 Some derived values are also writable, like the `Array.length` property. Add a
 setter next to a getter to create a writable derived.
@@ -214,6 +264,6 @@ const price = reactive({
 
 ## [Playground](../../playground/README.md)
 
-## [API](https://jsr.io/@f-stack/functorial/doc)
+## API
 
-Interactive API on JSR
+Interactive API available on [JSR](https://jsr.io/@f-stack/functorial/doc)

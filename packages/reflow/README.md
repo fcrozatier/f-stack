@@ -81,7 +81,7 @@ const Demo = () => {
 };
 
 // Directly append to your document body:
-// document.body.append(Demo());
+// document.body.append(Demo().fragment);
 ```
 
 ## Features
@@ -96,15 +96,14 @@ const Demo = () => {
 - Template caching
 - Strong type safety with no extension required
 - Supports type parameters for even stronger type safety
-- Zero 3rd-party runtime dependencies
 
 ## Mental model
 
 With Reflow we insert reactive data in our templates inside holes (sinks) to
-declaratively and reactively manipulate web APIs (`Attr`, `EventListener`,
-`DOMTokenList` etc). This is done in a very structured way.
+declaratively and reactively interact with web APIs (`Attr`, `EventListener`,
+`DOMTokenList` etc).
 
-There are two sorts of sinks:
+This is done in a structured way, with two sorts of sinks:
 
 1. Element-level sinks
 
@@ -124,9 +123,6 @@ There are two sorts of sinks:
 
 See below for a walkthrough of the various available sinks.
 
-The template tag returns a live `DocumentFragment` that can be directly inserted
-in the DOM.
-
 ## Install
 
 Depending on your package manager:
@@ -141,8 +137,8 @@ npx jsr add @f-stack/reflow
 
 ### `on`
 
-Handles event listeners on an `Element`. Creates a functorial mapping with the
-element `addEventListener` and `removeEventListener` methods
+Handles event listeners on an `Element`. This sink creates a functorial mapping
+with the element `addEventListener` and `removeEventListener` methods
 
 > [!TIP]
 > You can access a strongly typed `this` value by using a type parameter with a
@@ -185,10 +181,10 @@ export const OnDemo = () => {
 
 ### `attr`
 
-Handles attributes on an `Element`. Creates a functorial mapping with the
-element `setAttribute` and `removeAttribute` methods.
+Handles attributes on an `Element`. This sink creates a functorial mapping with
+the element `setAttribute` and `removeAttribute` methods.
 
-> [TIP!] You can pass `attr` and `AttrSink` a tag name as a type parameter for
+> [!TIP] You can pass `attr` and `AttrSink` a tag name as a type parameter for
 > stronger type safety. All HTML, SVG and MathML tags are supported
 
 ```ts
@@ -217,10 +213,10 @@ export const AttrDemo = () => {
 
 ### `prop`
 
-Handles an `Element` properties.
+Handles setting an `Element` properties.
 
 > [!TIP]
-> You can use a type parameter for element-specific props type safety
+> You can use a type parameter for element-specific type-safe props
 
 ```ts
 import { html, prop } from "@f-stack/reflow";
@@ -245,33 +241,28 @@ export const PropPage = () => {
 Runs a callback hook on the `Element` it is attached to.
 
 ```ts
-import { reactive } from "@f-stack/functorial";
-import { attach, html, on } from "@f-stack/reflow";
+import { attach, html } from "@f-stack/reflow";
 
 export const AttachDemo = () => {
-  const form = reactive({ value: "Bob" });
-
   return html`
-    <form>
-      <label>username:
-        <input type="text" ${attach((i: HTMLInputElement) => {
-          i.defaultValue = form.value;
-        })} ${on<HTMLInputElement>({
-          input: function () {
-            form.value = this.value;
-          },
-        })}>
-      </label>
-      <button type="reset">Reset</button>
-    </form>
+    <canvas width="300" height="300" ${attach(
+      (canvas: HTMLCanvasElement) => {
+        const context = canvas.getContext("2d");
+
+        if (context) {
+          context.fillStyle = "#40E0D0";
+          context.fillRect(0, 0, 200, 200);
+        }
+      },
+    )}>Enable JS</canvas>
   `;
 };
 ```
 
 ### `classList`
 
-Handles conditional classes on an `Element`. This creates a functorial mapping
-with the element `classList.add` and `classList.remove` methods.
+Handles conditional classes on an `Element`. This sink creates a functorial
+mapping with the element `classList.add` and `classList.remove` methods.
 
 > [!TIP]
 > You can use getters in any reactive object to derive values like in this
@@ -313,7 +304,7 @@ Handles the creation and update of `Text` nodes.
 
 > [!TIP]
 > For convenience, you can also use a `Primitive` or `ReactiveLeaf` directly to
-> create `Text` nodes.
+> create a `Text` node.
 
 ```ts
 import { html, on, text } from "@f-stack/reflow";
@@ -371,10 +362,9 @@ export const DerivedDemo = () => {
 
 ### `show`
 
-Handles conditional templates. It takes 3 callbacks: the first returns the
-conditional value, the second is the template, primitive or reactive leaf to use
-in the `true` case and the third is the template, primitive or reactive leaf to
-use in the `false` case.
+Handles conditional templates. It takes 2+1 callbacks: the first returns the
+conditional value, the second is the `DerivedSink` to use in the `true` case and
+the third is the optional `DerivedSink` to use in the `false` case.
 
 > [!TIP]
 > For simple ternary conditions, you can use a `derived` sink like below. But
@@ -521,11 +511,11 @@ export const MapDemo = () => {
 
 ### `style`
 
-Handles inline styles on an `Element`. Creates a functorial mapping with the
-element `style.setProperty` and `style.removeProperty` methods.
+Handles inline styles on an `Element`. This sink creates a functorial mapping
+with the element `style.setProperty` and `style.removeProperty` methods.
 
 > [!TIP]
-> You can also manipulate reactive --dashed ident properties this way like below
+> You can also use reactive `--dashed-ident` properties like below
 
 ```ts
 import { attr, html, on, style, type StyleSink } from "@f-stack/reflow";
@@ -574,7 +564,7 @@ export const StyleDemo = () => {
 Handles raw HTML.
 
 > [!WARNING]
-> Only use this sink with trusted inputs
+> Only use this unsafe sink with trusted inputs
 
 ```ts
 import { html, on, unsafeHTML } from "@f-stack/reflow";
@@ -605,6 +595,71 @@ export const UnsafeHTMLDemo = () => {
 };
 ```
 
-## [API](https://jsr.io/@f-stack/reflow/doc)
+## Lifecycle
 
-Interactive API on JSR.
+Use the `component` wrapper function as below when you need to handle cleanup,
+either manually or automatically.
+
+### Auto cleanup
+
+The `this` value of the `component` callback function gives access to a local
+`listen` function that is automatically cleaned up when the component effects
+are disposed of. This prevents memory leaks and bugs with nested effects.
+
+```ts
+import { component, type EffectScope, html, on, show } from "@f-stack/reflow";
+import { reactive } from "@f-stack/functorial";
+
+export const AutoCleanupDemo = component(function () {
+  const display = reactive({ value: true });
+  const count = reactive({ value: 0 });
+
+  return html`
+    <button ${on({ click: () => display.value = !display.value })}>show</button>
+    <button ${on({ click: () => count.value++ })}>increment</button>
+    ${show(
+      () => display.value,
+      // inline component
+      component(function (this: EffectScope) {
+        // use the local `listen` method via the this `EffectScope` for auto cleanup
+        this.listen(count, () => {
+          console.log("increment");
+        });
+        return html`
+          <p>count: ${count}</p>
+        `;
+      }),
+    )}
+  `;
+});
+```
+
+### Manual cleanup
+
+The `EffectScope` of the `component` callback function also provides access to a
+`DisposableStack` cleaned when the component instance is disposed.
+
+```ts
+import { component, type EffectScope, html } from "@f-stack/reflow";
+
+export const ManualCleanupDemo = component(function (this: EffectScope) {
+  const callback = () => {
+    console.log("loaded");
+  };
+
+  document.addEventListener("DOMContentLoaded", callback);
+
+  // manually add cleanup logic to the component `DisposableStack`
+  this.disposer.defer(() => {
+    document.removeEventListener("DOMContentLoaded", callback);
+  });
+
+  return html`
+    ...
+  `;
+});
+```
+
+## API
+
+Interactive API on [JSR](https://jsr.io/@f-stack/reflow/doc)
