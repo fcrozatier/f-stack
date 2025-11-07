@@ -1,3 +1,3 @@
-import { Counter } from "./pages/reactivity/1-state-and-derived/Counter.ts";
+import { Counter } from "./components/Counter.ts";
 
 document.body.replaceChildren(Counter().fragment);
