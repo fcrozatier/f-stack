@@ -23,7 +23,7 @@ a clean, coherent and holistic design then this is for you too.
    rebranding them. That's because I **respect** your intelligence and believe
    we can learn new concepts. Actually, the added value of manual programming is
    theory building and **acquiring expertise**. In other words, the role of a
-   framework should be to provide you not only with tools, but with deeper
+   framework should be to provide you not only with tools, but with a deeper
    knowledge and a whole new vision of the field.
 
 ## Architecture
