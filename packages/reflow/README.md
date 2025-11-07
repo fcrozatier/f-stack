@@ -607,8 +607,7 @@ The `this` value of the `component` callback function gives access to a local
 are disposed of. This prevents memory leaks and bugs with nested effects.
 
 ```ts
-import { html, on, show } from "@f-stack/reflow";
-import { component } from "../packages/reflow/src/sinks.ts";
+import { component, type EffectScope, html, on, show } from "@f-stack/reflow";
 import { reactive } from "@f-stack/functorial";
 
 export const AutoCleanupDemo = component(function () {
@@ -621,7 +620,7 @@ export const AutoCleanupDemo = component(function () {
     ${show(
       () => display.value,
       // inline component
-      component(function () {
+      component(function (this: EffectScope) {
         // use the local `listen` method via the this `EffectScope` for auto cleanup
         this.listen(count, () => {
           console.log("increment");
@@ -641,10 +640,9 @@ The `EffectScope` of the `component` callback function also provides access to a
 `DisposableStack` cleaned when the component instance is disposed.
 
 ```ts
-import { html } from "@f-stack/reflow";
-import { component } from "../packages/reflow/src/sinks.ts";
+import { component, type EffectScope, html } from "@f-stack/reflow";
 
-export const ManualCleanupDemo = component(function () {
+export const ManualCleanupDemo = component(function (this: EffectScope) {
   const callback = () => {
     console.log("loaded");
   };
