@@ -484,7 +484,7 @@ export class Boundary {
       spliceBoundaries(0, 0, ...values);
 
       // Creates a functorial relation with the original reactive array
-      this.disposer.use(
+      this.disposer.defer(
         listen(values, (e) => {
           switch (e.type) {
             case "relabel": {
@@ -610,7 +610,7 @@ export class Boundary {
       const textNode = new Text(String(content[key] ?? ""));
       this.#end.before(textNode);
 
-      this.disposer.use(
+      this.disposer.defer(
         listen(content, (e) => {
           if (e.type !== "update") return;
           if (e.path !== `.${key}`) return;
@@ -628,7 +628,7 @@ export class Boundary {
 
       let cleanup = setup(data.cond ? data.ifCase : data.elseCase);
 
-      this.disposer.use(
+      this.disposer.defer(
         listen(data, (e) => {
           // ensure we're in the right case before cleaning up
           if (e.type !== "update" || e.path !== ".cond") return;
@@ -643,7 +643,7 @@ export class Boundary {
       template.innerHTML = data.value;
       this.replaceChildren(template.content);
 
-      this.disposer.use(
+      this.disposer.defer(
         listen(data, (e) => {
           switch (e.type) {
             case "update":
@@ -673,7 +673,7 @@ export class Boundary {
       this.#end.before(content.fragment);
     }
 
-    disposable.use(
+    disposable.defer(
       listen(data, (e) => {
         if (e.type !== "update" && e.type !== "delete") return;
         if (e.path !== ".value") return;

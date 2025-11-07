@@ -214,7 +214,7 @@ class Template {
           }
         }
 
-        disposer.use(
+        disposer.defer(
           listen(attr, (e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -274,7 +274,7 @@ class Template {
           }
         }
 
-        disposer.use(
+        disposer.defer(
           listen(classList, (/** @type {ReactiveEvent} */ e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -338,7 +338,7 @@ class Template {
           addListener(key, val as ListenerParams);
         }
 
-        disposer.use(
+        disposer.defer(
           listen(listeners, (e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -385,7 +385,7 @@ class Template {
           element[key] = value;
         }
 
-        disposer.use(
+        disposer.defer(
           listen(props, (e) => {
             if (e.type === "relabel" || !(typeof e.path === "string")) return;
             const key = e.path.split(".")[1];
@@ -430,7 +430,7 @@ class Template {
           currentElement.style.setProperty(key, String(value));
         }
 
-        disposer.use(
+        disposer.defer(
           listen(style, (e) => {
             if (e.type === "relabel" || (typeof e.path !== "string")) return;
             const key = e.path.split(".")[1];
