@@ -18,6 +18,13 @@ a clean, coherent and holistic design then this is for you too.
    solutions, where we loose track of what's going on. This quickly becomes
    un-debuggable and impossible to reason about. I don't trade long term
    understanding for immediate comfort.
+4. The stack is **unapologetic** with concepts: I'll use the correct
+   terminology, without hiding from math or computer science terms, and without
+   rebranding them. That's because I **respect** your intelligence and believe
+   we can learn new concepts. Actually, the added value of manual programming is
+   theory building and **acquiring expertise**. In other words, the role of a
+   framework should be to provide you not only with tools, but with deeper
+   knowledge and a whole new vision of the field.
 
 ## Architecture
 
@@ -28,7 +35,7 @@ The current pieces are (more to come):
 A new `Proxy`-based reactivity system, that goes beyond Signals. More idiomatic.
 More granular.
 
-It's a structured way to declaratively interact with web API in a reactive
+It's a structured way to declaratively interact with web APIs in a reactive
 manner
 
 ### [Reflow](./packages/reflow/README.md)
