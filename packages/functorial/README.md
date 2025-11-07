@@ -86,7 +86,7 @@ operations,
 - `.style.setProperty` and `.style.removeProperty`
 
 the `delete` operation on a state object can be mapped to the expected
-corresponding operation in the DOM.
+corresponding operation in the DOM. Idiomatic and expressive.
 
 ### Videos
 
