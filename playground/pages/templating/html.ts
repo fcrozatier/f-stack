@@ -1,6 +1,6 @@
 import { attr, html } from "@f-stack/reflow";
 // @ts-ignore works in Chrome
-// import styles from "./hello.css" with { type: "css" };
+import styles from "./hello.css" with { type: "css" };
 
 document.adoptedStyleSheets.push(styles);
 
@@ -11,10 +11,9 @@ const Nested = () => {
 };
 
 /**
- * Showcase simple interpolation
+ * Primitive interpolation
  */
-export const Hello = () => {
-  // Add data
+export const HtmlPage = () => {
   const name = "World";
   const src =
     "https://images.dog.ceo/breeds/terrier-patterdale/dog-1268559_640.jpg";

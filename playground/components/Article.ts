@@ -1,5 +1,5 @@
 import { html } from "@f-stack/reflow";
-import { Counter } from "../pages/reactivity/1-state-and-derived/Counter.ts";
+import { Counter } from "./Counter.ts";
 
 export const Article = (props: { title: string }) => {
   return html`
