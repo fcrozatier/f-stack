@@ -20,11 +20,10 @@ a clean, coherent and holistic design then this is for you too.
    understanding for immediate comfort.
 4. The stack is **unapologetic** with concepts: I'll use the correct
    terminology, without hiding from math or computer science terms, and without
-   rebranding them. That's because I **respect** your intelligence and believe
-   we can learn new concepts. Actually, the added value of manual programming is
-   theory building and **acquiring expertise**. In other words, the role of a
-   framework should be to provide you not only with tools, but with a deeper
-   knowledge and a whole new vision of the field.
+   rebranding them. I believe the added value of manual programming is learning,
+   [theory building](https://pages.cs.wisc.edu/~remzi/Naur.pdf) and **acquiring
+   expertise**. In other words, the role of a framework is not only to provide
+   you with a set of tools, but with a deeper knowledge and vision of the field.
 
 ## Architecture
 
