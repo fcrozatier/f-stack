@@ -164,6 +164,9 @@ export class Boundary {
         values: any[];
       };
 
+      /**
+       * Stack of vt updates to merge together
+       */
       const updates: (() => void)[] = [];
 
       // removes/inserts adjacent values by deleting/creating boundaries to trigger the right View Transitions
