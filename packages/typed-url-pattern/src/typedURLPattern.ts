@@ -1,22 +1,62 @@
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { assert } from "@std/assert/assert";
+
 export class TypedURLPattern<
-  T extends {
-    params?: Record<string, string | number | boolean>;
-    searchParams?: Record<string, string | number | boolean>;
-    hash?: string;
-  },
+  T extends StandardSchemaV1,
+  U extends StandardSchemaV1,
 > {
   #pattern: URLPattern;
-  #baseURL: string | undefined;
+  #paramsSchema: T | undefined;
+  #searchParamsSchema: U | undefined;
 
   // Provide a default baseURL
-  constructor(input: URLPatternInput, baseURL?: string) {
-    this.#pattern = new URLPattern(input, baseURL);
-    this.#baseURL = baseURL;
+  constructor(
+    input: URLPatternInput,
+    schema?: {
+      params?: T;
+      searchParams?: U;
+    },
+  ) {
+    this.#pattern = new URLPattern(input);
+    this.#paramsSchema = schema?.params;
+    this.#searchParamsSchema = schema?.searchParams;
   }
 
-  match(input: URLPatternInput) {
-    const match = this.#pattern.exec(input, this.#baseURL);
+  match(input: URLPatternInput, baseURL?: string) {
+    const match = this.#pattern.exec(input, baseURL);
     if (!match) return null;
+
+    const params = match?.pathname.groups;
+    const paramsSchema = this.#paramsSchema;
+
+    let parsedParams;
+
+    if (paramsSchema && params) {
+      const result = paramsSchema["~standard"].validate(params);
+
+      if (result instanceof Promise) {
+        throw new TypeError("URL Pattern validation must be synchronous");
+      }
+
+      if (result.issues) return null;
+      parsedParams = result.value;
+    }
+
+    const searchParams = match?.search;
+    const searchParamsSchema = this.#searchParamsSchema;
+
+    let parsedSearchParams;
+
+    if (searchParamsSchema && searchParams) {
+      const result = searchParamsSchema["~standard"].validate(searchParams);
+
+      if (result instanceof Promise) {
+        throw new TypeError("URL Pattern validation must be synchronous");
+      }
+
+      if (result.issues) return null;
+      parsedSearchParams = result.value;
+    }
 
     return {
       protocol: match.protocol.input,
@@ -25,15 +65,21 @@ export class TypedURLPattern<
       hostname: match.hostname.input,
       port: match.port.input,
       pathname: match.pathname.input,
-      params: match?.pathname.groups as T["params"],
+      params: parsedParams as StandardSchemaV1.InferOutput<T>,
       search: match?.search.input,
       searchGroups: match?.search.groups,
-      searchParams: new URLSearchParams(match?.search.input),
+      searchParams: parsedSearchParams as StandardSchemaV1.InferOutput<U>,
       hash: match?.search.input,
     };
   }
 
-  href(options: T): string {
+  href(
+    options: {
+      params?: StandardSchemaV1.InferInput<T>;
+      searchParams?: StandardSchemaV1.InferInput<U>;
+      hash?: string;
+    },
+  ): string {
     const pattern = this.#pattern;
 
     const protocol = pattern.protocol ? pattern.protocol + "://" : "";
@@ -44,6 +90,12 @@ export class TypedURLPattern<
 
     if (options.params) {
       for (const [key, value] of Object.entries(options.params)) {
+        assert(
+          typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean",
+          "Params must be strings, numbers or booleans",
+        );
         pathname = pathname.replace(key, encodeURIComponent(value));
       }
     }
@@ -53,6 +105,12 @@ export class TypedURLPattern<
     if (options.searchParams) {
       const entries: string[] = [];
       for (const [key, value] of Object.entries(options.searchParams)) {
+        assert(
+          typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean",
+          "SearchParams must be strings, numbers or booleans",
+        );
         entries.push(`${key}=${encodeURIComponent(value)}`);
       }
 
