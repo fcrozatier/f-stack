@@ -4,5 +4,9 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "imports": {
+    "@standard-schema/spec": "jsr:@standard-schema/spec@^1.0.0",
+    "zod": "npm:zod@^4.1.12"
   }
 }
