@@ -5,6 +5,8 @@ export class TypedURLPattern<
   T extends StandardSchemaV1,
   U extends StandardSchemaV1,
 > {
+  static debug = false;
+
   #pattern: URLPattern;
   #paramsSchema: T | undefined;
   #searchParamsSchema: U | undefined;
@@ -38,23 +40,30 @@ export class TypedURLPattern<
         throw new TypeError("URL Pattern validation must be synchronous");
       }
 
-      if (result.issues) return null;
+      if (result.issues) {
+        if (TypedURLPattern.debug) console.log(result.issues);
+        return null;
+      }
       parsedParams = result.value;
     }
 
-    const searchParams = match?.search;
+    const search = match?.search.input;
     const searchParamsSchema = this.#searchParamsSchema;
 
     let parsedSearchParams;
 
-    if (searchParamsSchema && searchParams) {
+    if (searchParamsSchema && search) {
+      const searchParams = Object.fromEntries(new URLSearchParams(search));
       const result = searchParamsSchema["~standard"].validate(searchParams);
 
       if (result instanceof Promise) {
         throw new TypeError("URL Pattern validation must be synchronous");
       }
 
-      if (result.issues) return null;
+      if (result.issues) {
+        if (TypedURLPattern.debug) console.log(result.issues);
+        return null;
+      }
       parsedSearchParams = result.value;
     }
 
