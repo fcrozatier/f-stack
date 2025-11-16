@@ -6,6 +6,7 @@ export class TypedURLPattern<
   U extends StandardSchemaV1,
 > {
   static debug = false;
+  static baseURL = "";
 
   #pattern: URLPattern;
   #paramsSchema: T | undefined;
@@ -19,13 +20,17 @@ export class TypedURLPattern<
       searchParams?: U;
     },
   ) {
-    this.#pattern = new URLPattern(input);
+    const init: URLPatternInit = typeof input === "string"
+      ? { pathname: input, baseURL: TypedURLPattern.baseURL }
+      : { ...input, baseURL: input.baseURL ?? TypedURLPattern.baseURL };
+
+    this.pattern = new URLPattern(init);
     this.#paramsSchema = schema?.params;
     this.#searchParamsSchema = schema?.searchParams;
   }
 
   match(input: URLPatternInput, baseURL?: string) {
-    const match = this.#pattern.exec(input, baseURL);
+    const match = this.pattern.exec(input, baseURL ?? TypedURLPattern.baseURL);
     if (!match) return null;
 
     const params = match?.pathname.groups;
@@ -37,11 +42,15 @@ export class TypedURLPattern<
       const result = paramsSchema["~standard"].validate(params);
 
       if (result instanceof Promise) {
-        throw new TypeError("URL Pattern validation must be synchronous");
+        throw new TypeError(
+          "[TypedURLPattern]: URL Pattern validation must be synchronous",
+        );
       }
 
       if (result.issues) {
-        if (TypedURLPattern.debug) console.log(result.issues);
+        if (TypedURLPattern.debug) {
+          console.log("[TypedURLPattern]:", result.issues);
+        }
         return null;
       }
       parsedParams = result.value;
@@ -57,11 +66,15 @@ export class TypedURLPattern<
       const result = searchParamsSchema["~standard"].validate(searchParams);
 
       if (result instanceof Promise) {
-        throw new TypeError("URL Pattern validation must be synchronous");
+        throw new TypeError(
+          "[TypedURLPattern]: URL Pattern validation must be synchronous",
+        );
       }
 
       if (result.issues) {
-        if (TypedURLPattern.debug) console.log(result.issues);
+        if (TypedURLPattern.debug) {
+          console.log("[TypedURLPattern]", result.issues);
+        }
         return null;
       }
       parsedSearchParams = result.value;
