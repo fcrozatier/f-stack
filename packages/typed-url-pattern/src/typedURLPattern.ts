@@ -8,9 +8,14 @@ export class TypedURLPattern<
   static debug = false;
   static baseURL = "";
 
-  #pattern: URLPattern;
   #paramsSchema: T | undefined;
   #searchParamsSchema: U | undefined;
+
+  /**
+   * Pattern syntax
+   * https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API#pattern_syntax
+   */
+  pattern: URLPattern;
 
   // Provide a default baseURL
   constructor(
@@ -102,7 +107,7 @@ export class TypedURLPattern<
       hash?: string;
     },
   ): string {
-    const pattern = this.#pattern;
+    const pattern = this.pattern;
 
     const protocol = pattern.protocol ? pattern.protocol + "://" : "";
     const username = pattern.username ? pattern.username + "@" : "";
