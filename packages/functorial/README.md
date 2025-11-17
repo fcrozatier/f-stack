@@ -4,8 +4,8 @@ A new `Proxy`-based reactivity system, that goes beyond Signals.
 
 ## Introduction
 
-Functorial is a reactivity system where you not only map the data, but
-also the behaviors, in a structured, granular, reactive and declarative way.
+Functorial is a reactivity system where you not only map the data, but also the
+behaviors, in a structured, granular, reactive and declarative way.
 
 For example, `delete` an object property to remove a listener or call
 `unshift()` on a list to prepend data in a DOM container.
@@ -149,8 +149,8 @@ npx jsr add @f-stack/functorial
 
 ## Usage Examples
 
-Here are a few examples showcasing basic features. You can also have a look
-at the [Playground](../../playground/README.md) for real life examples and usage
+Here are a few examples showcasing basic features. You can also have a look at
+the [Playground](../../playground/README.md) for real life examples and usage
 with Reflow.
 
 ### Reactive objects
