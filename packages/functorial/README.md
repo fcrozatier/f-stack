@@ -12,16 +12,16 @@ For example, `delete` an object property to remove a listener or call
 
 As a consequence, this approach yields
 
-- The highest level of granularity: faithfulness
-- A cristal-clear [mental model](#mental-model)
-- A principled approach to interacting with web APIs declaratively
-- A more natural reactivity primitive
+- The highest level of granularity: [**faithfulness**](#faithfulness)
+- A cristal-clear [**mental model**](#mental-model)
+- A principled approach to interacting with web APIs **declaratively**
+- A more **natural** reactivity primitive
 
 ## Mental Model
 
-### Mutation-first
+### Mutations-first
 
-The DOM is a mutable structure, and for performance we update the DOM by
+The DOM is a mutable structure, and for performance reasons we update the DOM by
 mutating it. Functorial reactivity reflects this in our templates with its focus
 on mutable structures. State is held inside mutable structures and their changes
 and operations are reflected to corresponding DOM updates.
@@ -42,7 +42,16 @@ DOM. With Functorial reactivity this relation is a faithful communication:
 4. The DOM is in the same state as if we had directly applied this updated
    state: the whole diagram commutes (down arrow)
 
+> [!NOTE]
+> Notice the `f(op)` on the right arrow. It's a subtle difference with the
+> [mental model for Signals](/packages/functorial/SIGNALS.md). In functorial
+> reactivity the operation (_eg_ `unshift`) is provided by the `Proxy` to our
+> listeners callback which can then reflect it (_eg_ `prepend`), while with
+> signals we have no clue and must resort to diffing on every change.
+
 ![Mental Model](<assets/mental_model.png>)
+
+### Faithfulness
 
 The relation between our templates and the DOM being **faithful** means that we
 both:
