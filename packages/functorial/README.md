@@ -1,43 +1,38 @@
 # Functorial
 
-_The reactivity primitive_
+A new `Proxy`-based reactivity system, that goes beyond Signals.
 
 ## Introduction
 
-Functorial reactivity is an idiomatic way to interact with web APIs in a
-faithful, reactive and declarative manner. It's different from Signals as you
-not only map the data, but also the behaviors, in a structured way.
+Functorial is a reactivity system where you not only map the data, but also the
+behaviors, in a structured, granular, reactive and declarative way.
 
 For example, `delete` an object property to remove a listener or call
 `unshift()` on a list to prepend data in a DOM container.
 
 As a consequence, this approach yields
 
-- The highest level of granularity: faithfulness
-- A cristal-clear [mental model](#mental-model)
-- A principled approach to interacting with web APIs declaratively
-- A more natural reactivity primitive
+- The highest level of granularity: [**faithfulness**](#faithfulness)
+- A cristal-clear [**mental model**](#mental-model)
+- A principled approach to interacting with web APIs **declaratively**
+- A more **natural** reactivity primitive
 
 ## Mental Model
 
-### Mutation-first
+### Mutations-first
 
-The DOM is a mutable structure, and for performance we update the DOM by
+The DOM is a mutable structure, and for performance reasons we update the DOM by
 mutating it. Functorial reactivity reflects this in our templates with its focus
-on mutable structures. State is held inside mutable structures (_eg._ `Object`,
-`Array`) and their changes and operations are transported to corresponding DOM
-updates.
+on mutable structures. State is held inside mutable structures and their changes
+and operations are reflected to corresponding DOM updates.
 
 For example add a key-value pair to an object to add an attribute to a DOM
-`Element`, delete it to remove the attribue.
+`Element`, `delete` it to remove the attribue.
 
-### Mapping Templates to DOM...
+### A natural mapping from Templates to DOM
 
 Templates are where we declare the relation between a piece of state and the
-DOM.
-
-With Functorial reactivity this relation is a faithful communication between our
-templates and the DOM:
+DOM. With Functorial reactivity this relation is a faithful communication:
 
 1. We create a piece of state and map it to the DOM (up arrow)
 2. We mutate the state or perform an operation on it (left arrow)
@@ -47,21 +42,28 @@ templates and the DOM:
 4. The DOM is in the same state as if we had directly applied this updated
    state: the whole diagram commutes (down arrow)
 
+> [!NOTE]
+> Notice the `f(op)` on the right arrow. It's a subtle difference with the
+> [mental model for Signals](/packages/functorial/SIGNALS.md). In functorial
+> reactivity the operation (_eg_ `unshift`) is provided by the `Proxy` to our
+> listeners callback which can then reflect it (_eg_ `prepend`), while with
+> signals we have no clue and must resort to diffing on every change.
+
 ![Mental Model](<assets/mental_model.png>)
 
-### ... faithfully
+### Faithfulness
 
-The relation between our templates and the DOM being faithful means that we
+The relation between our templates and the DOM being **faithful** means that we
 both:
 
 - **know the full story of what happens on the Template side**
 - **can reach whole APIs dynamically on the DOM side**
 
-Since it's `Proxy`-based, the granularity on the left side is only constrained
-by the resolution provided by the `Proxy` traps: we can know wether a key was
-created, updated, deleted, or whether a method was called and with which
-arguments. This tells us the full story as an event, which can be accessed as
-the callback parameter of the `listen` function.
+Since it's `Proxy`-based, the granularity on the left side (Template side) is
+only constrained by the `Proxy` traps: we can know wether a key was created,
+updated, deleted, or whether a method was called and with which arguments. This
+tells us the full story as an event, which can be accessed as the callback
+parameter of the `listen` function.
 
 > [!NOTE]
 > In particular this granularity means we don't need diffing: the `Proxy`
@@ -69,7 +71,7 @@ the callback parameter of the `listen` function.
 > information to then reconstruct it afterwards with diffing. Instead this data
 > is provided as a `ReactiveEvent` in the `listen` callback parameter.
 
-### Expressive, Structured approach
+### Expressive, Declarative, Structured approach
 
 Functorial reactivity focuses on mutable **structures**: the `listen` function
 takes a structure to listen to as its first parameter.
@@ -77,16 +79,15 @@ takes a structure to listen to as its first parameter.
 This, combined with the granularity of the `ReactiveEvent` which tells us how
 the structure changes, let us create expressive mappings of semantics.
 
-For example, since all common web APIs all revolve around create and delete
-operations,
+For example, since all common web APIs all revolve around multiple operations
 
 - `setAttribute` and `removeAttribute`
 - `addEventListener` and `removeEventListener`
 - `.classList.add` and `.classList.remove`
 - `.style.setProperty` and `.style.removeProperty`
 
-the `delete` operation on a state object can be mapped to the expected
-corresponding operation in the DOM. Idiomatic and expressive.
+the `delete` operation on a state object can be directly mapped to the expected
+corresponding operation in the DOM. Idiomatic and expressive, with no diffing.
 
 ### Videos
 
@@ -97,7 +98,7 @@ few examples:
 - [Mental model and difference with Signals](https://bsky.app/profile/fred-crozatier.dev/post/3m3ctprjykc25)
 - [Example of complex operations on a list](https://bsky.app/profile/fred-crozatier.dev/post/3m3cvi5ygec25)
 
-## Usage
+## Installation
 
 Functorial is a low-level, framework-independent reactivity system. You can use
 it directly but will have to implement common web mappings (attributes,
@@ -136,7 +137,7 @@ The library can be loaded directly from `esm.sh`
 </script>
 ```
 
-### Installation
+### Package managers
 
 Depending on your package manager:
 
@@ -146,10 +147,10 @@ pnpm i jsr:@f-stack/functorial
 npx jsr add @f-stack/functorial
 ```
 
-## Examples
+## Usage Examples
 
-Here are a few examples showcasing some basic features. You can also have a look
-at the [Playground](../../playground/README.md) for real life examples and usage
+Here are a few examples showcasing basic features. You can also have a look at
+the [Playground](../../playground/README.md) for real life examples and usage
 with Reflow.
 
 ### Reactive objects

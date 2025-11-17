@@ -1,43 +1,52 @@
 # F-Stack
 
-_Rethinking fullstack development_
+Welcome to this repo where we explore new wild ideas _rethinking fullstack web
+development_
 
-Here is my experimental stack. If you like when things fall neatly into place in
-a clean, coherent and holistic design then this is for you too.
+## Why?
 
-## Values
+We love the web. But the consensus is growing that the tech we use has gone too
+far, with too many abstractions and layers, that make it impossible for a single
+person to have a comprehensive vision and understanding of his own stack. Even
+the application code we write can easily become hard to debug and reason about
+in this context.
 
-1. The focus is on having **clean mental models** for every part of the stack.
-   Which gives you a superpower: **understanding**. When you can reason clearly
-   about your own application code then you're in a good, future proof, place.
-   No magic.
-2. I'm not after performance for it's own sake. It's JavaScript man, not Rust.
-   As long as performance is good, I prefer clean, readable, maintainable code.
-   I don't want to need 10 coffees to understand what I wrote.
-3. I'm not chasing DX above all. Oftentimes too much comfort means "magic"
-   solutions, where we loose track of what's going on. This quickly becomes
-   un-debuggable and impossible to reason about. I don't trade long term
-   understanding for immediate comfort.
-4. The stack is **unapologetic** with concepts: I'll use the correct
-   terminology, without hiding from math or computer science terms, and without
-   rebranding them. I believe the added value of manual programming is learning,
-   [theory building](https://pages.cs.wisc.edu/~remzi/Naur.pdf) and **acquiring
-   expertise**. In other words, the role of a framework is not only to provide
-   you with a set of tools, but with a deeper knowledge and vision of the field.
+In parallel, the Platform is maturing more and more, and things that were
+previously impossible without compilers, bundlers, transpilers and complex
+build-chains can now be done natively, sometimes even without JS. This evolution
+empowers us developers to simplify our stack drastically...
+
+## Principles
+
+The guiding principles of this new stack are the following:
+
+1. **Standards First** We use platform APIs: this means less library code, less
+   maintenance, and more experience with APIs that are here to stay.
+2. **Type Safety** We want type-safe applications, and we develop the stack with
+   types in mind.
+3. **Minimalism and Clarity** Fewer abstractions, and just the right ones. The
+   focus is on having **clear mental models** allowing a single person to
+   understand the whole stack with a coherent vision. No magic.
 
 ## Architecture
 
 The current pieces are (more to come):
 
+### [Type-strip](https://github.com/fcrozatier/type-strip)
+
+A simple and fast type stripper.
+
 ### [Functorial](./packages/functorial/README.md)
 
-A new `Proxy`-based reactivity system, that goes beyond Signals. More idiomatic.
-More granular.
-
-It's a structured way to declaratively interact with web APIs in a reactive
-manner
+A new `Proxy`-based reactivity system, that goes beyond Signals. It's more
+idiomatic, more granular, more declarative and doesn't require diffing.
 
 ### [Reflow](./packages/reflow/README.md)
 
 A minimal frontend framework powered by template tags and providing Functorial
 mappings to all common web APIs.
+
+## Can I contribute?
+
+Sure! Feel free to experiment with the code, open issues, start the
+conversation. We won't bite, promise!
