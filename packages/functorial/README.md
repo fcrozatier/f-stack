@@ -4,7 +4,7 @@ A new `Proxy`-based reactivity system, that goes beyond Signals.
 
 ## Introduction
 
-Functorial is a reactivity system allowing you to not only map the data, but
+Functorial is a reactivity system where you not only map the data, but
 also the behaviors, in a structured, granular, reactive and declarative way.
 
 For example, `delete` an object property to remove a listener or call
@@ -98,7 +98,7 @@ few examples:
 - [Mental model and difference with Signals](https://bsky.app/profile/fred-crozatier.dev/post/3m3ctprjykc25)
 - [Example of complex operations on a list](https://bsky.app/profile/fred-crozatier.dev/post/3m3cvi5ygec25)
 
-## Usage
+## Installation
 
 Functorial is a low-level, framework-independent reactivity system. You can use
 it directly but will have to implement common web mappings (attributes,
@@ -137,7 +137,7 @@ The library can be loaded directly from `esm.sh`
 </script>
 ```
 
-### Installation
+### Package managers
 
 Depending on your package manager:
 
@@ -147,9 +147,9 @@ pnpm i jsr:@f-stack/functorial
 npx jsr add @f-stack/functorial
 ```
 
-## Examples
+## Usage Examples
 
-Here are a few examples showcasing some basic features. You can also have a look
+Here are a few examples showcasing basic features. You can also have a look
 at the [Playground](../../playground/README.md) for real life examples and usage
 with Reflow.
 
