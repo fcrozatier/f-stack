@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/typedURLPattern.ts"
   },
   "imports": {
     "@standard-schema/spec": "jsr:@standard-schema/spec@^1.0.0",
