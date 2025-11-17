@@ -1,7 +1,7 @@
 # F-Stack
 
-Welcome to this repo where we're exploring new wild ideas in the process of
-_rethinking fullstack web development_
+Welcome to this repo where we explore new wild ideas _rethinking fullstack web
+development_
 
 ## Why?
 
@@ -12,16 +12,16 @@ the application code we write can easily become hard to debug and reason about
 in this context.
 
 In parallel, the Platform is maturing more and more, and things that were
-previously impossible without bundler, transpilers or complex build-chains can
-now be done natively, sometimes even without JS. This evolution empowers us
-developers to simplify our stack drastically...
+previously impossible without compilers, bundlers, transpilers and complex
+build-chains can now be done natively, sometimes even without JS. This evolution
+empowers us developers to simplify our stack drastically...
 
 ## Principles
 
 The guiding principles of this new stack are the following:
 
-1. **Standards First** We prioritize the use of platform APIs: less library
-   code, less maintenance, more experience with APIs that are here to stay.
+1. **Standards First** We use platform APIs: this means less library code, less
+   maintenance, and more experience with APIs that are here to stay.
 2. **Type Safety** We want type-safe applications, and we develop the stack with
    types in mind.
 3. **Minimalism and Clarity** Fewer abstractions, and just the right ones. The
