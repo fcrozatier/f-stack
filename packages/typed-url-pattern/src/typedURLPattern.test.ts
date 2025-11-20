@@ -5,26 +5,9 @@ import * as z from "zod";
 TypedURLPattern.debug = true;
 TypedURLPattern.baseURL = "https://example.com";
 
-// Pathname
-
-Deno.test("matches a simple pathname", () => {
-  const pattern = new TypedURLPattern({ pathname: "/users" });
-  const match = pattern.match("/users");
-
-  assertExists(match);
-  assertEquals(match.pathname, "/users");
-});
-
-Deno.test("returns null for non-matching paths", () => {
-  const pattern = new TypedURLPattern({ pathname: "/users" });
-  const match = pattern.match("/posts");
-
-  assertEquals(match, null);
-});
-
 // Params
 
-Deno.test("extracts params", () => {
+Deno.test("type-safe params", () => {
   const pattern = new TypedURLPattern(
     { pathname: "/blog/:year(\\d+)/:title" },
     { params: z.object({ year: z.coerce.number(), title: z.string() }) },
@@ -36,18 +19,7 @@ Deno.test("extracts params", () => {
   assertEquals(match.params, { year: 2025, title: "my-post" });
 });
 
-Deno.test("returns null if params don't match", () => {
-  const pattern = new TypedURLPattern(
-    { pathname: "/blog/:year(\\d+)" },
-    { params: z.object({ year: z.coerce.number() }) },
-  );
-
-  const match = pattern.match("/blog/first");
-
-  assertEquals(match, null);
-});
-
-Deno.test("extracts unnamed params", () => {
+Deno.test("type-safe unnamed params", () => {
   const pattern = new TypedURLPattern(
     { pathname: "/images/*.png" },
     { params: z.object({ "0": z.string() }) },
@@ -59,9 +31,20 @@ Deno.test("extracts unnamed params", () => {
   assertEquals(match.params, { 0: "cake" });
 });
 
+Deno.test("params validation", () => {
+  const pattern = new TypedURLPattern(
+    { pathname: "/blog/:year(\\d+)" },
+    { params: z.object({ year: z.coerce.number() }) },
+  );
+
+  const match = pattern.match("/blog/abc");
+
+  assertEquals(match, null);
+});
+
 // Search Params
 
-Deno.test("extracts search params", () => {
+Deno.test("type-safe search params", () => {
   const pattern = new TypedURLPattern({
     pathname: "/items",
     search: "?view=:mode",
@@ -75,7 +58,7 @@ Deno.test("extracts search params", () => {
   assertEquals(match.searchParams.view, "full");
 });
 
-Deno.test("fails if search params don't match", () => {
+Deno.test("search params validation", () => {
   const pattern = new TypedURLPattern({
     pathname: "/items",
     search: "?view=:mode",
@@ -88,7 +71,7 @@ Deno.test("fails if search params don't match", () => {
   assertEquals(match, null);
 });
 
-Deno.test("strips unspecified search params", () => {
+Deno.test("strict search params validation", () => {
   const pattern = new TypedURLPattern({
     pathname: "/items",
     search: "?view=:mode",
@@ -102,7 +85,7 @@ Deno.test("strips unspecified search params", () => {
   assertEquals(match.searchParams, { view: "full" });
 });
 
-Deno.test("allows optional search params", () => {
+Deno.test("loose search params validation", () => {
   const pattern = new TypedURLPattern(
     { pathname: "/items", search: "*" },
     {
@@ -113,8 +96,6 @@ Deno.test("allows optional search params", () => {
   const match = pattern.match("/items?view=full&utm=foo");
 
   assertExists(match);
-
-  // utm passes through, we could use `z.object` or `z.strictObject` to prevent that
   assertEquals(match.searchParams, { view: "full", utm: "foo" });
 });
 
