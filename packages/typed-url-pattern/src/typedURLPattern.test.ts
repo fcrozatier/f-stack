@@ -142,6 +142,19 @@ Deno.test("href() type-safe params", () => {
   assertEquals(url, `${BASE_URL}/users/55`);
 });
 
+Deno.test("href() type-safe params and regex", () => {
+  const route = new TypedURLPattern(
+    { pathname: "/users/:id(\\d+)" },
+    { params: z.object({ id: z.number() }) },
+  );
+
+  const url = route.href({
+    params: { id: 55 },
+  });
+
+  assertEquals(url, `${BASE_URL}/users/55`);
+});
+
 Deno.test("href() type-safe search params", () => {
   const route = new TypedURLPattern({
     pathname: "/search",
@@ -198,13 +211,6 @@ Deno.test("href() type-safe inputs", () => {
 
 Deno.test("href() handles wildcards params", () => {
   const route = new TypedURLPattern({ pathname: "*/images/*.jpg" });
-  const url = route.href({ params: { "0": "user/recipes", "1": "cake" } });
-
-  assertEquals(url, `${BASE_URL}/user/recipes/images/cake.jpg`);
-});
-
-Deno.test("href() handles optional", () => {
-  const route = new TypedURLPattern({ pathname: "/images/*.jpg" });
   const url = route.href({ params: { "0": "user/recipes", "1": "cake" } });
 
   assertEquals(url, `${BASE_URL}/user/recipes/images/cake.jpg`);

@@ -212,7 +212,11 @@ export class TypedURLPattern<
 
         if (Number.isNaN(Number(key))) {
           // named groups: the key is not a number
-          pathname = pathname.replace(":" + key, encodeURIComponent(value));
+          // also remove optional regex as in :id(\\d+)
+          pathname = pathname.replace(
+            new RegExp(":" + key + "([(][^\)]+[\)])?"),
+            encodeURIComponent(value),
+          );
         } else {
           // unnamed groups
           pathname = pathname.replace("*", String(value));
