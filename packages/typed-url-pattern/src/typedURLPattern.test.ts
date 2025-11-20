@@ -7,6 +7,16 @@ const BASE_URL = "https://example.com";
 TypedURLPattern.debug = true;
 TypedURLPattern.baseURL = BASE_URL;
 
+Deno.test("matches full URL objects", () => {
+  const route = new TypedURLPattern({
+    pathname: "/a/:b",
+  });
+
+  const match = route.match(new URL(`${BASE_URL}/a/xyz`));
+  assertExists(match);
+  assertEquals(match.patternResult.pathname.input, "/a/xyz");
+});
+
 // Params
 
 Deno.test("type-safe params", () => {

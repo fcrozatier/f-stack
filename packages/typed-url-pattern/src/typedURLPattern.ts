@@ -53,7 +53,10 @@ export class TypedURLPattern<
   }
 
   match(input: URLPatternInput, baseURL?: string) {
-    const match = this.pattern.exec(input, baseURL ?? TypedURLPattern.baseURL);
+    const url = typeof input === "string"
+      ? new URL(input, baseURL ?? TypedURLPattern.baseURL)
+      : input;
+    const match = this.pattern.exec(url);
     if (!match) return null;
 
     const params = match?.pathname.groups;
