@@ -1,6 +1,15 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { assert } from "@std/assert/assert";
-import { findBaseURL } from "./utils.ts";
+import {
+  findBaseURL,
+  NEGATIVE_LOOKAHEAD,
+  NEGATIVE_LOOKBEHIND,
+  POSITIVE_LOOKAHEAD,
+  POSITIVE_LOOKBEHIND,
+  UNNAMED_GROUP,
+} from "./utils.ts";
+import { assertExists } from "@std/assert/exists";
+import { assertEquals } from "@std/assert/equals";
 
 export class TypedURLPattern<
   T extends StandardSchemaV1,
@@ -136,22 +145,30 @@ export class TypedURLPattern<
   }
 
   href(
-    ...args:
-      (unknown extends StandardSchemaV1.InferInput<T>
-        ? unknown extends StandardSchemaV1.InferInput<U>
-          ? unknown extends StandardSchemaV1.InferInput<V> ? true : false
-        : false
-        : false) extends true ? [
+    // The options object itself is optional if no schema is defined or all their keys are optional
+    ...args: (
+      // No schema is defined
+      // deno-fmt-ignore
+      And<
+        unknown extends StandardSchemaV1.InferInput<T> ? true : AreAllKeysOptional<StandardSchemaV1.InferInput<T>>,
+        And<
+          unknown extends StandardSchemaV1.InferInput<U> ? true : AreAllKeysOptional<StandardSchemaV1.InferInput<U>>,
+          unknown extends StandardSchemaV1.InferInput<V> ? true : AreAllKeysOptional<StandardSchemaV1.InferInput<V>>
+        >
+      >
+    ) extends true ? [
           options?: Pretty<
             & ConditionalOptional<
               "params",
               StandardSchemaV1.InferInput<T>,
-              unknown extends StandardSchemaV1.InferInput<T> ? true : false
+            unknown extends StandardSchemaV1.InferInput<T> ? true
+              : AreAllKeysOptional<StandardSchemaV1.InferInput<T>>
             >
             & ConditionalOptional<
               "searchParams",
               StandardSchemaV1.InferInput<U>,
-              unknown extends StandardSchemaV1.InferInput<U> ? true : false
+            unknown extends StandardSchemaV1.InferInput<U> ? true
+              : AreAllKeysOptional<StandardSchemaV1.InferInput<U>>
             >
             & ConditionalOptional<
               "hash",
@@ -165,17 +182,20 @@ export class TypedURLPattern<
             & ConditionalOptional<
               "params",
               StandardSchemaV1.InferInput<T>,
-              unknown extends StandardSchemaV1.InferInput<T> ? true : false
+            unknown extends StandardSchemaV1.InferInput<T> ? true
+              : AreAllKeysOptional<StandardSchemaV1.InferInput<T>>
             >
             & ConditionalOptional<
               "searchParams",
               StandardSchemaV1.InferInput<U>,
-              unknown extends StandardSchemaV1.InferInput<U> ? true : false
+            unknown extends StandardSchemaV1.InferInput<U> ? true
+              : AreAllKeysOptional<StandardSchemaV1.InferInput<U>>
             >
             & ConditionalOptional<
               "hash",
               StandardSchemaV1.InferInput<V> & string,
-              unknown extends StandardSchemaV1.InferInput<V> ? true : false
+            unknown extends StandardSchemaV1.InferInput<V> ? true
+              : AreAllKeysOptional<StandardSchemaV1.InferInput<V>>
             >
           >,
         ]
@@ -254,3 +274,25 @@ type Pretty<T> = { [K in keyof T]: T[K] } & {};
 type ConditionalOptional<T extends PropertyKey, U, Condition extends boolean> =
   & { [K in T as Condition extends true ? K : never]?: U }
   & { [K in T as Condition extends true ? never : K]: U };
+
+type FilterRequiredKeys<T> = {
+  [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+};
+
+type AreAllKeysOptional<T> = {} extends FilterRequiredKeys<T> ? true : false;
+
+// deno-fmt-ignore
+type And<T extends boolean, U extends boolean> =
+  T extends true
+  ? U extends true
+    ? true
+    : false
+  : false;
+
+// deno-fmt-ignore
+type Or<T extends boolean, U extends boolean> =
+  T extends true
+  ? true
+  : U extends true
+    ? true
+    : false;

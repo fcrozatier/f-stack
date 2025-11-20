@@ -5,3 +5,11 @@ export function findBaseURL(input: string) {
   const index = input.indexOf("/", 8); // look for the first / after https?://
   return index === -1 ? input : input.slice(0, index);
 }
+
+export const POSITIVE_LOOKAHEAD = /\(\?=[^\)]+\)/;
+export const NEGATIVE_LOOKAHEAD = /\(\?![^\)]+\)/;
+export const POSITIVE_LOOKBEHIND = /\(\?<=[^\)]+\)/;
+export const NEGATIVE_LOOKBEHIND = /\(\?<![^\)]+\)/;
+
+// wildcard or regex group
+export const UNNAMED_GROUP = /\*|\([^\)]+\)/;
