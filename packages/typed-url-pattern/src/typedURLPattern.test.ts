@@ -101,6 +101,22 @@ Deno.test("loose search params validation", () => {
   assertEquals(match.searchParams, { view: "full", utm: "foo" });
 });
 
+// hash
+
+Deno.test("type-safe hash", () => {
+  const pattern = new TypedURLPattern({
+    pathname: "/blog",
+    hash: ":section",
+  }, {
+    hash: z.enum(["intro", "outro"]),
+  });
+
+  const match = pattern.match("/blog#intro");
+
+  assertExists(match);
+  assertEquals(match.hash, "intro");
+});
+
 // href
 
 Deno.test("href() type-safe params", () => {
@@ -133,23 +149,15 @@ Deno.test("href() type-safe search params", () => {
 
 Deno.test("href() with hash", () => {
   const route = new TypedURLPattern({
-    pathname: "/docs",
+    pathname: "/blog",
+    hash: ":section",
+  }, {
+    hash: z.enum(["intro", "outro"]),
   });
 
-  const url = route.href({ hash: { section: "install" } });
+  const url = route.href({ hash: "intro" });
 
-  assertEquals(url, `${BASE_URL}/docs#section=install`);
-});
-
-Deno.test("href() with hash object", () => {
-  const route = new TypedURLPattern({
-    pathname: "/docs",
-    hash: "#section=:section",
-  });
-
-  const url = route.href({ hash: { section: "install" } });
-
-  assertEquals(url, `${BASE_URL}/docs#section=install`);
+  assertEquals(url, `${BASE_URL}/blog#intro`);
 });
 
 //     Deno.test("URL-encodes parameters", () => {
