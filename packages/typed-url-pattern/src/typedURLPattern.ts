@@ -133,18 +133,61 @@ export class TypedURLPattern<
   }
 
   href(
-    options: {
+    ...args:
+      (unknown extends StandardSchemaV1.InferInput<T>
+        ? unknown extends StandardSchemaV1.InferInput<U>
+          ? unknown extends StandardSchemaV1.InferInput<V> ? true : false
+        : false
+        : false) extends true ? [
+          options?: Pretty<
+            & ConditionalOptional<
+              "params",
+              StandardSchemaV1.InferInput<T>,
+              unknown extends StandardSchemaV1.InferInput<T> ? true : false
+            >
+            & ConditionalOptional<
+              "searchParams",
+              StandardSchemaV1.InferInput<U>,
+              unknown extends StandardSchemaV1.InferInput<U> ? true : false
+            >
+            & ConditionalOptional<
+              "hash",
+              StandardSchemaV1.InferInput<V> & string,
+              unknown extends StandardSchemaV1.InferInput<V> ? true : false
+            >
+          >,
+        ]
+        : [
+          options: Pretty<
+            & ConditionalOptional<
+              "params",
+              StandardSchemaV1.InferInput<T>,
+              unknown extends StandardSchemaV1.InferInput<T> ? true : false
+            >
+            & ConditionalOptional<
+              "searchParams",
+              StandardSchemaV1.InferInput<U>,
+              unknown extends StandardSchemaV1.InferInput<U> ? true : false
+            >
+            & ConditionalOptional<
+              "hash",
+              StandardSchemaV1.InferInput<V> & string,
+              unknown extends StandardSchemaV1.InferInput<V> ? true : false
+            >
+          >,
+        ]
+  ): string {
+    const { params, searchParams, hash } = args[0] as {
       params?: StandardSchemaV1.InferInput<T>;
       searchParams?: StandardSchemaV1.InferInput<U>;
       hash?: StandardSchemaV1.InferInput<V> & string;
-    },
-  ): string {
+    };
     const pattern = this.pattern;
 
     let pathname = pattern.pathname;
 
-    if (options.params) {
-      for (const [key, value] of Object.entries(options.params)) {
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
         assert(
           typeof value === "string" ||
             typeof value === "number" ||
@@ -157,9 +200,9 @@ export class TypedURLPattern<
 
     let search = "";
 
-    if (options.searchParams) {
+    if (searchParams) {
       const entries: string[] = [];
-      for (const [key, value] of Object.entries(options.searchParams)) {
+      for (const [key, value] of Object.entries(searchParams)) {
         assert(
           typeof value === "string" ||
             typeof value === "number" ||
@@ -174,8 +217,22 @@ export class TypedURLPattern<
       }
     }
 
-    const hash = typeof options.hash === "string" ? "#" + options.hash : "";
+    const _hash = typeof hash === "string" ? "#" + hash : "";
 
-    return this.baseURL + pathname + search + hash;
+    return this.baseURL + pathname + search + _hash;
   }
 }
+
+type Pretty<T> =
+  & {
+    [K in keyof T]: T[K];
+  }
+  & {};
+
+type ConditionalOptional<T extends PropertyKey, U, Condition extends boolean> =
+  & {
+    [K in T as Condition extends true ? K : never]?: U;
+  }
+  & {
+    [K in T as Condition extends true ? never : K]: U;
+  };

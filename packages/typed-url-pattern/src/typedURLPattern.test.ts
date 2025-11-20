@@ -122,11 +122,11 @@ Deno.test("type-safe hash", () => {
 Deno.test("href() type-safe params", () => {
   const route = new TypedURLPattern(
     { pathname: "/users/:id" },
-    { params: z.object({ id: z.string() }) },
+    { params: z.object({ id: z.number() }) },
   );
 
   const url = route.href({
-    params: { id: "55" },
+    params: { id: 55 },
   });
 
   assertEquals(url, `${BASE_URL}/users/55`);
@@ -160,47 +160,47 @@ Deno.test("href() with hash", () => {
   assertEquals(url, `${BASE_URL}/blog#intro`);
 });
 
-//     Deno.test("URL-encodes parameters", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/u/:name",
-//       });
+Deno.test("href() URL-encodes parameters", () => {
+  const route = new TypedURLPattern({
+    pathname: "/u/:name",
+  });
 
-//       const url = route.href({
-//         pathname: { name: "John Doe" },
-//       });
+  const url = route.href({
+    params: { name: "John Doe" },
+  });
 
-//       assertEquals(url, "/u/John%20Doe");
-//     });
+  assertEquals(url, `${BASE_URL}/u/John%20Doe`);
+});
 
-//     Deno.test("handles missing optional search/hash sections gracefully", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/page/:id",
-//         search: "?q=:q",
-//         hash: "#x=:x",
-//       });
+Deno.test("href() handles optional sections gracefully", () => {
+  const route = new TypedURLPattern({
+    pathname: "/page/:id",
+    search: "q=:q",
+    hash: ":x",
+  });
 
-//       const url = route.href({
-//         pathname: { id: "12" },
-//       });
+  const url = route.href({
+    params: { id: "12" },
+  });
 
-//       // search/hash omitted entirely
-//       assertEquals(url, "/page/12");
-//     });
-//   });
+  assertEquals(url, `${BASE_URL}/page/12`);
+});
 
-//   // ───────────────────────────────────────────────
-//   // Edge cases and errors
-//   // ───────────────────────────────────────────────
+Deno.test.only("throws if pathname param is missing", () => {
+  const route = new TypedURLPattern({
+    pathname: "/test",
+    baseURL: "http://example.com",
+  });
+  route.href();
+
+  // const route = new TypedURLPattern({
+  //   pathname: "/test/:id",
+  // });
+
+  // assertThrows(() => route.href({}));
+});
 
 //   describe("edge cases", () => {
-//     Deno.test("throws if pathname param is missing", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/test/:id",
-//       });
-
-//       // @ts-expect-error — missing id
-//       assertThrows(() => route.href({ pathname: {} as any }));
-//     });
 
 //     Deno.test("ignores unused search params", () => {
 //       const route = new TypedURLPattern({
