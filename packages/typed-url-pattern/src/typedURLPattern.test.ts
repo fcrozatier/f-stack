@@ -184,8 +184,8 @@ Deno.test("href() URL-encodes parameters", () => {
 
 Deno.test("href() type-safe inputs", () => {
   const route1 = new TypedURLPattern({
-    pathname: "/test/:id",
-  }, { params: z.object({ id: z.number() }) });
+    pathname: "/test/*/:id",
+  }, { params: z.object({ id: z.number(), "0": z.string() }) });
 
   // Complains if the options object is missing
   // @ts-expect-error
@@ -196,25 +196,19 @@ Deno.test("href() type-safe inputs", () => {
   route1.href({});
 });
 
-// Deno.test("makes absolute hrefs when no host is provided", () => {
-//   const pattern = new TypedURLPattern<{ params: { id: number } }>({
-//     pathname: "products/:id",
-//   });
+Deno.test("href() handles wildcards params", () => {
+  const route = new TypedURLPattern({ pathname: "*/images/*.jpg" });
+  const url = route.href({ params: { "0": "user/recipes", "1": "cake" } });
 
-//   assertEquals(pattern.href({ params: { id: 1 } }), "/products/1");
-// });
+  assertEquals(url, `${BASE_URL}/user/recipes/images/cake.jpg`);
+});
 
-// Deno.test("substitutes * for unnamed wildcards in variants", () => {
-//   const pattern = createHrefBuilder();
-//   assertEquals(
-//     href("/files/*.jpg", { "*": "cat/dog" }),
-//     "/files/cat/dog.jpg",
-//   );
-//   assertEquals(
-//     href("*/files/*.jpg", { "*": "cat/dog" }),
-//     "/cat/dog/files/cat/dog.jpg",
-//   );
-// });
+Deno.test("href() handles optional", () => {
+  const route = new TypedURLPattern({ pathname: "/images/*.jpg" });
+  const url = route.href({ params: { "0": "user/recipes", "1": "cake" } });
+
+  assertEquals(url, `${BASE_URL}/user/recipes/images/cake.jpg`);
+});
 
 // Deno.test("fills in params", () => {
 //   const pattern = createHrefBuilder();

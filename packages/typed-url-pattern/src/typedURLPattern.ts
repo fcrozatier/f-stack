@@ -209,7 +209,14 @@ export class TypedURLPattern<
             typeof value === "boolean",
           "Params must be strings, numbers or booleans",
         );
-        pathname = pathname.replace(":" + key, encodeURIComponent(value));
+
+        if (Number.isNaN(Number(key))) {
+          // named groups: the key is not a number
+          pathname = pathname.replace(":" + key, encodeURIComponent(value));
+        } else {
+          // unnamed groups
+          pathname = pathname.replace("*", String(value));
+        }
       }
     }
 
