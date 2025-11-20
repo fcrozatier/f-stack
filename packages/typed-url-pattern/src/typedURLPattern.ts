@@ -8,8 +8,8 @@ export class TypedURLPattern<
   static debug = false;
   static baseURL = "";
 
-  #paramsSchema: T | undefined;
-  #searchParamsSchema: U | undefined;
+  #paramsSchema?: T | undefined;
+  #searchParamsSchema?: U | undefined;
 
   /**
    * Pattern syntax
@@ -86,17 +86,9 @@ export class TypedURLPattern<
     }
 
     return {
-      protocol: match.protocol.input,
-      username: match.username.input,
-      password: match.password.input,
-      hostname: match.hostname.input,
-      port: match.port.input,
-      pathname: match.pathname.input,
+      patternResult: match,
       params: parsedParams as StandardSchemaV1.InferOutput<T>,
-      search: match?.search.input,
-      searchGroups: match?.search.groups,
       searchParams: parsedSearchParams as StandardSchemaV1.InferOutput<U>,
-      hash: match?.search.input,
     };
   }
 
