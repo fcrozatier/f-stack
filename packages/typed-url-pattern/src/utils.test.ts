@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert/equals";
 import { findBaseURL } from "./utils.ts";
 
-Deno.test.only("findBaseURL", () => {
+Deno.test("findBaseURL", () => {
   assertEquals(findBaseURL("http://a.b/c"), "http://a.b");
   assertEquals(findBaseURL("http://a.b/"), "http://a.b");
   assertEquals(findBaseURL("http://a.b"), "http://a.b");
