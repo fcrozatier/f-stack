@@ -182,47 +182,19 @@ Deno.test("href() URL-encodes parameters", () => {
   assertEquals(url, `${BASE_URL}/u/John%20Doe`);
 });
 
-Deno.test.only("throws if pathname param is missing", () => {
-  const route = new TypedURLPattern({
-    pathname: "/test",
-    baseURL: "http://example.com",
-  });
-  route.href();
+Deno.test("href() type-safe inputs", () => {
+  const route1 = new TypedURLPattern({
+    pathname: "/test/:id",
+  }, { params: z.object({ id: z.number() }) });
 
-  // const route = new TypedURLPattern({
-  //   pathname: "/test/:id",
-  // });
+  // Complains if the options object is missing
+  // @ts-expect-error
+  route1.href();
 
-  // assertThrows(() => route.href({}));
+  // Complains if the params key is missing
+  // @ts-expect-error
+  route1.href({});
 });
-
-//   describe("edge cases", () => {
-
-//     Deno.test("ignores unused search params", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/x/:id",
-//         search: "?mode=:mode",
-//       });
-
-//       const url = route.href({
-//         pathname: { id: "1" },
-//         search: { mode: "full", extra: "zzz" } as any,
-//       });
-
-//       assertEquals(url, "/x/1?mode=full"); // `extra` ignored
-//     });
-
-//     Deno.test("matches full URL objects", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/a/:b",
-//       });
-
-//       const match = route.exec(new URL("https://site.com/a/xyz"));
-//       assertExists(match);
-//       assertEquals(match.pathname.b, "xyz");
-//     });
-//   });
-// });
 
 // Deno.test("makes absolute hrefs when no host is provided", () => {
 //   const pattern = new TypedURLPattern<{ params: { id: number } }>({

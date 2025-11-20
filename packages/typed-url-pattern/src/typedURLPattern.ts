@@ -180,7 +180,7 @@ export class TypedURLPattern<
           >,
         ]
   ): string {
-    const { params, searchParams, hash } = args[0] as {
+    const { params, searchParams, hash } = (args[0] ?? {}) as {
       params?: StandardSchemaV1.InferInput<T>;
       searchParams?: StandardSchemaV1.InferInput<U>;
       hash?: StandardSchemaV1.InferInput<V> & string;
