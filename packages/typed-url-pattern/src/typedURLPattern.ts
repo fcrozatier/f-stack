@@ -184,6 +184,18 @@ export class TypedURLPattern<
     };
     const pattern = this.pattern;
 
+    let baseURL = this.baseURL;
+
+    // `baseURL` can be an empty string here
+    if (!baseURL) {
+      const protocol = this.pattern.protocol;
+      const hostname = this.pattern.hostname;
+      const port = this.pattern.port ? ":" + this.pattern.port : "";
+
+      baseURL = protocol + "://" + hostname + port;
+      this.baseURL = baseURL;
+    }
+
     let pathname = pattern.pathname;
 
     if (params) {
@@ -219,7 +231,7 @@ export class TypedURLPattern<
 
     const _hash = typeof hash === "string" ? "#" + hash : "";
 
-    return this.baseURL + pathname + search + _hash;
+    return baseURL + pathname + search + _hash;
   }
 }
 
