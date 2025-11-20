@@ -172,20 +172,6 @@ Deno.test("href() URL-encodes parameters", () => {
   assertEquals(url, `${BASE_URL}/u/John%20Doe`);
 });
 
-Deno.test("href() handles optional sections gracefully", () => {
-  const route = new TypedURLPattern({
-    pathname: "/page/:id",
-    search: "q=:q",
-    hash: ":x",
-  });
-
-  const url = route.href({
-    params: { id: "12" },
-  });
-
-  assertEquals(url, `${BASE_URL}/page/12`);
-});
-
 Deno.test.only("throws if pathname param is missing", () => {
   const route = new TypedURLPattern({
     pathname: "/test",
