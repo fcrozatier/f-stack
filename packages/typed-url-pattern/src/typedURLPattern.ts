@@ -1,5 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { assert } from "@std/assert/assert";
+import { findBaseURL } from "./utils.ts";
 
 export class TypedURLPattern<
   T extends StandardSchemaV1,
@@ -10,6 +11,8 @@ export class TypedURLPattern<
 
   #paramsSchema?: T | undefined;
   #searchParamsSchema?: U | undefined;
+
+  baseURL = "";
 
   /**
    * Pattern syntax
@@ -25,9 +28,20 @@ export class TypedURLPattern<
       searchParams?: U;
     },
   ) {
-    const init: URLPatternInit = typeof input === "string"
-      ? { pathname: input, baseURL: TypedURLPattern.baseURL }
-      : { ...input, baseURL: input.baseURL ?? TypedURLPattern.baseURL };
+    let baseURL = "";
+
+    if (typeof input === "string") {
+      // We need to figure out the baseURL from the input string
+      baseURL = findBaseURL(input);
+    } else {
+      baseURL = input.baseURL ?? TypedURLPattern.baseURL;
+    }
+
+    this.baseURL = baseURL;
+
+    const init: URLPatternInput = typeof input === "string"
+      ? input
+      : { ...input, baseURL };
 
     this.pattern = new URLPattern(init);
     this.#paramsSchema = schema?.params;
@@ -96,14 +110,10 @@ export class TypedURLPattern<
     options: {
       params?: StandardSchemaV1.InferInput<T>;
       searchParams?: StandardSchemaV1.InferInput<U>;
-      hash?: string;
+      hash?: string | Record<string, string | number | boolean>;
     },
   ): string {
     const pattern = this.pattern;
-
-    const protocol = pattern.protocol ? pattern.protocol + "://" : "";
-    const username = pattern.username ? pattern.username + "@" : "";
-    const port = pattern.port ? ":" + pattern.port : "";
 
     let pathname = pattern.pathname;
 
@@ -115,7 +125,7 @@ export class TypedURLPattern<
             typeof value === "boolean",
           "Params must be strings, numbers or booleans",
         );
-        pathname = pathname.replace(key, encodeURIComponent(value));
+        pathname = pathname.replace(":" + key, encodeURIComponent(value));
       }
     }
 
@@ -138,9 +148,24 @@ export class TypedURLPattern<
       }
     }
 
-    const hash = options.hash ? "#" + options.hash : "";
+    let hash = typeof options.hash === "string" ? "#" + options.hash : "";
 
-    return protocol + username + pattern.hostname + port + pathname + search +
-      hash;
+    if (typeof options.hash === "object") {
+      let patternHash = this.pattern.hash;
+
+      for (const [key, value] of Object.entries(options.hash)) {
+        assert(
+          typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean",
+          "Hash must be strings, numbers or booleans",
+        );
+        patternHash = patternHash.replace(":" + key, encodeURIComponent(value));
+      }
+
+      hash = "#" + patternHash;
+    }
+
+    return this.baseURL + pathname + search + hash;
   }
 }

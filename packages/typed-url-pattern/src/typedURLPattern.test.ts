@@ -2,8 +2,10 @@ import { assert, assertEquals, assertExists, assertThrows } from "@std/assert";
 import { TypedURLPattern } from "./typedURLPattern.ts";
 import * as z from "zod";
 
+const BASE_URL = "https://example.com";
+
 TypedURLPattern.debug = true;
-TypedURLPattern.baseURL = "https://example.com";
+TypedURLPattern.baseURL = BASE_URL;
 
 // Params
 
@@ -99,72 +101,56 @@ Deno.test("loose search params validation", () => {
   assertEquals(match.searchParams, { view: "full", utm: "foo" });
 });
 
-// Hash
+// href
 
-// Deno.test("extracts hash params", () => {
-//   const pattern = new TypedURLPattern({
-//     pathname: "/docs",
-//     hash: ":section",
-//   });
+Deno.test("href() type-safe params", () => {
+  const route = new TypedURLPattern(
+    { pathname: "/users/:id" },
+    { params: z.object({ id: z.string() }) },
+  );
 
-//   const match = pattern.match("/docs#section=intro", baseURL);
+  const url = route.href({
+    params: { id: "55" },
+  });
 
-//   assertExists(match);
-//   assertEquals(match.hash.id, "intro");
-// });
+  assertEquals(url, `${BASE_URL}/users/55`);
+});
 
-//   // ───────────────────────────────────────────────
-//   // hash parameters
-//   // ───────────────────────────────────────────────
+Deno.test("href() type-safe search params", () => {
+  const route = new TypedURLPattern({
+    pathname: "/search",
+    search: "?page=:page&sort=:sort",
+  }, {
+    searchParams: z.object({ page: z.number(), sort: z.enum(["asc", "desc"]) }),
+  });
 
-//   describe("hash parameter matching", () => {
-//
-//   });
+  const url = route.href({
+    searchParams: { page: 2, sort: "asc" },
+  });
 
-//   // ───────────────────────────────────────────────
-//   // href() inverse URL construction
-//   // ───────────────────────────────────────────────
+  assertEquals(url, `${BASE_URL}/search?page=2&sort=asc`);
+});
 
-//   describe("href() URL generation", () => {
-//     Deno.test("generates basic URLs", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/users/:id",
-//       });
+Deno.test("href() with hash", () => {
+  const route = new TypedURLPattern({
+    pathname: "/docs",
+  });
 
-//       const url = route.href({
-//         pathname: { id: "55" },
-//       });
+  const url = route.href({ hash: { section: "install" } });
 
-//       assertEquals(url, "/users/55");
-//     });
+  assertEquals(url, `${BASE_URL}/docs#section=install`);
+});
 
-//     Deno.test("generates URLs with search params", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/users/:id",
-//         search: "?tab=:tab&sort=:sort",
-//       });
+Deno.test("href() with hash object", () => {
+  const route = new TypedURLPattern({
+    pathname: "/docs",
+    hash: "#section=:section",
+  });
 
-//       const url = route.href({
-//         pathname: { id: "8" },
-//         search: { tab: "info", sort: "asc" },
-//       });
+  const url = route.href({ hash: { section: "install" } });
 
-//       assertEquals(url, "/users/8?tab=info&sort=asc");
-//     });
-
-//     Deno.test("generates URLs with hash params", () => {
-//       const route = new TypedURLPattern({
-//         pathname: "/docs/:page",
-//         hash: "#section=:section",
-//       });
-
-//       const url = route.href({
-//         pathname: { page: "intro" },
-//         hash: { section: "install" },
-//       });
-
-//       assertEquals(url, "/docs/intro#section=install");
-//     });
+  assertEquals(url, `${BASE_URL}/docs#section=install`);
+});
 
 //     Deno.test("URL-encodes parameters", () => {
 //       const route = new TypedURLPattern({
