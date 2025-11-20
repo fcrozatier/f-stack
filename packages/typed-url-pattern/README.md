@@ -16,18 +16,16 @@ userRoute.href({ params: { id: 123 } });
 
 A tiny TypeScript wrapper around the Web's native [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API providing:
 
-- Type-safe params for your routes and API endpoints
-- [Standard Schema](https://standardschema.dev/) validation
-- Standard `URLPattern` syntax that's here to stay (just use the Platform)
+- **Type-safe params** for your routes and API endpoints
+- **Params validation** with [Standard Schema](https://standardschema.dev/)
+- **Standard syntax**: it's just `URLPattern` under the hood (use the Platform)
 - A typed `href()` inverse (build URLs with type-safe params)
-- Zero dependencies and framework-agnostic
-- Works in Deno, Bun, Node, and Cloudflare Workers
 
 ## Install
 
 ## Example patterns
 
-- **Typed parameter extraction**
+- **Typed parameters**
 
 ```ts
 const match = route.exec("/users/42?tab=info#section=photos");
