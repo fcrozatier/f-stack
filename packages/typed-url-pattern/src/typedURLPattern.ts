@@ -223,16 +223,8 @@ export class TypedURLPattern<
   }
 }
 
-type Pretty<T> =
-  & {
-    [K in keyof T]: T[K];
-  }
-  & {};
+type Pretty<T> = { [K in keyof T]: T[K] } & {};
 
 type ConditionalOptional<T extends PropertyKey, U, Condition extends boolean> =
-  & {
-    [K in T as Condition extends true ? K : never]?: U;
-  }
-  & {
-    [K in T as Condition extends true ? never : K]: U;
-  };
+  & { [K in T as Condition extends true ? K : never]?: U }
+  & { [K in T as Condition extends true ? never : K]: U };
