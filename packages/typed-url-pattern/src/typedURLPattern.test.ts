@@ -199,6 +199,13 @@ Deno.test("href() pathname with optional group", () => {
   assertEquals(url2, `${BASE_URL}/books`);
 });
 
+Deno.test("href() pathname with optional unmatched group ", () => {
+  const route = new TypedURLPattern({ pathname: "/book{s}?" });
+
+  const url = route.href();
+  assertEquals(url, `${BASE_URL}/books`);
+});
+
 Deno.test("href() pathname with repeated group", () => {
   const route = new TypedURLPattern(
     { pathname: "/books/:id+" },

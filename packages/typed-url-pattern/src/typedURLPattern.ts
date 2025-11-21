@@ -7,6 +7,7 @@ import {
   OPTIONAL_NAMED_GROUP,
   POSITIVE_LOOKAHEAD,
   POSITIVE_LOOKBEHIND,
+  UNMATCHED_GROUP_DELIMITER,
   UNNAMED_GROUP,
 } from "./utils.ts";
 import { assertExists } from "@std/assert/exists";
@@ -298,6 +299,9 @@ export class TypedURLPattern<
     // A pathname like (/a.*) when retrieved from the pattern with a base URL is /(/a.*) and, if substituted by /ab yields an unexpected double
     // Example: new URLPattern({ pathname: "(/a.*)", baseURL: "https://example.com" })
     pathname = pathname.replace("//", "/");
+
+    // Replace unmatched groups by their content to handle all modifiers at once (?+*)
+    pathname = pathname.replaceAll(UNMATCHED_GROUP_DELIMITER, "$1");
 
     let search = "";
 
