@@ -13,3 +13,4 @@ export const NEGATIVE_LOOKBEHIND = /\(\?<![^\)]+\)/g;
 
 // wildcard or regex group
 export const UNNAMED_GROUP = /\*|\([^\)]+\)/;
+export const OPTIONAL_NAMED_GROUP = /\/?:[^(]+([(][^)]+[)])?[?]/g;
