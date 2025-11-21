@@ -6,10 +6,10 @@ export function findBaseURL(input: string) {
   return index === -1 ? input : input.slice(0, index);
 }
 
-export const POSITIVE_LOOKAHEAD = /\(\?=[^\)]+\)/;
-export const NEGATIVE_LOOKAHEAD = /\(\?![^\)]+\)/;
-export const POSITIVE_LOOKBEHIND = /\(\?<=[^\)]+\)/;
-export const NEGATIVE_LOOKBEHIND = /\(\?<![^\)]+\)/;
+export const POSITIVE_LOOKAHEAD = /\(\?=[^\)]+\)/g;
+export const NEGATIVE_LOOKAHEAD = /\(\?![^\)]+\)/g;
+export const POSITIVE_LOOKBEHIND = /\(\?<=[^\)]+\)/g;
+export const NEGATIVE_LOOKBEHIND = /\(\?<![^\)]+\)/g;
 
 // wildcard or regex group
 export const UNNAMED_GROUP = /\*|\([^\)]+\)/;
