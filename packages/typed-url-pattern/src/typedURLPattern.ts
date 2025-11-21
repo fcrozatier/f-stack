@@ -176,6 +176,7 @@ export class TypedURLPattern<
             StandardSchemaV1.InferInput<V> & string,
             unknown extends StandardSchemaV1.InferInput<V> ? true : false
           >
+          & { encodeURI?: boolean }
         >,
       ]
       : [
@@ -198,6 +199,7 @@ export class TypedURLPattern<
             unknown extends StandardSchemaV1.InferInput<V> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<V>>
           >
+          & { encodeURI?: boolean }
         >,
       ]
   ): string {
@@ -205,6 +207,7 @@ export class TypedURLPattern<
       params?: StandardSchemaV1.InferInput<T>;
       searchParams?: StandardSchemaV1.InferInput<U>;
       hash?: StandardSchemaV1.InferInput<V> & string;
+      encodeURI?: boolean;
     };
     const pattern = this.pattern;
 
@@ -261,8 +264,8 @@ export class TypedURLPattern<
           // named groups: the key is not a number
           // also remove optional regex as in :id(\\d+)
           pathname = pathname.replace(
-            new RegExp(":" + key + "([(][^\)]+[\)])?[?]?"),
-            encodeURIComponent(value),
+            new RegExp(":" + key + "([(][^\)]+[\)])?[?+*]?"),
+            String(value),
           );
         } else {
           // unnamed groups
@@ -307,7 +310,7 @@ export class TypedURLPattern<
             typeof value === "boolean",
           "SearchParams must be strings, numbers or booleans",
         );
-        entries.push(`${key}=${encodeURIComponent(value)}`);
+        entries.push(`${key}=${value}`);
       }
 
       if (entries.length) {
@@ -317,12 +320,13 @@ export class TypedURLPattern<
 
     const _hash = typeof hash === "string" ? "#" + hash : "";
     const href = baseURL + pathname + search + _hash;
+    const uri = args[0]?.encodeURI ? encodeURI(href) : href;
 
-    if (!pattern.exec(href)) {
+    if (!pattern.exec(uri)) {
       throw new TypeError("[TypedURLPattern]: href doesn't match the pattern");
     }
 
-    return href;
+    return uri;
   }
 }
 

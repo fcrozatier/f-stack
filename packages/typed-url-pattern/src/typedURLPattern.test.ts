@@ -147,11 +147,11 @@ Deno.test("href() type-safe params", () => {
   assertEquals(url, `${BASE_URL}/users/55`);
 });
 
-Deno.test("href() pathname with unnamed matching group", () => {
-  const route = new TypedURLPattern({ pathname: "(/a.*)" });
+Deno.test("href() pathname with unnamed group", () => {
+  const route = new TypedURLPattern({ pathname: "/(a.*)" });
 
   const url = route.href({
-    params: { "0": "/ab" },
+    params: { "0": "ab" },
   });
 
   assertEquals(url, `${BASE_URL}/ab`);
@@ -159,7 +159,7 @@ Deno.test("href() pathname with unnamed matching group", () => {
 
 Deno.test("href() pathname with lookaround assertions", () => {
   const route = new TypedURLPattern(
-    { pathname: "(/a(?=b).*)" },
+    { pathname: "/(a(?=b).*)" },
   );
 
   const url = route.href({ params: { "0": "ab" } });
@@ -197,6 +197,19 @@ Deno.test("href() pathname with optional group", () => {
   const url2 = route.href();
 
   assertEquals(url2, `${BASE_URL}/books`);
+});
+
+Deno.test("href() pathname with repeated group", () => {
+  const route = new TypedURLPattern(
+    { pathname: "/books/:id+" },
+    { params: z.object({ id: z.string() }) },
+  );
+
+  const url1 = route.href({ params: { id: "5" } });
+  assertEquals(url1, `${BASE_URL}/books/5`);
+
+  const url2 = route.href({ params: { id: "123/456" } });
+  assertEquals(url2, `${BASE_URL}/books/123/456`);
 });
 
 Deno.test("href() pathname with wildcard", () => {
@@ -245,11 +258,19 @@ Deno.test("href() URL-encodes parameters", () => {
     pathname: "/u/:name",
   });
 
-  const url = route.href({
+  const url1 = route.href({
     params: { name: "John Doe" },
+    encodeURI: true,
   });
 
-  assertEquals(url, `${BASE_URL}/u/John%20Doe`);
+  assertEquals(url1, `${BASE_URL}/u/John%20Doe`);
+
+  const url2 = route.href({
+    params: { name: "Hélène" },
+    encodeURI: false,
+  });
+
+  assertEquals(url2, `${BASE_URL}/u/Hélène`);
 });
 
 Deno.test("href() type-safe inputs", () => {
