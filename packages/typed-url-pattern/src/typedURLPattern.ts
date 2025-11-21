@@ -59,10 +59,17 @@ export class TypedURLPattern<
    * @example
    *
    * ```ts
+   * import * as z from "zod";
+   *
    * const pattern = new TypedURLPattern(
    *   { pathname: "/blog/:year/:title" },
    *   { params: z.object({ year: z.coerce.number(), title: z.string() }) },
    * );
+   *
+   * const match = pattern.match("/blog/2025/my-post");
+   *
+   * match?.params.year === 2025;
+   * match?.params.title ===  "my-post";
    * ```
    *
    * @param input The `URLPatternInput`
@@ -103,12 +110,17 @@ export class TypedURLPattern<
    * @example
    *
    * ```ts
+   * import * as z from "zod";
+   *
    * const pattern = new TypedURLPattern(
-   *   { pathname: "/blog/:year(\\d+)" },
-   *   { params: z.object({ year: z.coerce.number() }) },
+   *   { pathname: "/blog/:year/:title" },
+   *   { params: z.object({ year: z.coerce.number(), title: z.string() }) },
    * );
    *
-   * const match = pattern.match("/blog/abc");
+   * const match = pattern.match("/blog/2025/my-post");
+   *
+   * match?.params.year === 2025;
+   * match?.params.title ===  "my-post";
    * ```
    *
    * @param input An absolute URL string with an optional base, relative URL string with a required base, or individual components in the form of an `URLPatternInit` object
@@ -214,7 +226,27 @@ export class TypedURLPattern<
   }
 
   /**
-   * Creates an href URL for this pattern.
+   * Creates an href URL for this pattern from the provided params.
+   *
+   * @example
+   *
+   * ```ts
+   * import * as z from "zod";
+   *
+   * TypedURLPattern.baseURL = "https://example.com";
+   *
+   * const route = new TypedURLPattern(
+   *   { pathname: "/blog/:id(\\d+){-:title}?" },
+   *   { params: z.object({ id: z.coerce.number(), title: z.string().optional() }) },
+   * );
+   *
+   * const href1 = route.href({ params: { id: 123, title: "recipe" } });
+   * href1 === `${TypedURLPattern.baseURL}/blog/123-my-recipe`;
+   *
+   * const href2 = route.href({ params: { id: 123 } });
+   * href2 === `${TypedURLPattern.baseURL}/blog/123`;
+   *
+   * ```
    */
   href(
     // The options object itself is optional if no schema is defined or all their keys are optional
@@ -247,7 +279,14 @@ export class TypedURLPattern<
             StandardSchemaV1.InferInput<V> & string,
             unknown extends StandardSchemaV1.InferInput<V> ? true : false
           >
-          & { encodeURI?: boolean }
+          & {
+            /**
+             * Whether to use `encodeURI` before returning the href
+             *
+             * @default false
+             */
+            encodeURI?: boolean;
+          }
         >,
       ]
       : [
@@ -270,7 +309,14 @@ export class TypedURLPattern<
             unknown extends StandardSchemaV1.InferInput<V> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<V>>
           >
-          & { encodeURI?: boolean }
+          & {
+            /**
+             * Whether to use `encodeURI` before returning the href
+             *
+             * @default false
+             */
+            encodeURI?: boolean;
+          }
         >,
       ]
   ): string {
