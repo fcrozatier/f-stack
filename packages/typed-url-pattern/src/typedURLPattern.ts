@@ -316,8 +316,13 @@ export class TypedURLPattern<
     }
 
     const _hash = typeof hash === "string" ? "#" + hash : "";
+    const href = baseURL + pathname + search + _hash;
 
-    return baseURL + pathname + search + _hash;
+    if (!pattern.exec(href)) {
+      throw new TypeError("[TypedURLPattern]: href doesn't match the pattern");
+    }
+
+    return href;
   }
 }
 
