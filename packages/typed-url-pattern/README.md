@@ -1,87 +1,148 @@
-
-
-```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
-import * as z from "zod";
-
-const userRoute = new TypedURLPattern(
-    { pathname: "/users/:id" },
-    { params: z.object({ id: z.number() }) }
-);
-
-userRoute.href({ params: { id: 123 } });
-```
-
 # TypedURLPattern
 
-A tiny TypeScript wrapper around the Web's native [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API providing:
+A tiny TypeScript wrapper around the native [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API providing:
 
-- **Type-safe params** for your routes and API endpoints
-- **Params validation** with [Standard Schema](https://standardschema.dev/)
+- **Type-safety** for your routes and API endpoints
+- **Parsing and validation** with [Standard Schema](https://standardschema.dev/)
 - **Standard syntax**: it's just `URLPattern` under the hood (use the Platform)
 - A typed `href()` inverse (build URLs with type-safe params)
 
 ## Install
 
-## Example patterns
+## Common patterns
 
-- **Typed parameters**
+- **Default base URL**
+
+Use the static `baseURL` property to provide a sensible default to all your patterns.
+
+This allows to avoid the "relative URL without a base" `TypeError` common with `URLPattern`
 
 ```ts
-const match = route.exec("/users/42?tab=info#section=photos");
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
 
-match.pathname.id;        // string
-match.search.tab;         // string
-match.hash.section;       // string
+// in your config
+TypedURLPattern.baseURL = "https://example.com";
+
+const route = new TypedURLPattern({ pathname: "/blog" });
+
+route.test("https://example.com/blog") === true
 ```
 
-- **Typed inverse: build URLs from params**
+- **Typed named parameters**
 
 ```ts
-route.href({
-  pathname: { id: "42" },
-  search:   { tab: "info" },
-  hash:     { section: "photos" },
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import * as z from "zod";
+
+const route = new TypedURLPattern(
+  { pathname: "/user/:name" },
+  { params: z.object({ name: z.string() })}
+);
+
+const match = route.match("/user/bob");
+
+match?.params.name === "bob";
+```
+
+- **Typed wildcards**
+
+Unnamed groups can be typed, parsed and validated in the order they appear
+
+```ts
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import * as z from "zod";
+
+const route = new TypedURLPattern(
+  { pathname: "/assets/*/*.png" },
+  { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) })}
+);
+
+const match = route.match("/assets/path/to/cake.png");
+
+match?.params[0] === "path/to";
+match?.params[1] === "cake";
+```
+
+- **Typed optional searchParams**
+
+Use a `looseObject` to allow searchParams that are not specified in the schema. This is useful when you don't control how people link to your page _eg_ with search engine `utm` searchParams etc.
+
+```ts
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import * as z from "zod";
+
+const route = new TypedURLPattern(
+  { pathname: "/watch" },
+  { searchParams: z.looseObject({ id: z.string() })}
+);
+
+const match = route.match("/watch?id=abc&utm=utm_source");
+
+match?.searchParams.id === "abc";
+
+// utm has not been stripped since we use a looseObject
+match?.searchParams.utm === "utm_source";
+```
+
+- **Parse parameters**
+
+Coerce strings extracted by `URLPattern` to numbers, booleans etc
+
+```ts
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import * as z from "zod";
+
+const route = new TypedURLPattern(
+  { pathname: "/user/:id" },
+  { params: z.object({ id: z.coerce.number() })}
+);
+
+const match = route.match("/user/12");
+
+match?.params.id === 12;
+```
+
+- **Typed href() inverse**
+
+Build type safe href from your patterns and provided params.
+
+The following demo showcases:
+- typed params and searchParams substitution
+- typed optional wildcards
+- typed optional group delimiters
+- typed optional searchParams
+
+```ts
+import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import * as z from "zod";
+
+const route = new TypedURLPattern(
+  { pathname: "/blog{/*}?/:id{-:title}?", baseURL: "https://example.com" },
+  {
+    params: z.object({
+      id: z.coerce.number(),
+      title: z.string().optional(),
+      0: z.enum(["recipes", "trips"]).optional()
+    }),
+    searchParams: z.looseObject({ page: z.coerce.number() })
+  },
+);
+
+// without title but with wildcard
+const href1 = route.href({
+  params: { id: 42, 0: "recipes" },
+  hash: "intro",
 });
-// "/users/42?tab=info#section=photos"
-```
 
-- **Zero overhead** — only a thin and fully typed layer over URLPattern.
-- **Full pattern support** for pathname, search, and hash segments.
-- **Great for routers**, service workers, runtime routing, API request matching, etc.
+href1 === "https://example.com/recipes/42#intro"
 
-## Quick Start
-
-1. Create a typed pattern
-```ts
-const route = new TypedURLPattern({
-  pathname: "/users/:id",
-  search: "?tab=:tab",
-  hash: "#section=:section",
-});
-```
-
-2. Extract typed params
-```ts
-const match = route.exec("https://example.com/users/123?tab=info#section=photos");
-
-if (match) {
-  match.pathname.id;        // "123"
-  match.search.tab;         // "info"
-  match.hash.section;       // "photos"
-}
-```
-
-3. Generate URLs (inverse of exec())
-```ts
-const url = route.href({
-  pathname: { id: "123" },
-  search:   { tab: "info" },
-  hash:     { section: "photos" },
+// with title but without wildcard
+const href2 = route.href({
+  params: { id: 42, title: "my-cake" },
+  searchParams: { page: 2 }
 });
 
-console.log(url);
-// "/users/123?tab=info&section=photos"
+href2 === "https://example.com/42-mycake?page=2"
 ```
 
 ## API
