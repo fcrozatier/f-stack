@@ -68,7 +68,12 @@ export class TypedURLPattern<
     this.#hashSchema = schema?.hash;
   }
 
-  match(input: URLPatternInput, baseURL?: string) {
+  match(input: URLPatternInput, baseURL?: string): null | {
+    patternResult: URLPatternResult;
+    params: StandardSchemaV1.InferOutput<T>;
+    searchParams: StandardSchemaV1.InferOutput<U>;
+    hash: StandardSchemaV1.InferOutput<V>;
+  } {
     const url = typeof input === "string"
       ? new URL(input, baseURL ?? TypedURLPattern.baseURL)
       : input;
@@ -145,9 +150,9 @@ export class TypedURLPattern<
 
     return {
       patternResult: match,
-      params: parsedParams as StandardSchemaV1.InferOutput<T>,
-      searchParams: parsedSearchParams as StandardSchemaV1.InferOutput<U>,
-      hash: parsedHash as StandardSchemaV1.InferOutput<V>,
+      params: parsedParams,
+      searchParams: parsedSearchParams,
+      hash: parsedHash,
     };
   }
 
