@@ -199,12 +199,28 @@ Deno.test("href() pathname with optional group", () => {
   assertEquals(url2, `${BASE_URL}/books`);
 });
 
-Deno.test("href() pathname with optional unmatched group ", () => {
+Deno.test("href() pathname with optional unmatched group", () => {
   const route = new TypedURLPattern({ pathname: "/book{s}?" });
 
   const url = route.href();
   assertEquals(url, `${BASE_URL}/books`);
 });
+
+Deno.test(
+  "href() pathname with a group delimiter containing a capturing group",
+  () => {
+    const route = new TypedURLPattern(
+      { pathname: "/blog/:id(\\d+){-:title}?" },
+      { params: z.object({ id: z.number(), title: z.string().optional() }) },
+    );
+
+    const url1 = route.href({ params: { id: 123, title: "my-recipe" } });
+    assertEquals(url1, `${BASE_URL}/blog/123-my-recipe`);
+
+    const url2 = route.href({ params: { id: 123 } });
+    assertEquals(url2, `${BASE_URL}/blog/123`);
+  },
+);
 
 Deno.test("href() pathname with repeated group", () => {
   const route = new TypedURLPattern(

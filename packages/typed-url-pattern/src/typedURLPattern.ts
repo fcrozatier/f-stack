@@ -2,6 +2,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { assert } from "@std/assert/assert";
 import {
   findBaseURL,
+  HAS_NO_MISSING_CAPTURED_GROUPS,
   NEGATIVE_LOOKAHEAD,
   NEGATIVE_LOOKBEHIND,
   OPTIONAL_NAMED_GROUP,
@@ -299,8 +300,15 @@ export class TypedURLPattern<
     // Example: new URLPattern({ pathname: "(/a.*)", baseURL: "https://example.com" })
     pathname = pathname.replace("//", "/");
 
-    // Now that all matched groups have been handled, replace unmatched groups by their content to handle all modifiers at once (?+*)
-    pathname = pathname.replaceAll(UNMATCHED_GROUP_DELIMITER, "$1");
+    // group delimiters
+    pathname = pathname.replaceAll(UNMATCHED_GROUP_DELIMITER, (_match, $1) => {
+      if (HAS_NO_MISSING_CAPTURED_GROUPS.exec($1)?.[0]) {
+        // Replace unmatched groups by their content if they have no missing capture group
+        return $1;
+      }
+      // otherwise remove the group, has it's either fine if the group is optional or will error during later validation if the group is required
+      return "";
+    });
 
     let search = "";
 

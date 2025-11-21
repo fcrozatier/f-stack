@@ -13,5 +13,8 @@ export const NEGATIVE_LOOKBEHIND = /\(\?<![^\)]+\)/g;
 
 // wildcard or regex group
 export const UNNAMED_GROUP = /\*|\([^\)]+\)/;
-export const OPTIONAL_NAMED_GROUP = /\/?:[^(]+([(][^)]+[)])?[?]/g;
-export const UNMATCHED_GROUP_DELIMITER = /{([^}]+)}[?+*]/g;
+export const OPTIONAL_NAMED_GROUP = /\/?:[^(}]+([(][^)}]+[)])?[?]/g;
+
+// lookahead ensuring the group has no missing captured groups named, wildcards or unnamed
+export const UNMATCHED_GROUP_DELIMITER = /\{(?<content>[^}]+)\}[?+*]?/g;
+export const HAS_NO_MISSING_CAPTURED_GROUPS = /[^:*(]*(?!:[^}]+)(?!\*)(?!\()/;
