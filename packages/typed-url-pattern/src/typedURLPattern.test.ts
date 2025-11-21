@@ -137,7 +137,7 @@ Deno.test("type-safe hash", () => {
 Deno.test("href() type-safe params", () => {
   const route = new TypedURLPattern(
     { pathname: "/users/:id" },
-    { params: z.object({ id: z.number() }) },
+    { params: z.object({ id: z.coerce.number() }) },
   );
 
   const url = route.href({
@@ -185,7 +185,7 @@ Deno.test("href() params validation", () => {
 Deno.test("href() pathname with optional group", () => {
   const route = new TypedURLPattern(
     { pathname: "/books/:id?" },
-    { params: z.object({ id: z.number().optional() }) },
+    { params: z.object({ id: z.coerce.number().optional() }) },
   );
 
   const url1 = route.href({
@@ -213,7 +213,12 @@ Deno.test(
   () => {
     const route = new TypedURLPattern(
       { pathname: "/blog/:id(\\d+){-:title}?" },
-      { params: z.object({ id: z.number(), title: z.string().optional() }) },
+      {
+        params: z.object({
+          id: z.coerce.number(),
+          title: z.string().optional(),
+        }),
+      },
     );
 
     const url1 = route.href({ params: { id: 123, title: "my-recipe" } });
@@ -240,7 +245,7 @@ Deno.test("href() pathname with repeated group", () => {
 Deno.test("href() pathname with wildcard", () => {
   const route = new TypedURLPattern(
     { pathname: "/users/:id(\\d+)" },
-    { params: z.object({ id: z.number() }) },
+    { params: z.object({ id: z.coerce.number() }) },
   );
 
   const url = route.href({
@@ -255,7 +260,10 @@ Deno.test("href() type-safe search params", () => {
     pathname: "/search",
     search: "?page=:page&sort=:sort",
   }, {
-    searchParams: z.object({ page: z.number(), sort: z.enum(["asc", "desc"]) }),
+    searchParams: z.object({
+      page: z.coerce.number(),
+      sort: z.enum(["asc", "desc"]),
+    }),
   });
 
   const url = route.href({
@@ -301,7 +309,7 @@ Deno.test("href() URL-encodes parameters", () => {
 Deno.test("href() type-safe inputs", () => {
   const route1 = new TypedURLPattern({
     pathname: "/test/*/:id",
-  }, { params: z.object({ id: z.number(), "0": z.string() }) });
+  }, { params: z.object({ id: z.coerce.number(), "0": z.string() }) });
 
   // Complains if the options object is missing
   // @ts-expect-error
