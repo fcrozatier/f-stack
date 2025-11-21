@@ -18,18 +18,33 @@ import {
 import { assertExists } from "@std/assert/exists";
 import { assertEquals } from "@std/assert/equals";
 
+export type { StandardSchemaV1 } from "@standard-schema/spec";
+
+/**
+ * `TypedURLPattern` provides a way to add param parsing, schema validation and type-safety on top of a `URLPattern` object
+ */
 export class TypedURLPattern<
   T extends StandardSchemaV1,
   U extends StandardSchemaV1,
   V extends StandardSchemaV1,
 > {
+  /**
+   * `debug` mode will log `StandardSchema` issues when params don't pass validation
+   */
   static debug = false;
+
+  /**
+   * Defines a default baseURL for all patterns
+   */
   static baseURL = "";
 
   #paramsSchema?: T | undefined;
   #searchParamsSchema?: U | undefined;
   #hashSchema?: V | undefined;
 
+  /**
+   * The base URL of this pattern
+   */
   baseURL = "";
 
   /**
@@ -38,7 +53,21 @@ export class TypedURLPattern<
    */
   pattern: URLPattern;
 
-  // Provide a default baseURL
+  /**
+   * Creates a `TypedURLPattern` by composing a `URLPattern` with a `StandardSchema` providing  parsing, validation and type-safety for params and searchParams
+   *
+   * @example
+   *
+   * ```ts
+   * const pattern = new TypedURLPattern(
+   *   { pathname: "/blog/:year/:title" },
+   *   { params: z.object({ year: z.coerce.number(), title: z.string() }) },
+   * );
+   * ```
+   *
+   * @param input The `URLPatternInput`
+   * @param schema An object containing the schemas for params, searchParams and hash
+   */
   constructor(
     input: URLPatternInput,
     schema?: {
@@ -68,6 +97,24 @@ export class TypedURLPattern<
     this.#hashSchema = schema?.hash;
   }
 
+  /**
+   * Match the input against this pattern.
+   *
+   * @example
+   *
+   * ```ts
+   * const pattern = new TypedURLPattern(
+   *   { pathname: "/blog/:year(\\d+)" },
+   *   { params: z.object({ year: z.coerce.number() }) },
+   * );
+   *
+   * const match = pattern.match("/blog/abc");
+   * ```
+   *
+   * @param input An absolute URL string with an optional base, relative URL string with a required base, or individual components in the form of an `URLPatternInit` object
+   *
+   * @returns An oject containing the `URLPatternResult` object along with the parsed params and searchParams
+   */
   match(input: URLPatternInput, baseURL?: string): null | {
     patternResult: URLPatternResult;
     params: StandardSchemaV1.InferOutput<T>;
@@ -156,6 +203,19 @@ export class TypedURLPattern<
     };
   }
 
+  /**
+   * Test if a URL matches this pattern.
+   *
+   * @param input The input to test
+   * @returns `true` if the URL matches this pattern, `false` otherwise
+   */
+  test(input: URLPatternInput, baseURL?: string): boolean {
+    return this.match(input, baseURL) !== null;
+  }
+
+  /**
+   * Creates an href URL for this pattern.
+   */
   href(
     // The options object itself is optional if no schema is defined or all their keys are optional
     ...args: (
