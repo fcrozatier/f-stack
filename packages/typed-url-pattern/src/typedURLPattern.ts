@@ -15,8 +15,6 @@ import {
   UNMATCHED_GROUP_DELIMITER,
   UNNAMED_GROUP,
 } from "./utils.ts";
-import { assertExists } from "@std/assert/exists";
-import { assertEquals } from "@std/assert/equals";
 
 export type { StandardSchemaV1 } from "@standard-schema/spec";
 
@@ -367,7 +365,7 @@ export class TypedURLPattern<
       }
 
       // handle unnamed groups after named groups have been normalized
-      const unnamedGroups: [number, string][] = [];
+      const unnamedGroups = new Map<number, string>();
 
       for (const [key, value] of Object.entries(params)) {
         assert(
@@ -386,28 +384,27 @@ export class TypedURLPattern<
           );
         } else {
           // unnamed groups
-          unnamedGroups.push([Number(key), String(value)]);
+          unnamedGroups.set(Number(key), String(value));
         }
       }
 
-      // 1/2 Remove unspecified optional named groups
+      // 1/3 Remove unspecified optional named groups
       pathname = pathname.replaceAll(OPTIONAL_NAMED_GROUP, "");
 
-      // 2/2 All remaining groups are unnamed and can be replaced in order
-      unnamedGroups.sort((a, b) => a[0] - b[0]);
+      // 2/3 All remaining groups are unnamed and can be replaced in order
+      let i = 0;
+      pathname = pathname.replace(UNNAMED_GROUP, (match) => {
+        return unnamedGroups.get(i++) ?? match;
+      });
 
-      for (let i = 0; i < unnamedGroups.length; i++) {
-        const group = unnamedGroups[i];
-        assertExists(group, `[TypedURLPattern]: Missing unnamed param ${i}`);
-
-        const [index, value] = group;
-        assertEquals(index, i, `[TypedURLPattern]: Missing unnamed param ${i}`);
-
-        pathname = pathname.replace(UNNAMED_GROUP, String(value));
-      }
+      // 3/3 Remove remaining optional unnamed groups
+      pathname = pathname.replaceAll(UNNAMED_GROUP, "");
     } else {
       // Remove unspecified optional named groups
       pathname = pathname.replaceAll(OPTIONAL_NAMED_GROUP, "");
+
+      // Remove unspecified optional unnamed groups
+      pathname = pathname.replaceAll(UNNAMED_GROUP, "");
     }
 
     // Edge case: collapse double slashes

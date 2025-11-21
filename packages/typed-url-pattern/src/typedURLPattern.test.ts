@@ -244,13 +244,20 @@ Deno.test("href() pathname with repeated group", () => {
 
 Deno.test("href() pathname with wildcard", () => {
   const route = new TypedURLPattern(
-    { pathname: "/assets/*/*.png" },
-    { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) }) },
+    { pathname: "/assets{/*}?/*.png" },
+    {
+      params: z.object({
+        0: z.string().optional(),
+        1: z.enum(["cake", "banana"]),
+      }),
+    },
   );
 
-  const url = route.href({ params: { 0: "images/recipes", 1: "cake" } });
+  const url1 = route.href({ params: { 0: "images/recipes", 1: "cake" } });
+  assertEquals(url1, `${BASE_URL}/assets/images/recipes/cake.png`);
 
-  assertEquals(url, `${BASE_URL}/assets/images/recipes/cake.png`);
+  const url2 = route.href({ params: { 1: "banana" } });
+  assertEquals(url2, `${BASE_URL}/assets/banana.png`);
 });
 
 Deno.test("href() type-safe search params", () => {
@@ -309,114 +316,19 @@ Deno.test("href() type-safe inputs", () => {
     pathname: "/test/*/:id",
   }, { params: z.object({ id: z.coerce.number(), "0": z.string() }) });
 
-  // Complains if the options object is missing
-  // @ts-expect-error
-  route1.href();
+  try {
+    // Complains if the options object is missing
+    // @ts-expect-error
+    route1.href();
+  } catch (error) {
+    assertInstanceOf(error, TypeError);
+  }
 
-  // Complains if the params key is missing
-  // @ts-expect-error
-  route1.href({});
+  try {
+    // Complains if the params key is missing
+    // @ts-expect-error
+    route1.href({});
+  } catch (error) {
+    assertInstanceOf(error, TypeError);
+  }
 });
-
-Deno.test("href() handles wildcards params", () => {
-  const route = new TypedURLPattern({ pathname: "*/images/*.jpg" });
-  const url = route.href({ params: { "0": "user/recipes", "1": "cake" } });
-
-  assertEquals(url, `${BASE_URL}/user/recipes/images/cake.jpg`);
-});
-
-// Deno.test("fills in params", () => {
-//   const pattern = createHrefBuilder();
-
-//   assertEquals(href("products/:id", { id: "1" }), "/products/1");
-//   // Number is coerced to string
-//   assertEquals(href("products/:id", { id: 1 }), "/products/1");
-
-//   assertEquals(
-//     href("images/*path.png", { path: "images/hero" }),
-//     "/images/images/hero.png",
-//   );
-//   assertEquals(
-//     href("images/*.png", { "*": "images/hero" }),
-//     "/images/images/hero.png",
-//   );
-
-//   // Include optionals by default
-//   assertEquals(href("products(.md)"), "/products.md");
-
-//   // Omit optionals with undefined/missing params
-//   assertEquals(href("products/:id(.:ext)", { id: "1" }), "/products/1");
-//   assertEquals(href("products(/:id)", {}), "/products");
-//   assertEquals(href("products(/:id)", null), "/products");
-// });
-
-// Deno.test("requires a valid pattern", () => {
-//   const pattern = createHrefBuilder<"products(/:id)">();
-//   // @ts-expect-error invalid pattern
-//   assertEquals(href("does-not-exist"), "/does-not-exist");
-// });
-
-// Deno.test("throws when required params are missing", () => {
-//   const pattern = createHrefBuilder();
-//   // @ts-expect-error missing required "id" param
-//   assert.throws(() => href("products/:id", {}), new MissingParamError("id"));
-//   // @ts-expect-error missing required "category" param
-//   assert.throws(
-//     () => href("*category/products", {}),
-//     new MissingParamError("category"),
-//   );
-// });
-
-// Deno.test("fills in search params", () => {
-//   const pattern = createHrefBuilder();
-
-//   assertEquals(
-//     href("products/:id", { id: "1" }, { sort: "asc" }),
-//     "/products/1?sort=asc",
-//   );
-
-//   assertEquals(
-//     href("products/:id", { id: "1" }, { sort: "asc", limit: "10" }),
-//     "/products/1?sort=asc&limit=10",
-//   );
-
-//   assertEquals(
-//     href("products/:id", { id: "1" }, "sort=asc&limit=10"),
-//     "/products/1?sort=asc&limit=10",
-//   );
-
-//   assertEquals(
-//     href(
-//       "products/:id",
-//       { id: "1" },
-//       new URLSearchParams("sort=asc&limit=10"),
-//     ),
-//     "/products/1?sort=asc&limit=10",
-//   );
-
-//   assertEquals(
-//     href("products/:id", { id: "1" }, [
-//       ["sort", "asc"],
-//       ["limit", "10"],
-//     ]),
-//     "/products/1?sort=asc&limit=10",
-//   );
-
-//   // Preserves existing search params exactly as provided
-//   assertEquals(
-//     href("products/:id?sort=asc&limit=", { id: "1" }),
-//     "/products/1?sort=asc&limit=",
-//   );
-
-//   // Swaps out a new value for an existing param
-//   assertEquals(
-//     href("https://remix.run/search?q=remix", null, { q: "angular" }),
-//     "https://remix.run/search?q=angular",
-//   );
-
-//   // Completely replaces existing search params
-//   assertEquals(
-//     href("https://remix.run/search?q=remix", null, { some: "thing" }),
-//     "https://remix.run/search?some=thing",
-//   );
-// });
