@@ -38,14 +38,14 @@ Deno.test("type-safe params", () => {
 
 Deno.test("type-safe unnamed params", () => {
   const pattern = new TypedURLPattern(
-    { pathname: "/images/*.png" },
-    { params: z.object({ "0": z.string() }) },
+    { pathname: "/images/*/*.png" },
+    { params: z.object({ "0": z.string(), 1: z.string() }) },
   );
 
-  const match = pattern.match("/images/cake.png");
+  const match = pattern.match("/images/path/to/cake.png");
 
   assertExists(match);
-  assertEquals(match.params, { 0: "cake" });
+  assertEquals(match.params, { 0: "path/to", 1: "cake" });
 });
 
 Deno.test("params validation", () => {
@@ -244,15 +244,13 @@ Deno.test("href() pathname with repeated group", () => {
 
 Deno.test("href() pathname with wildcard", () => {
   const route = new TypedURLPattern(
-    { pathname: "/users/:id(\\d+)" },
-    { params: z.object({ id: z.coerce.number() }) },
+    { pathname: "/assets/*/*.png" },
+    { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) }) },
   );
 
-  const url = route.href({
-    params: { id: 55 },
-  });
+  const url = route.href({ params: { 0: "images/recipes", 1: "cake" } });
 
-  assertEquals(url, `${BASE_URL}/users/55`);
+  assertEquals(url, `${BASE_URL}/assets/images/recipes/cake.png`);
 });
 
 Deno.test("href() type-safe search params", () => {
