@@ -274,11 +274,10 @@ export class TypedURLPattern<
         }
       }
 
-      // Remove unspecified optional named groups
+      // 1/2 Remove unspecified optional named groups
       pathname = pathname.replaceAll(OPTIONAL_NAMED_GROUP, "");
 
-      // Remaining groups are all unnamed and can be replaced in ascending order
-
+      // 2/2 All remaining groups are unnamed and can be replaced in order
       unnamedGroups.sort((a, b) => a[0] - b[0]);
 
       for (let i = 0; i < unnamedGroups.length; i++) {
@@ -300,7 +299,7 @@ export class TypedURLPattern<
     // Example: new URLPattern({ pathname: "(/a.*)", baseURL: "https://example.com" })
     pathname = pathname.replace("//", "/");
 
-    // Replace unmatched groups by their content to handle all modifiers at once (?+*)
+    // Now that all matched groups have been handled, replace unmatched groups by their content to handle all modifiers at once (?+*)
     pathname = pathname.replaceAll(UNMATCHED_GROUP_DELIMITER, "$1");
 
     let search = "";
