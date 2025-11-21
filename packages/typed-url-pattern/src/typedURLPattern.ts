@@ -300,9 +300,8 @@ export class TypedURLPattern<
     }
 
     // Edge case: collapse double slashes
-    // A pathname like (/a.*) when retrieved from the pattern with a base URL is /(/a.*) and, if substituted by /ab yields an unexpected double
-    // Example: new URLPattern({ pathname: "(/a.*)", baseURL: "https://example.com" })
-    pathname = pathname.replace("//", "/");
+    // A pathname like (/a.*) with a base URL is normalized to /(/a.*) which yields //ab if the group is substituted by /ab
+    pathname = pathname.replaceAll("//", "/");
 
     // group delimiters
     pathname = pathname.replaceAll(UNMATCHED_GROUP_DELIMITER, (_match, $1) => {
