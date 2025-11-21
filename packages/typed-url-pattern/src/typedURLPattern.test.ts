@@ -194,6 +194,8 @@ Deno.test("href() pathname with optional group", () => {
 
   assertEquals(url1, `${BASE_URL}/books/5`);
 
+  // handles the / prefix
+  // https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API#automatic_group_prefixing_in_pathnames
   const url2 = route.href();
 
   assertEquals(url2, `${BASE_URL}/books`);

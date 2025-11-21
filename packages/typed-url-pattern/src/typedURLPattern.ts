@@ -1,6 +1,9 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { assert } from "@std/assert/assert";
 import {
+  type And,
+  type AreAllKeysOptional,
+  type ConditionalOptional,
   findBaseURL,
   HAS_NO_MISSING_CAPTURED_GROUPS,
   NEGATIVE_LOOKAHEAD,
@@ -8,6 +11,7 @@ import {
   OPTIONAL_NAMED_GROUP,
   POSITIVE_LOOKAHEAD,
   POSITIVE_LOOKBEHIND,
+  type Pretty,
   UNMATCHED_GROUP_DELIMITER,
   UNNAMED_GROUP,
 } from "./utils.ts";
@@ -340,31 +344,3 @@ export class TypedURLPattern<
     return uri;
   }
 }
-
-type Pretty<T> = { [K in keyof T]: T[K] } & {};
-
-type ConditionalOptional<T extends PropertyKey, U, Condition extends boolean> =
-  & { [K in T as Condition extends true ? K : never]?: U }
-  & { [K in T as Condition extends true ? never : K]: U };
-
-type FilterRequiredKeys<T> = {
-  [K in keyof T as undefined extends T[K] ? never : K]: T[K];
-};
-
-type AreAllKeysOptional<T> = {} extends FilterRequiredKeys<T> ? true : false;
-
-// deno-fmt-ignore
-type And<T extends boolean, U extends boolean> =
-  T extends true
-  ? U extends true
-    ? true
-    : false
-  : false;
-
-// deno-fmt-ignore
-type Or<T extends boolean, U extends boolean> =
-  T extends true
-  ? true
-  : U extends true
-    ? true
-    : false;
