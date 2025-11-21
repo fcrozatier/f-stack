@@ -1,6 +1,11 @@
-import { assert, assertEquals, assertExists, assertThrows } from "@std/assert";
-import { TypedURLPattern } from "./typedURLPattern.ts";
+import {
+  assertEquals,
+  assertExists,
+  assertInstanceOf,
+  unreachable,
+} from "@std/assert";
 import * as z from "zod";
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 
 const BASE_URL = "https://example.com";
 
@@ -142,7 +147,59 @@ Deno.test("href() type-safe params", () => {
   assertEquals(url, `${BASE_URL}/users/55`);
 });
 
-Deno.test("href() type-safe params and regex", () => {
+Deno.test("href() pathname with unnamed matching group", () => {
+  const route = new TypedURLPattern({ pathname: "(/a.*)" });
+
+  const url = route.href({
+    params: { "0": "/ab" },
+  });
+
+  assertEquals(url, `${BASE_URL}/ab`);
+});
+
+Deno.test("href() pathname with lookaround assertions", () => {
+  const route = new TypedURLPattern(
+    { pathname: "(/a(?=b).*)" },
+  );
+
+  const url = route.href({ params: { "0": "ab" } });
+
+  assertEquals(url, `${BASE_URL}/ab`);
+});
+
+Deno.test("href() params validation", () => {
+  const route = new TypedURLPattern(
+    { pathname: "(/a(?=b).*)" },
+    { params: z.object({ 0: z.string().startsWith("ab") }) },
+  );
+
+  try {
+    route.href({ params: { "0": "ax" } });
+    unreachable();
+  } catch (error) {
+    assertInstanceOf(error, TypeError);
+    assertEquals(error.message, "[TypedURLPattern]: Invalid href params");
+  }
+});
+
+Deno.test("href() pathname with optional group", () => {
+  const route = new TypedURLPattern(
+    { pathname: "/books/:id?" },
+    { params: z.object({ id: z.number().optional() }) },
+  );
+
+  const url1 = route.href({
+    params: { id: 5 },
+  });
+
+  assertEquals(url1, `${BASE_URL}/books/5`);
+
+  const url2 = route.href();
+
+  assertEquals(url2, `${BASE_URL}/books`);
+});
+
+Deno.test("href() pathname with wildcard", () => {
   const route = new TypedURLPattern(
     { pathname: "/users/:id(\\d+)" },
     { params: z.object({ id: z.number() }) },

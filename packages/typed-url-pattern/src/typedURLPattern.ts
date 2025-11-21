@@ -4,6 +4,7 @@ import {
   findBaseURL,
   NEGATIVE_LOOKAHEAD,
   NEGATIVE_LOOKBEHIND,
+  OPTIONAL_NAMED_GROUP,
   POSITIVE_LOOKAHEAD,
   POSITIVE_LOOKBEHIND,
   UNNAMED_GROUP,
@@ -157,48 +158,48 @@ export class TypedURLPattern<
         >
       >
     ) extends true ? [
-          options?: Pretty<
-            & ConditionalOptional<
-              "params",
-              StandardSchemaV1.InferInput<T>,
+        options?: Pretty<
+          & ConditionalOptional<
+            "params",
+            StandardSchemaV1.InferInput<T>,
             unknown extends StandardSchemaV1.InferInput<T> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<T>>
-            >
-            & ConditionalOptional<
-              "searchParams",
-              StandardSchemaV1.InferInput<U>,
+          >
+          & ConditionalOptional<
+            "searchParams",
+            StandardSchemaV1.InferInput<U>,
             unknown extends StandardSchemaV1.InferInput<U> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<U>>
-            >
-            & ConditionalOptional<
-              "hash",
-              StandardSchemaV1.InferInput<V> & string,
-              unknown extends StandardSchemaV1.InferInput<V> ? true : false
-            >
-          >,
-        ]
-        : [
-          options: Pretty<
-            & ConditionalOptional<
-              "params",
-              StandardSchemaV1.InferInput<T>,
+          >
+          & ConditionalOptional<
+            "hash",
+            StandardSchemaV1.InferInput<V> & string,
+            unknown extends StandardSchemaV1.InferInput<V> ? true : false
+          >
+        >,
+      ]
+      : [
+        options: Pretty<
+          & ConditionalOptional<
+            "params",
+            StandardSchemaV1.InferInput<T>,
             unknown extends StandardSchemaV1.InferInput<T> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<T>>
-            >
-            & ConditionalOptional<
-              "searchParams",
-              StandardSchemaV1.InferInput<U>,
+          >
+          & ConditionalOptional<
+            "searchParams",
+            StandardSchemaV1.InferInput<U>,
             unknown extends StandardSchemaV1.InferInput<U> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<U>>
-            >
-            & ConditionalOptional<
-              "hash",
-              StandardSchemaV1.InferInput<V> & string,
+          >
+          & ConditionalOptional<
+            "hash",
+            StandardSchemaV1.InferInput<V> & string,
             unknown extends StandardSchemaV1.InferInput<V> ? true
               : AreAllKeysOptional<StandardSchemaV1.InferInput<V>>
-            >
-          >,
-        ]
+          >
+        >,
+      ]
   ): string {
     const { params, searchParams, hash } = (args[0] ?? {}) as {
       params?: StandardSchemaV1.InferInput<T>;
@@ -211,9 +212,9 @@ export class TypedURLPattern<
 
     // `baseURL` can be an empty string here
     if (!baseURL) {
-      const protocol = this.pattern.protocol;
-      const hostname = this.pattern.hostname;
-      const port = this.pattern.port ? ":" + this.pattern.port : "";
+      const protocol = pattern.protocol;
+      const hostname = pattern.hostname;
+      const port = pattern.port ? ":" + pattern.port : "";
 
       baseURL = protocol + "://" + hostname + port;
       this.baseURL = baseURL;
@@ -221,7 +222,33 @@ export class TypedURLPattern<
 
     let pathname = pattern.pathname;
 
+    // Remove lookaround assertions
+    pathname = pathname
+      .replaceAll(POSITIVE_LOOKAHEAD, "")
+      .replaceAll(NEGATIVE_LOOKAHEAD, "")
+      .replaceAll(POSITIVE_LOOKBEHIND, "")
+      .replaceAll(NEGATIVE_LOOKBEHIND, "");
+
     if (params) {
+      if (this.#paramsSchema) {
+        const result = this.#paramsSchema["~standard"].validate(params);
+
+        if (result instanceof Promise) {
+          throw new TypeError(
+            "[TypedURLPattern]: URL Pattern validation must be synchronous",
+          );
+        }
+
+        if (result.issues) {
+          throw new TypeError(
+            "[TypedURLPattern]: Invalid href params",
+          );
+        }
+      }
+
+      // handle unnamed groups after named groups have been normalized
+      const unnamedGroups: [number, string][] = [];
+
       for (const [key, value] of Object.entries(params)) {
         assert(
           typeof value === "string" ||
@@ -234,15 +261,40 @@ export class TypedURLPattern<
           // named groups: the key is not a number
           // also remove optional regex as in :id(\\d+)
           pathname = pathname.replace(
-            new RegExp(":" + key + "([(][^\)]+[\)])?"),
+            new RegExp(":" + key + "([(][^\)]+[\)])?[?]?"),
             encodeURIComponent(value),
           );
         } else {
           // unnamed groups
-          pathname = pathname.replace("*", String(value));
+          unnamedGroups.push([Number(key), String(value)]);
         }
       }
+
+      // Remove unspecified optional named groups
+      pathname = pathname.replaceAll(OPTIONAL_NAMED_GROUP, "");
+
+      // Remaining groups are all unnamed and can be replaced in ascending order
+
+      unnamedGroups.sort((a, b) => a[0] - b[0]);
+
+      for (let i = 0; i < unnamedGroups.length; i++) {
+        const group = unnamedGroups[i];
+        assertExists(group, `[TypedURLPattern]: Missing unnamed param ${i}`);
+
+        const [index, value] = group;
+        assertEquals(index, i, `[TypedURLPattern]: Missing unnamed param ${i}`);
+
+        pathname = pathname.replace(UNNAMED_GROUP, String(value));
+      }
+    } else {
+      // Remove unspecified optional named groups
+      pathname = pathname.replaceAll(OPTIONAL_NAMED_GROUP, "");
     }
+
+    // Edge case: collapse double slashes
+    // A pathname like (/a.*) when retrieved from the pattern with a base URL is /(/a.*) and, if substituted by /ab yields an unexpected double
+    // Example: new URLPattern({ pathname: "(/a.*)", baseURL: "https://example.com" })
+    pathname = pathname.replace("//", "/");
 
     let search = "";
 
