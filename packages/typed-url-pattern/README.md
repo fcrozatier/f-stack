@@ -1,6 +1,8 @@
 # TypedURLPattern
 
-A tiny TypeScript wrapper around the native [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API providing:
+A tiny TypeScript wrapper around the native
+[URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API
+providing:
 
 - **Type-safety** for your routes and API endpoints
 - **Parsing and validation** with [Standard Schema](https://standardschema.dev/)
@@ -13,30 +15,32 @@ A tiny TypeScript wrapper around the native [URLPattern](https://developer.mozil
 
 - **Default base URL**
 
-Use the static `baseURL` property to provide a sensible default to all your patterns.
+Use the static `baseURL` property to provide a sensible default to all your
+patterns.
 
-This allows to avoid the "relative URL without a base" `TypeError` common with `URLPattern`
+This allows to avoid the "relative URL without a base" `TypeError` common with
+`URLPattern`
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 
 // in your config
 TypedURLPattern.baseURL = "https://example.com";
 
 const route = new TypedURLPattern({ pathname: "/blog" });
 
-route.test("https://example.com/blog") === true
+route.test("https://example.com/blog") === true;
 ```
 
 - **Typed named parameters**
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
   { pathname: "/user/:name" },
-  { params: z.object({ name: z.string() })}
+  { params: z.object({ name: z.string() }) },
 );
 
 const match = route.match("/user/bob");
@@ -49,12 +53,12 @@ match?.params.name === "bob";
 Unnamed groups can be typed, parsed and validated in the order they appear
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
   { pathname: "/assets/*/*.png" },
-  { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) })}
+  { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) }) },
 );
 
 const match = route.match("/assets/path/to/cake.png");
@@ -65,15 +69,17 @@ match?.params[1] === "cake";
 
 - **Typed optional searchParams**
 
-Use a `looseObject` to allow searchParams that are not specified in the schema. This is useful when you don't control how people link to your page _eg_ with search engine `utm` searchParams etc.
+Use a `looseObject` to allow searchParams that are not specified in the schema.
+This is useful when you don't control how people link to your page _eg_ with
+search engine `utm` searchParams etc.
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
   { pathname: "/watch" },
-  { searchParams: z.looseObject({ id: z.string() })}
+  { searchParams: z.looseObject({ id: z.string() }) },
 );
 
 const match = route.match("/watch?id=abc&utm=utm_source");
@@ -89,12 +95,12 @@ match?.searchParams.utm === "utm_source";
 Coerce strings extracted by `URLPattern` to numbers, booleans etc
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
   { pathname: "/user/:id" },
-  { params: z.object({ id: z.coerce.number() })}
+  { params: z.object({ id: z.coerce.number() }) },
 );
 
 const match = route.match("/user/12");
@@ -107,13 +113,14 @@ match?.params.id === 12;
 Build type safe href from your patterns and provided params.
 
 The following demo showcases:
+
 - typed params and searchParams substitution
 - typed optional wildcards
 - typed optional group delimiters
 - typed optional searchParams
 
 ```ts
-import { TypedURLPattern } from '@f-stack/typed-url-pattern';
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
@@ -122,9 +129,9 @@ const route = new TypedURLPattern(
     params: z.object({
       id: z.coerce.number(),
       title: z.string().optional(),
-      0: z.enum(["recipes", "trips"]).optional()
+      0: z.enum(["recipes", "trips"]).optional(),
     }),
-    searchParams: z.looseObject({ page: z.coerce.number() })
+    searchParams: z.looseObject({ page: z.coerce.number() }),
   },
 );
 
@@ -134,15 +141,15 @@ const href1 = route.href({
   hash: "intro",
 });
 
-href1 === "https://example.com/recipes/42#intro"
+href1 === "https://example.com/recipes/42#intro";
 
 // with title but without wildcard
 const href2 = route.href({
   params: { id: 42, title: "my-cake" },
-  searchParams: { page: 2 }
+  searchParams: { page: 2 },
 });
 
-href2 === "https://example.com/42-mycake?page=2"
+href2 === "https://example.com/42-mycake?page=2";
 ```
 
 ## API
