@@ -11,6 +11,14 @@ providing:
 
 ## Install
 
+Depending on your package manager:
+
+```sh
+deno add jsr:@f-stack/typed-url-pattern
+pnpm i jsr:@f-stack/typed-url-pattern
+npx jsr add @f-stack/typed-url-pattern
+```
+
 ## Common patterns
 
 - **Typed named parameters**
@@ -152,4 +160,4 @@ const href2 = route.href({
 href2 === "https://example.com/42-mycake?page=2";
 ```
 
-## API
+## [API](https://jsr.io/@f-stack/typed-url-pattern/doc)

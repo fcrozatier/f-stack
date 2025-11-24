@@ -36,6 +36,11 @@ The current pieces are (more to come):
 
 A simple and fast type stripper.
 
+### [TypedURLPattern](./packages/typed-url-pattern/README.md)
+
+A tiny wrapper around `URLPattern` to create type safe routes, endpoints and
+links. Params are parsed and validated with `StandardSchema`
+
 ### [Functorial](./packages/functorial/README.md)
 
 A new `Proxy`-based reactivity system, that goes beyond Signals. It's more
