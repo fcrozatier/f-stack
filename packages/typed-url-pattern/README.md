@@ -50,8 +50,9 @@ match?.params[1] === "cake";
 
 - **Typed optional searchParams**
 
-Use a `looseObject` to allow optional searchParams that are not specified in the schema.
-This is useful when you don't control links to your page _eg_ search engines adding `utm` searchParams etc.
+Use a `looseObject` to allow optional searchParams that are not specified in the
+schema. This is useful when you don't control links to your page _eg_ search
+engines adding `utm` searchParams etc.
 
 ```ts
 import { TypedURLPattern } from "@f-stack/typed-url-pattern";
