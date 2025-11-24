@@ -9,6 +9,8 @@ providing:
 - **Standard syntax**: it's just `URLPattern` under the hood (use the Platform)
 - A typed `href()` inverse (create type-safe links)
 
+![demo](./assets/demo.gif)
+
 ## Install
 
 Depending on your package manager:
