@@ -1,0 +1,12 @@
+{
+  "name": "@f-stack/typed-url-pattern",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/typedURLPattern.ts"
+  },
+  "imports": {
+    "@standard-schema/spec": "jsr:@standard-schema/spec@^1.0.0",
+    "zod": "npm:zod@^4.1.12"
+  }
+}
