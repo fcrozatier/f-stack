@@ -60,7 +60,7 @@ export class TypedURLPattern<
    * import * as z from "zod";
    *
    * const pattern = new TypedURLPattern(
-   *   { pathname: "/blog/:year/:title" },
+   *   { pathname: "/blog/:year/:title", baseURL: "https://example.com" },
    *   { params: z.object({ year: z.coerce.number(), title: z.string() }) },
    * );
    *
@@ -111,7 +111,7 @@ export class TypedURLPattern<
    * import * as z from "zod";
    *
    * const pattern = new TypedURLPattern(
-   *   { pathname: "/blog/:year/:title" },
+   *   { pathname: "/blog/:year/:title", baseURL: "https://example.com" },
    *   { params: z.object({ year: z.coerce.number(), title: z.string() }) },
    * );
    *
@@ -132,7 +132,7 @@ export class TypedURLPattern<
     hash: StandardSchemaV1.InferOutput<V>;
   } {
     const url = typeof input === "string"
-      ? new URL(input, baseURL ?? TypedURLPattern.baseURL)
+      ? new URL(input, baseURL ?? this.baseURL)
       : input;
     const match = this.pattern.exec(url);
     if (!match) return null;

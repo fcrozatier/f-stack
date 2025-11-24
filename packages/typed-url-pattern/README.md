@@ -4,33 +4,14 @@ A tiny TypeScript wrapper around the native
 [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API
 providing:
 
-- **Type-safety** for your routes and API endpoints
+- **Type-safety** for your routes, endpoints and links
 - **Parsing and validation** with [Standard Schema](https://standardschema.dev/)
 - **Standard syntax**: it's just `URLPattern` under the hood (use the Platform)
-- A typed `href()` inverse (build URLs with type-safe params)
+- A typed `href()` inverse (create type-safe links)
 
 ## Install
 
 ## Common patterns
-
-- **Default base URL**
-
-Use the static `baseURL` property to provide a sensible default to all your
-patterns.
-
-This allows to avoid the "relative URL without a base" `TypeError` common with
-`URLPattern`
-
-```ts
-import { TypedURLPattern } from "@f-stack/typed-url-pattern";
-
-// in your config
-TypedURLPattern.baseURL = "https://example.com";
-
-const route = new TypedURLPattern({ pathname: "/blog" });
-
-route.test("https://example.com/blog") === true;
-```
 
 - **Typed named parameters**
 
@@ -39,7 +20,7 @@ import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
-  { pathname: "/user/:name" },
+  { pathname: "/user/:name", baseURL: "https://example.com" },
   { params: z.object({ name: z.string() }) },
 );
 
@@ -57,7 +38,7 @@ import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
-  { pathname: "/assets/*/*.png" },
+  { pathname: "/assets/*/*.png", baseURL: "https://example.com" },
   { params: z.object({ 0: z.string(), 1: z.enum(["cake", "banana"]) }) },
 );
 
@@ -69,16 +50,15 @@ match?.params[1] === "cake";
 
 - **Typed optional searchParams**
 
-Use a `looseObject` to allow searchParams that are not specified in the schema.
-This is useful when you don't control how people link to your page _eg_ with
-search engine `utm` searchParams etc.
+Use a `looseObject` to allow optional searchParams that are not specified in the schema.
+This is useful when you don't control links to your page _eg_ search engines adding `utm` searchParams etc.
 
 ```ts
 import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
-  { pathname: "/watch" },
+  { pathname: "/watch", baseURL: "https://example.com" },
   { searchParams: z.looseObject({ id: z.string() }) },
 );
 
@@ -90,7 +70,7 @@ match?.searchParams.id === "abc";
 match?.searchParams.utm === "utm_source";
 ```
 
-- **Parse parameters**
+- **Parsing and validation**
 
 Coerce strings extracted by `URLPattern` to numbers, booleans etc
 
@@ -99,7 +79,7 @@ import { TypedURLPattern } from "@f-stack/typed-url-pattern";
 import * as z from "zod";
 
 const route = new TypedURLPattern(
-  { pathname: "/user/:id" },
+  { pathname: "/user/:id", baseURL: "https://example.com" },
   { params: z.object({ id: z.coerce.number() }) },
 );
 
@@ -108,9 +88,28 @@ const match = route.match("/user/12");
 match?.params.id === 12;
 ```
 
+- **Default baseURL**
+
+Use the static `baseURL` property to provide a sensible default to all your
+patterns.
+
+This allows to avoid the "relative URL without a base" `TypeError` common with
+`URLPattern`
+
+```ts
+import { TypedURLPattern } from "@f-stack/typed-url-pattern";
+
+// once
+TypedURLPattern.baseURL = "https://example.com";
+
+const route = new TypedURLPattern({ pathname: "/blog" });
+
+route.test("https://example.com/blog") === true;
+```
+
 - **Typed href() inverse**
 
-Build type safe href from your patterns and provided params.
+Build type safe links from your patterns and provided params.
 
 The following demo showcases:
 
