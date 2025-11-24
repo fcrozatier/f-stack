@@ -19,19 +19,19 @@ export type AreAllKeysOptional<T> = {} extends FilterRequiredKeys<T> ? true
 /** @internal */
 export type And<T extends boolean, U extends boolean> =
 T extends true
-? U extends true
-? true
-: false
-: false;
+  ? U extends true
+    ? true
+    : false
+  : false;
 
 // deno-fmt-ignore
 /** @internal */
 export type Or<T extends boolean, U extends boolean> =
 T extends true
-? true
-: U extends true
-? true
-: false;
+  ? true
+    : U extends true
+    ? true
+  : false;
 
 /**
  * Extracts the BaseURL from the input URL
